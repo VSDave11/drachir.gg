@@ -17,9 +17,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 // Google Sheets připojení
+// Načtení klíčů (buď z Renderu nebo ze souboru)
+let googleKeys;
+if (process.env.GOOGLE_CREDENTIALS) {
+    // Na Renderu použijeme text z nastavení
+    googleKeys = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+} else {
+    // Doma použijeme soubor
+    googleKeys = require('./credentials.json');
+}
+
 const serviceAccountAuth = new JWT({
-    email: require('./credentials.json').client_email,
-    key: require('./credentials.json').private_key,
+    email: googleKeys.client_email,
+    key: googleKeys.private_key,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
@@ -27,30 +37,41 @@ const doc = new GoogleSpreadsheet('17iOEaSnL0ZxKYXCFiIuJkWoSbnB3INx1Ust0fBnLVg4'
 
 // Cesta pro zpracování přihlášení
 app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    // .toLowerCase() zajistí, že email od uživatele bude malými písmeny
+    const emailInput = req.body.email.toLowerCase().trim();
+    const passwordInput = req.body.password.trim();
     
     try {
         await doc.loadInfo(); 
         const sheet = doc.sheetsByTitle['uzivatele'];
+        
+        if (!sheet) {
+            return res.status(500).send("Chyba: List 'uzivatele' nenalezen.");
+        }
+
         const rows = await sheet.getRows();
         
-        // Najdeme uživatele podle emailu a hesla
-        const user = rows.find(row => row.get('email') === email && row.get('heslo') === password);
+        // Hledáme shodu - pozor na velká písmena u 'Email' a 'Jmeno' podle tvého obrázku!
+        const user = rows.find(row => {
+            const emailZTabulky = row.get('Email')?.toString().toLowerCase().trim();
+            const hesloZTabulky = row.get('heslo')?.toString().trim();
+            return emailZTabulky === emailInput && hesloZTabulky === passwordInput;
+        });
         
         if (user) {
-            // Uložíme si údaje o uživateli do "paměti" (session)
             req.session.user = {
-                jmeno: user.get('jmeno'),
-                role: user.get('role'),
-                email: user.get('email')
+                jmeno: user.get('Jmeno'), // Velké J
+                role: user.get('role'),    // Malé r
+                email: user.get('Email')   // Velké E
             };
-            res.redirect('/dashboard'); // Přesměrujeme na hlavní stránku po přihlášení
+            console.log(`Přihlášen uživatel: ${req.session.user.jmeno}`);
+            res.redirect('/dashboard');
         } else {
             res.send('<h1>Chyba!</h1><p>Špatný email nebo heslo.</p><a href="/">Zkusit znovu</a>');
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Chyba při spojení s tabulkou.');
+        console.error("Chyba při přihlašování:", error);
+        res.status(500).send('Něco se pokazilo.');
     }
 });
 
