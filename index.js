@@ -31,21 +31,26 @@ function verifyRememberToken(token) {
     try { return JSON.parse(Buffer.from(data, 'base64').toString()); } catch(e) { return null; }
 }
 
-// Obnov session z remember cookie pokud session chybi (Render restart / zavreni prohlizece)
-function restoreFromRemember(req) {
-    if (req.session.user) return req.session.user;
+// Obnov uzivatele ze session NEBO z remember cookie
+function getUser(req) {
+    if (req.session && req.session.user) return req.session.user;
     const raw = req.headers.cookie || '';
     const match = raw.split(';').map(c=>c.trim()).find(c=>c.startsWith('remember_token='));
     if (match) {
         const val = decodeURIComponent(match.substring('remember_token='.length));
         const user = verifyRememberToken(val);
         if (user) {
-            req.session.user = user;
+            if (req.session) req.session.user = user;
             return user;
         }
     }
     return null;
 }
+// Middleware: nastav req.user z tokenu pro kazdy request
+app.use((req, res, next) => {
+    req.user = getUser(req);
+    next();
+});
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -336,10 +341,10 @@ app.get('/logout', (req, res) => {
 
 // GET - zobraz stranku pro zmenu hesla
 app.get('/change-password', (req, res) => {
-    if (!restoreFromRemember(req)) return res.redirect('/');
+    if (!req.user) return res.redirect('/');
     const error   = req.query.error   || '';
     const success = req.query.success || '';
-    const initials = req.session.user.jmeno ? req.session.user.jmeno.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '?';
+    const initials = req.user.jmeno ? req.user.jmeno.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '?';
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -401,8 +406,8 @@ app.get('/change-password', (req, res) => {
         <div class="user-row">
             <div class="avatar">${initials}</div>
             <div>
-                <div class="user-name">${req.session.user.jmeno}</div>
-                <div class="user-email">${req.session.user.email}</div>
+                <div class="user-name">${req.user.jmeno}</div>
+                <div class="user-email">${req.user.email}</div>
             </div>
         </div>
 
@@ -453,9 +458,9 @@ function togglePw(id,btn){const i=document.getElementById(id);i.type=i.type==='p
 
 // POST - zpracuj zmenu hesla
 app.post('/change-password', async (req, res) => {
-    if (!restoreFromRemember(req)) return res.redirect('/');
+    if (!req.user) return res.redirect('/');
     const { currentPassword, newPassword, confirmPassword } = req.body;
-    const userEmail = req.session.user.email;
+    const userEmail = req.user.email;
 
     // Validace
     if (newPassword.length < 6)               return res.redirect('/change-password?error=short');
@@ -498,10 +503,10 @@ app.post('/change-password', async (req, res) => {
             const auditSheet = doc.sheetsByTitle['AuditLog'];
             if (auditSheet) await auditSheet.addRow({
                 Timestamp: new Date().toISOString(),
-                Jmeno:    req.session.user.jmeno,
-                Email:    req.session.user.email,
-                Role:     req.session.user.role,
-                Location: req.session.user.location || '',
+                Jmeno:    req.user.jmeno,
+                Email:    req.user.email,
+                Role:     req.user.role,
+                Location: req.user.location || '',
                 Action:   'CHANGE_PASSWORD'
             });
         } catch(e) {}
@@ -513,7 +518,7 @@ app.post('/change-password', async (req, res) => {
 
 // BOD 3: CSV EXPORT směn
 app.get('/export-csv', async (req, res) => {
-    if (!restoreFromRemember(req)) return res.redirect('/');
+    if (!req.user) return res.redirect('/');
 
     // Kdo může exportovat: Admin, David Winkler, Ondřej Merxbauer, Team Leaders
     const allowedNames  = ['David Winkler', 'Ondřej Merxbauer'];
@@ -521,8 +526,8 @@ app.get('/export-csv', async (req, res) => {
     const allowedGroups = ['Team Leaders'];
 
     // Zjisti skupinu uzivatele
-    const userName = req.session.user.jmeno;
-    const userRole = req.session.user.role;
+    const userName = req.user.jmeno;
+    const userRole = req.user.role;
 
     // Zkontroluj hierarchii v req - musime ji znat
     const tlMembers = ["Lukáš Novotný", "FIlip Sklenička", "Jindřich Lacina", "David Tročino", "David Lamač", "Tomáš Komenda", "Dominik Chvátal", "Marcelo Goto"];
@@ -617,7 +622,7 @@ app.get('/export-csv', async (req, res) => {
 
 // API - historie konkretni smeny (Created by + posledni 2 edity)
 app.get('/api/shift-history', async (req, res) => {
-    if (!req.session.user) return res.status(401).send('Unauthorized');
+    if (!req.user) return res.status(401).send('Unauthorized');
     const { name, date, product } = req.query;
     if (!name || !date || !product) return res.json({ created: null, edits: [] });
     try {
@@ -650,7 +655,7 @@ app.get('/api/shift-history', async (req, res) => {
 
 // API - seznam dostupnych Schedule listu
 app.get('/api/schedule-sheets', async (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'Admin') return res.status(403).json([]);
+    if (!req.user || req.user.role !== 'Admin') return res.status(403).json([]);
     try {
         await doc.loadInfo();
         const monthOrder = {January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12};
@@ -669,7 +674,7 @@ app.get('/api/schedule-sheets', async (req, res) => {
 
 // DEBUG endpoint
 app.get('/debug-schedule', async (req, res) => {
-    if (!req.session.user) return res.status(401).send('Login first');
+    if (!req.user) return res.status(401).send('Login first');
     try {
         await doc.loadInfo();
         const allTitles = Object.keys(doc.sheetsByTitle);
@@ -714,7 +719,7 @@ app.get('/debug-schedule', async (req, res) => {
 
 // add-shift - ulozi do listu "ManualShifts" v Google Sheets
 app.post('/add-shift', async (req, res) => {
-    if (!req.session.user) return res.status(401).send('Unauthorized');
+    if (!req.user) return res.status(401).send('Unauthorized');
     try {
         await doc.loadInfo();
         // Pokud list ManualShifts neexistuje, vytvor ho
@@ -730,12 +735,12 @@ app.post('/add-shift', async (req, res) => {
             Start:   req.body.start,
             End:     req.body.end,
             Note:    req.body.note || '',
-            AddedBy: req.session.user.jmeno
+            AddedBy: req.user.jmeno
         });
         // AuditLog
         try {
             const auditSheet = doc.sheetsByTitle['AuditLog'];
-            if (auditSheet) await auditSheet.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.session.user.jmeno, Email: req.session.user.email, Role: req.session.user.role, Location: req.session.user.location||'', Action: 'ADD_SHIFT|' + req.body.name + '|' + req.body.product + '|' + req.body.date });
+            if (auditSheet) await auditSheet.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location||'', Action: 'ADD_SHIFT|' + req.body.name + '|' + req.body.product + '|' + req.body.date });
         } catch(e) {}
         invalidateCache(); // Zrusit cache po pridani smeny
         res.json({ success: true });
@@ -792,7 +797,7 @@ app.post('/api/reset-colors', async (req, res) => {
 });
 
 app.post('/update-shift', async (req, res) => {
-    if (!req.session.user) return res.status(401).send('Unauthorized');
+    if (!req.user) return res.status(401).send('Unauthorized');
     const { originalName, originalDate, originalStart, name, date, start, end, product, trading, note } = req.body;
     try {
         await doc.loadInfo();
@@ -824,7 +829,7 @@ app.post('/update-shift', async (req, res) => {
         try {
             const auditSheet = doc.sheetsByTitle['AuditLog'];
             if (auditSheet && name && product && date) {
-                await auditSheet.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.session.user.jmeno, Email: req.session.user.email, Role: req.session.user.role, Location: req.session.user.location||'', Action: 'EDIT_SHIFT|' + name + '|' + product + '|' + date });
+                await auditSheet.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location||'', Action: 'EDIT_SHIFT|' + name + '|' + product + '|' + date });
             }
         } catch(e) {}
 
@@ -835,7 +840,7 @@ app.post('/update-shift', async (req, res) => {
 
 // DELETE SHIFT - pro ManualShifts maze radek ze Sheetu, pro Schedule listy jen z cache
 app.post('/delete-shift', async (req, res) => {
-    if (!req.session.user) return res.status(401).send('Unauthorized');
+    if (!req.user) return res.status(401).send('Unauthorized');
     const { sheetTitle, row, col, name } = req.body;
     try {
         await doc.loadInfo();
@@ -871,23 +876,23 @@ app.post('/delete-shift', async (req, res) => {
             if (auditSheet) {
                 await auditSheet.addRow({
                     Timestamp: new Date().toISOString(),
-                    Jmeno:    req.session.user.jmeno,
-                    Email:    req.session.user.email,
-                    Role:     req.session.user.role,
-                    Location: req.session.user.location || '',
+                    Jmeno:    req.user.jmeno,
+                    Email:    req.user.email,
+                    Role:     req.user.role,
+                    Location: req.user.location || '',
                     Action:   'DELETE_SHIFT|' + name + '|' + sheetTitle
                 });
             }
         } catch(e) {}
 
-        sendSlackMessage(':x: *Shift deleted* by ' + req.session.user.jmeno + ': ' + name + ' from ' + sheetTitle);
+        sendSlackMessage(':x: *Shift deleted* by ' + req.user.jmeno + ': ' + name + ' from ' + sheetTitle);
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
 });
 
 // BOD 2: EXCHANGE SHIFT - zameni jmena ve dvou bunkach
 app.post('/exchange-shift', async (req, res) => {
-    if (!req.session.user) return res.status(401).send('Unauthorized');
+    if (!req.user) return res.status(401).send('Unauthorized');
     const { sheet1, row1, col1, name1, date1, product1, sheet2, row2, col2, name2, date2, product2 } = req.body;
     try {
         await doc.loadInfo();
@@ -910,25 +915,25 @@ app.post('/exchange-shift', async (req, res) => {
             const auditSheet = doc.sheetsByTitle['AuditLog'];
             if (auditSheet) {
                 const ts = new Date().toISOString();
-                const base = { Email: req.session.user.email, Role: req.session.user.role, Location: req.session.user.location||'' };
+                const base = { Email: req.user.email, Role: req.user.role, Location: req.user.location||'' };
                 // Shift 1 dostal name2 (vymeneno)
-                if (date1 && product1) await auditSheet.addRow({ ...base, Timestamp: ts, Jmeno: req.session.user.jmeno, Action: 'EDIT_SHIFT|' + name2 + '|' + product1 + '|' + date1 });
+                if (date1 && product1) await auditSheet.addRow({ ...base, Timestamp: ts, Jmeno: req.user.jmeno, Action: 'EDIT_SHIFT|' + name2 + '|' + product1 + '|' + date1 });
                 // Shift 2 dostal name1 (vymeneno)
-                if (date2 && product2) await auditSheet.addRow({ ...base, Timestamp: ts, Jmeno: req.session.user.jmeno, Action: 'EDIT_SHIFT|' + name1 + '|' + product2 + '|' + date2 });
+                if (date2 && product2) await auditSheet.addRow({ ...base, Timestamp: ts, Jmeno: req.user.jmeno, Action: 'EDIT_SHIFT|' + name1 + '|' + product2 + '|' + date2 });
                 // Obecny zaznam exchange pro historii
-                await auditSheet.addRow({ ...base, Timestamp: ts, Jmeno: req.session.user.jmeno, Action: 'EXCHANGE: ' + name1 + ' <-> ' + name2 });
+                await auditSheet.addRow({ ...base, Timestamp: ts, Jmeno: req.user.jmeno, Action: 'EXCHANGE: ' + name1 + ' <-> ' + name2 });
             }
         } catch(e) {}
         // Slack notifikace
-        sendSlackMessage(':arrows_counterclockwise: *Shift exchange* by ' + req.session.user.jmeno + ': ' + name1 + ' <-> ' + name2);
+        sendSlackMessage(':arrows_counterclockwise: *Shift exchange* by ' + req.user.jmeno + ': ' + name1 + ' <-> ' + name2);
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
 });
 
 // BOD 5: DELETE ALL SHIFTS FOR MONTH - Admin only
 app.post('/delete-month', async (req, res) => {
-    if (!req.session.user) return res.status(401).send('Unauthorized');
-    if (req.session.user.role !== 'Admin') return res.status(403).send('Admin only');
+    if (!req.user) return res.status(401).send('Unauthorized');
+    if (req.user.role !== 'Admin') return res.status(403).send('Admin only');
     const { sheetTitle } = req.body;
     if (!sheetTitle) return res.status(400).send('Missing sheetTitle');
     try {
@@ -944,10 +949,10 @@ app.post('/delete-month', async (req, res) => {
             if (auditSheet) {
                 await auditSheet.addRow({
                     Timestamp: new Date().toISOString(),
-                    Jmeno: req.session.user.jmeno,
-                    Email: req.session.user.email,
-                    Role: req.session.user.role,
-                    Location: req.session.user.location || '',
+                    Jmeno: req.user.jmeno,
+                    Email: req.user.email,
+                    Role: req.user.role,
+                    Location: req.user.location || '',
                     Action: 'HIDE_MONTH: ' + sheetTitle + ' (cache cleared, sheet untouched)'
                 });
             }
@@ -960,7 +965,7 @@ app.post('/delete-month', async (req, res) => {
 // --- DASHBOARD ---
 
 app.get('/dashboard', async (req, res) => {
-    if (!restoreFromRemember(req)) return res.redirect('/');
+    if (!req.user) return res.redirect('/');
 
     let hHTML = ""; let rHTML = ""; let pRowsHTML = ""; let mainContentHTML = "";
     let allShifts = [];
@@ -1738,8 +1743,8 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
         <div class="mini-calendar" id="miniCal"></div>
 
         <button class="add-btn" onclick="openAddModal()">+ ADD NEW </button>
-        ${(['David Winkler','Ondřej Merxbauer'].includes(req.session.user.jmeno) || req.session.user.role === 'Admin' || ['Lukáš Novotný', 'FIlip Sklenička', 'Jindřich Lacina', 'David Tročino', 'David Lamač', 'Tomáš Komenda', 'Dominik Chvátal', 'Marcelo Goto'].includes(req.session.user.jmeno)) ? '<button onclick="openExportModal()" style="background:rgba(76,175,80,0.1);color:#66bb6a;border:1px solid rgba(76,175,80,0.3);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background=\'rgba(76,175,80,0.2)\'" onmouseout="this.style.background=\'rgba(76,175,80,0.1)\'">&#128190; EXPORT CSV</button>' : ''}
-        ${req.session.user && req.session.user.role === 'Admin' ? `
+        ${(['David Winkler','Ondřej Merxbauer'].includes(req.user.jmeno) || req.user.role === 'Admin' || ['Lukáš Novotný', 'FIlip Sklenička', 'Jindřich Lacina', 'David Tročino', 'David Lamač', 'Tomáš Komenda', 'Dominik Chvátal', 'Marcelo Goto'].includes(req.user.jmeno)) ? '<button onclick="openExportModal()" style="background:rgba(76,175,80,0.1);color:#66bb6a;border:1px solid rgba(76,175,80,0.3);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background=\'rgba(76,175,80,0.2)\'" onmouseout="this.style.background=\'rgba(76,175,80,0.1)\'">&#128190; EXPORT CSV</button>' : ''}
+        ${req.user && req.user.role === 'Admin' ? `
         <button onclick="openSyncModal()" style="background:rgba(251,192,45,0.08);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.15)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'" id="syncBtn">SYNC WITH SCHEDULE</button>
         <button onclick="openDeleteMonth()" style="background:rgba(255,68,68,0.06);color:#ff6b6b;border:1px solid rgba(255,68,68,0.2);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:16px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background='rgba(255,68,68,0.15)'" onmouseout="this.style.background='rgba(255,68,68,0.06)'">DELETE ALL SHIFTS THIS MONTH</button>
         ` : ''}
@@ -1808,13 +1813,13 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
                 <!-- Uzivatel + logout -->
                 <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#13151e;border-radius:10px;border:1px solid #1e2030;">
                     <div style="width:36px;height:36px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(251,192,45,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#fbc02d;font-size:1rem;flex-shrink:0;">
-                        ${req.session.user.jmeno ? req.session.user.jmeno.charAt(0).toUpperCase() : '?'}
+                        ${req.user.jmeno ? req.user.jmeno.charAt(0).toUpperCase() : '?'}
                     </div>
                     <div style="line-height:1.4;">
-                        <div style="font-weight:700;font-size:0.88rem;color:#c8d0e0;">${req.session.user.jmeno || ''}</div>
+                        <div style="font-weight:700;font-size:0.88rem;color:#c8d0e0;">${req.user.jmeno || ''}</div>
                         <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
-                            <span style="font-size:0.65rem;padding:1px 7px;border-radius:10px;font-weight:700;${req.session.user.role === 'Admin' ? 'background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.22);' : 'background:rgba(33,150,243,0.1);color:#64b5f6;border:1px solid rgba(33,150,243,0.22);'}">${req.session.user.role || 'User'}</span>
-                            ${req.session.user.location ? '<span style="font-size:0.65rem;color:#2e3348;">· ' + req.session.user.location + '</span>' : ''}
+                            <span style="font-size:0.65rem;padding:1px 7px;border-radius:10px;font-weight:700;${req.user.role === 'Admin' ? 'background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.22);' : 'background:rgba(33,150,243,0.1);color:#64b5f6;border:1px solid rgba(33,150,243,0.22);'}">${req.user.role || 'User'}</span>
+                            ${req.user.location ? '<span style="font-size:0.65rem;color:#2e3348;">· ' + req.user.location + '</span>' : ''}
                         </div>
                     </div>
                     <a href="/change-password" style="padding:6px 11px;background:#0a0b0f;color:#3a4050;border-radius:6px;text-decoration:none;font-size:0.68rem;border:1px solid #1e2030;transition:0.15s;" onmouseover="this.style.color='#8892a4';this.style.borderColor='#2e3348'" onmouseout="this.style.color='#3a4050';this.style.borderColor='#1e2030'" title="Change Password">&#128274; PWD</a>
