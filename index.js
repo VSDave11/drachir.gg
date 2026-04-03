@@ -1118,9 +1118,10 @@ app.get('/dashboard', async (req, res) => {
             }
 
             // Helper funkce pro pill
-            function buildPersonPill(s, name, dStr, dayIdx, left, width, personColor, prodColor, pillBg, stripeOverlay) {
-                return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-person="' + safe(name) + '"'
-                     + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:34px;background:' + pillBg + stripeOverlay + ';border-right:3px solid ' + prodColor + ';"'
+            function buildPersonPill(s, name, dStr, dayIdx, left, width, personColor, prodColor) {
+                const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
+                return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-person="' + safe(name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
+                     + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:34px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';"'
                      + ' onclick="openViewModal(\'' + safe(name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
                      + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
                      + '<span style="margin:0 5px;opacity:0.5;">|</span>'
@@ -1144,8 +1145,7 @@ app.get('/dashboard', async (req, res) => {
                         const sp = timeToPercent(s.Start), ep = timeToPercent(s.End);
                         if (sp > ep && ep > 0) {
                             const pc2 = getProductColor(s.Trading, s.Product);
-                            const pb2 = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + pc2 + ' 40px,' + pc2 + ' 80px)';
-                            sHTML += buildPersonPill(s, name, toISOLocal(startOfWeek), 0, 0, ep / 7, personColor, pc2, pb2, '');
+                            sHTML += buildPersonPill(s, name, toISOLocal(startOfWeek), 0, 0, ep / 7, personColor, pc2);
                         }
                     });
 
@@ -1159,22 +1159,17 @@ app.get('/dashboard', async (req, res) => {
                             const effEndPct = (endPct === 0 && startPct > 0) ? 100 : endPct;
                             const isOvernight = startPct > effEndPct && effEndPct > 0;
                             const prodColor = getProductColor(s.Trading, s.Product);
-                            const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
-                            const sameDay = allShifts.filter(x => x.Name === name && x.Date === dStr);
-                            const stripeOverlay = sameDay.length > 1 ? ';background-image:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,0.12) 5px,rgba(255,255,255,0.12) 10px)' : '';
 
                             // Pill 1: od startu do konce dne (nebo do pulnoci pri overnight)
                             const left  = (d * 100 / 7) + (startPct / 7);
                             const width = isOvernight ? (100 - startPct) / 7 : (effEndPct - startPct) / 7;
-                            sHTML += buildPersonPill(s, name, dStr, d, left, width, personColor, prodColor, pillBg, stripeOverlay);
+                            sHTML += buildPersonPill(s, name, dStr, d, left, width, personColor, prodColor);
 
-                            // Pill 2: pokracovani overnight v nasledujicim dni (d<6 = v ramci tydne, d=6 = pondeli priste resi pre-pass)
+                            // Pill 2: pokracovani overnight v nasledujicim dni
                             if (isOvernight && d < 6) {
                                 const nextDate = new Date(startOfWeek); nextDate.setDate(startOfWeek.getDate() + d + 1);
                                 const nextDStr = toISOLocal(nextDate);
-                                const nextLeft  = ((d + 1) * 100 / 7);
-                                const nextWidth = endPct / 7;
-                                sHTML += buildPersonPill(s, name, nextDStr, d + 1, nextLeft, nextWidth, personColor, prodColor, pillBg, '');
+                                sHTML += buildPersonPill(s, name, nextDStr, d + 1, (d + 1) * 100 / 7, endPct / 7, personColor, prodColor);
                             }
                         });
                     }
@@ -1191,15 +1186,16 @@ app.get('/dashboard', async (req, res) => {
                     let psHTML = "";
 
                     // Helper pro pill produktoveho radku
-                    function buildProdPill(s, pName, dStr, dayIdx, left, width, personColor, prodColor, pillBg) {
-                        return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-person="' + safe(s.Name) + '"'
+                    function buildProdPill(s, pName, dStr, dayIdx, left, width, personColor, prodColor) {
+                        const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
+                        return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-person="' + safe(s.Name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(pName) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
                              + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:34px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';"'
                              + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(pName) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
                              + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
-                             + '<span style="margin:0 6px;opacity:0.5;">|</span>'
-                             + '<span style="font-size:0.78rem;font-weight:700;">' + pName + '</span>'
-                             + '<span style="margin:0 6px;opacity:0.5;">-</span>'
-                             + '<span style="font-size:0.78rem;opacity:0.9;">' + s.Name + '</span>'
+                             + '<span style="margin:0 5px;opacity:0.5;">|</span>'
+                             + '<span style="font-weight:700;">' + s.Name + '</span>'
+                             + '<span style="margin:0 5px;opacity:0.5;">-</span>'
+                             + '<span style="font-size:0.78rem;opacity:0.9;">' + pName + '</span>'
                              + '</div>';
                     }
 
@@ -1209,8 +1205,7 @@ app.get('/dashboard', async (req, res) => {
                         if (sp > ep && ep > 0) {
                             const pc = personColors[s.Name] || '#555';
                             const prc = getProductColor(trading.name, pName);
-                            const pb = 'repeating-linear-gradient(135deg,' + pc + ' 0px,' + pc + ' 40px,' + prc + ' 40px,' + prc + ' 80px)';
-                            psHTML += buildProdPill(s, pName, toISOLocal(startOfWeek), 0, 0, ep / 7, pc, prc, pb);
+                            psHTML += buildProdPill(s, pName, toISOLocal(startOfWeek), 0, 0, ep / 7, pc, prc);
                         }
                     });
 
@@ -1227,16 +1222,15 @@ app.get('/dashboard', async (req, res) => {
                             const width = isOvernight2 ? (100 - startPct2) / 7 : (effEndPct2 - startPct2) / 7;
                             const personColor = personColors[s.Name] || '#555';
                             const prodColor = getProductColor(trading.name, pName);
-                            const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
 
                             // Pill 1: od startu do pulnoci (nebo cely den)
-                            psHTML += buildProdPill(s, pName, dStr, d, left, width, personColor, prodColor, pillBg);
+                            psHTML += buildProdPill(s, pName, dStr, d, left, width, personColor, prodColor);
 
                             // Pill 2: pokracovani overnight do nasledujiciho dne
                             if (isOvernight2 && d < 6) {
                                 const nextDate = new Date(startOfWeek); nextDate.setDate(startOfWeek.getDate() + d + 1);
                                 const nextDStr = toISOLocal(nextDate);
-                                psHTML += buildProdPill(s, pName, nextDStr, d + 1, (d + 1) * 100 / 7, endPct2 / 7, personColor, prodColor, pillBg);
+                                psHTML += buildProdPill(s, pName, nextDStr, d + 1, (d + 1) * 100 / 7, endPct2 / 7, personColor, prodColor);
                             }
                         });
                     }
@@ -1293,12 +1287,13 @@ app.get('/dashboard', async (req, res) => {
                         const h2 = (ep2 / 100) * (24 * 40);
                         const personColor = personColors[s.Name] || '#555';
                         const prodColor   = getProductColor(s.Trading, s.Product);
-                        const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
-                        dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '"'
-                                   + ' style="position:absolute;top:0px;height:' + h2 + 'px;left:4px;right:4px;background:' + pillBg + ';color:#fff;border-radius:0 0 4px 4px;padding:4px 6px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.25);display:flex;flex-direction:column;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';opacity:0.85;"'
+                        const overnightBg2 = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
+                        dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
+                                   + ' style="position:absolute;top:0px;height:' + h2 + 'px;left:4px;right:4px;background:' + overnightBg2 + ';color:#fff;border-radius:0 0 4px 4px;padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';opacity:0.85;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5);"'
                                    + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + prevDStr2 + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
-                                   + '<span style="font-weight:bold;font-size:0.75rem;margin-bottom:2px;">' + s.Name + '</span>'
-                                   + '<span class="pill-time" style="font-size:0.65rem;opacity:0.9;white-space:normal;line-height:1.1;">' + s.Product + '</span>'
+                                   + '<span style="font-weight:700;">' + s.Name + '</span>'
+                                   + '<span style="margin:0 5px;opacity:0.5;">|</span>'
+                                   + '<span style="font-size:0.78rem;opacity:0.9;">' + s.Start + '-' + s.End + ' ' + s.Product + '</span>'
                                    + '</div>';
                     });
                 }
@@ -1314,12 +1309,13 @@ app.get('/dashboard', async (req, res) => {
                     const height = isOvernight ? (1 - startPct / 100) * (24 * 40) : ((effEndPct - startPct) / 100) * (24 * 40);
                     const personColor = personColors[s.Name] || '#555';
                     const prodColor   = getProductColor(s.Trading, s.Product);
-                    const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
-                    dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '"'
-                               + ' style="position:absolute;top:' + sTop + 'px;height:' + height + 'px;left:4px;right:4px;background:' + pillBg + ';color:#fff;border-radius:' + (isOvernight ? '4px 4px 0 0' : '4px') + ';padding:4px 6px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.25);display:flex;flex-direction:column;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';"'
+                    const weekPillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
+                    dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
+                               + ' style="position:absolute;top:' + sTop + 'px;height:' + height + 'px;left:4px;right:4px;background:' + weekPillBg + ';color:#fff;border-radius:' + (isOvernight ? '4px 4px 0 0' : '4px') + ';padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5);"'
                                + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
-                               + '<span style="font-weight:bold;font-size:0.75rem;margin-bottom:2px;">' + s.Name + '</span>'
-                               + '<span class="pill-time" style="font-size:0.65rem;opacity:0.9;white-space:normal;line-height:1.1;">' + s.Product + '</span>'
+                               + '<span style="font-weight:700;">' + s.Name + '</span>'
+                               + '<span style="margin:0 5px;opacity:0.5;">|</span>'
+                               + '<span style="font-size:0.78rem;opacity:0.9;">' + s.Start + '-' + s.End + ' ' + s.Product + '</span>'
                                + '</div>';
                 });
                 dayColumn += '</div>'; weekGrid += dayColumn;
@@ -1353,7 +1349,7 @@ app.get('/dashboard', async (req, res) => {
                     dayShifts.forEach(s => {
                         const personColor = personColors[s.Name] || '#555';
                         const prodColor   = getProductColor(s.Trading, s.Product);
-                        listHTML += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '"'
+                        listHTML += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '"'
                                   + ' style="display:flex;align-items:center;gap:12px;padding:8px 14px;background:#fff;border-radius:7px;margin-bottom:4px;cursor:pointer;border-left:3px solid ' + personColor + ';box-shadow:0 1px 3px rgba(0,0,0,0.07);transition:box-shadow 0.15s;"'
                                   + ' onmouseover="this.style.boxShadow=\'0 3px 8px rgba(0,0,0,0.14)\'" onmouseout="this.style.boxShadow=\'0 1px 3px rgba(0,0,0,0.07)\'"'
                                   + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
@@ -1398,7 +1394,7 @@ app.get('/dashboard', async (req, res) => {
                         const personColor = personColors[s.Name] || '#555';
                         const prodColor   = getProductColor(s.Trading, s.Product);
                         const dur = calculateDuration(s.Start, s.End);
-                        agendaHTML += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '"'
+                        agendaHTML += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '"'
                                     + ' style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#fff;border-radius:7px;margin-bottom:5px;cursor:pointer;border-left:4px solid ' + prodColor + ';box-shadow:0 1px 4px rgba(0,0,0,0.08);transition:box-shadow 0.15s;"'
                                     + ' onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,0.15)\'" onmouseout="this.style.boxShadow=\'0 1px 4px rgba(0,0,0,0.08)\'"'
                                     + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
@@ -1695,6 +1691,9 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
             }).join('')
         ).join('')}
         </div>
+        <div style="padding:12px 16px;border-top:1px solid #1e2030;">
+            <button onclick="openColorPicker()" style="width:100%;padding:9px;background:rgba(255,255,255,0.03);border:1px solid #1e2030;border-radius:8px;color:#5b7fa6;cursor:pointer;font-size:0.72rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">&#127912; Color Settings</button>
+        </div>
         </div>
     </aside>
 
@@ -1713,6 +1712,7 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
             <div class="topbar-right" style="display:flex;align-items:center;gap:12px;">
                 <div class="month-label" style="font-weight:700;font-size:0.9rem;color:#5b7fa6;font-family:'Oswald';letter-spacing:1.5px;">${queryDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'}).toUpperCase()}</div>
                 <button onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
+                <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
                 <!-- Uzivatel + logout -->
                 <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#13151e;border-radius:10px;border:1px solid #1e2030;">
                     <div style="width:36px;height:36px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(251,192,45,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#fbc02d;font-size:1rem;flex-shrink:0;">
@@ -1786,7 +1786,7 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
         <div class="modal-actions">
             <button class="modal-btn-confirm" onclick="saveShift()">CONFIRM</button>
             <button id="mSplitBtn" class="modal-btn-exchange" onclick="toggleSplitMode()" style="display:none;">&#9135; SPLIT</button>
-            <button id="mCoverBtn" class="modal-btn-exchange" onclick="toggleCoverMode()" style="display:none;background:rgba(76,175,80,0.06);color:#66bb6a;border-color:rgba(76,175,80,0.25);" onmouseover="this.style.background='rgba(76,175,80,0.15)';this.style.borderColor='rgba(76,175,80,0.5)'" onmouseout="if(!this.classList.contains('active')){this.style.background='rgba(76,175,80,0.06)';this.style.borderColor='rgba(76,175,80,0.25)'}">&#43; COVER</button>
+            <button id="mCrewBtn" class="modal-btn-exchange" onclick="toggleCrewMode()" style="display:none;background:rgba(76,175,80,0.06);color:#66bb6a;border-color:rgba(76,175,80,0.25);" onmouseover="this.style.background='rgba(76,175,80,0.15)';this.style.borderColor='rgba(76,175,80,0.5)'" onmouseout="if(!this.classList.contains('active')){this.style.background='rgba(76,175,80,0.06)';this.style.borderColor='rgba(76,175,80,0.25)'}">&#43; CREW</button>
             <button id="mExchangeBtn" class="modal-btn-exchange" onclick="startExchange()" style="display:none;">&#8646; EXCHANGE</button>
             <button id="mDeleteBtn" class="modal-btn-delete" onclick="deleteShift()" style="display:none;">DELETE</button>
             <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
@@ -1800,14 +1800,15 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
                 Splits the shift in half — first warrior takes <strong id="splitHalf1" style="color:rgba(251,192,45,0.7);">--</strong>, second takes <strong id="splitHalf2" style="color:rgba(91,127,166,0.7);">--</strong>.
             </div>
         </div>
-        <!-- COVER section -->
-        <div id="mCoverSection" style="display:none;padding:14px 24px 18px;border-top:1px solid #1e2030;background:rgba(76,175,80,0.03);">
-            <div style="font-size:0.6rem;color:rgba(76,175,80,0.6);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:600;">&#43; Cover — Add second warrior</div>
-            <label style="font-size:0.62rem;color:rgba(251,192,45,0.6);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;font-weight:600;">Second Warrior</label>
-            <select id="mCoverName" class="modal-input" style="margin-bottom:12px;">${allNames.map(n => '<option value="' + n + '">' + n + '</option>').join('')}</select>
-            <label style="font-size:0.62rem;color:rgba(251,192,45,0.6);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;font-weight:600;">Cover Note <span style="color:rgba(255,255,255,0.25);text-transform:none;letter-spacing:0;">(optional)</span></label>
-            <input type="text" id="mCoverNote" class="modal-input" placeholder="e.g. Dominik covered first hour..." style="margin-bottom:6px;">
-            <div style="font-size:0.67rem;color:rgba(255,255,255,0.25);line-height:1.6;">Saves an additional entry for the second warrior with the same shift time and note.</div>
+        <!-- CREW section — unlimited warriors -->
+        <div id="mCrewSection" style="display:none;padding:14px 24px 18px;border-top:1px solid #1e2030;background:rgba(76,175,80,0.03);">
+            <div style="font-size:0.6rem;color:rgba(76,175,80,0.6);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:600;">&#43; Crew — Add warriors to this shift</div>
+            <div id="crewList" style="margin-bottom:10px;"></div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                <select id="crewAddSelect" class="modal-input" style="flex:1;margin:0;">${allNames.map(n => '<option value="' + n + '">' + n + '</option>').join('')}</select>
+                <button type="button" onclick="addCrewMember()" style="padding:8px 14px;background:rgba(76,175,80,0.15);color:#66bb6a;border:1px solid rgba(76,175,80,0.3);border-radius:8px;cursor:pointer;font-size:0.75rem;font-weight:700;letter-spacing:0.5px;white-space:nowrap;">+ ADD</button>
+            </div>
+            <div style="font-size:0.67rem;color:rgba(255,255,255,0.2);line-height:1.6;">Custom start/end optional — defaults to main shift time if left empty.</div>
         </div>
         <!-- BOD 5: History / last edit -->
         <div id="mHistorySection" style="padding:0 24px 18px;border-top:1px solid #1e2030;background:rgba(0,0,0,0.15);">
@@ -1879,18 +1880,30 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
 
 <!-- CSV Export modal -->
 <div id="exportModal" style="display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(3px);">
-    <div style="background:#1a1a1a;margin:8% auto;border-radius:12px;width:420px;color:#eee;box-shadow:0 24px 64px rgba(0,0,0,0.7);border:1px solid #333;overflow:hidden;">
+    <div style="background:#1a1a1a;margin:5% auto;border-radius:12px;width:460px;max-width:96vw;color:#eee;box-shadow:0 24px 64px rgba(0,0,0,0.7);border:1px solid #333;overflow:hidden;">
         <div style="padding:20px 24px 14px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-family:'Oswald';font-size:1.1rem;color:#4caf50;letter-spacing:1px;">&#128190; EXPORT CSV</span>
             <button onclick="closeExportModal()" style="background:none;border:none;color:#666;font-size:1.3rem;cursor:pointer;">&#10005;</button>
         </div>
-        <div style="padding:20px 24px;">
-            <label style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;">Select a person (or download all)</label>
-            <select id="exportPersonSelect" style="width:100%;padding:10px;background:#111;border:1px solid #333;color:#fff;border-radius:6px;font-size:0.9rem;margin-bottom:20px;">
-                <option value="">— Everyone —</option>
-                ${allNames.map(n => '<option value="' + n + '">' + n + '</option>').join('')}
-            </select>
-            <div style="display:flex;gap:10px;">
+        <div style="padding:16px 24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <label style="font-size:0.72rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Select warriors to export</label>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="document.querySelectorAll('.export-cb').forEach(c=>c.checked=true);updateExportCount()" style="padding:4px 10px;background:rgba(76,175,80,0.1);color:#66bb6a;border:1px solid rgba(76,175,80,0.25);border-radius:5px;cursor:pointer;font-size:0.65rem;font-weight:600;">ALL</button>
+                    <button onclick="document.querySelectorAll('.export-cb').forEach(c=>c.checked=false);updateExportCount()" style="padding:4px 10px;background:rgba(244,67,54,0.08);color:#e57373;border:1px solid rgba(244,67,54,0.2);border-radius:5px;cursor:pointer;font-size:0.65rem;font-weight:600;">NONE</button>
+                </div>
+            </div>
+            <div id="exportNamesList" style="max-height:320px;overflow-y:auto;background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px;">
+                ${allNames.map(n => {
+                    const c = personColors[n] || '#888';
+                    return '<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;border-radius:4px;font-size:0.82rem;color:#c8d0e0;" onmouseover="this.style.background=\'rgba(255,255,255,0.04)\'" onmouseout="this.style.background=\'none\'">'
+                        + '<input type="checkbox" class="export-cb" value="' + n + '" onchange="updateExportCount()" style="accent-color:' + c + ';width:15px;height:15px;cursor:pointer;">'
+                        + '<span style="width:8px;height:8px;border-radius:50%;background:' + c + ';flex-shrink:0;"></span>'
+                        + n + '</label>';
+                }).join('')}
+            </div>
+            <div style="font-size:0.68rem;color:#555;margin-top:8px;" id="exportCountLabel">0 selected</div>
+            <div style="display:flex;gap:10px;margin-top:14px;">
                 <button onclick="confirmExportCSV()" style="flex:1;padding:12px;background:#4caf50;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';font-size:1rem;cursor:pointer;letter-spacing:1px;">DOWNLOAD</button>
                 <button onclick="closeExportModal()" style="padding:12px 20px;background:#222;color:#888;border:none;border-radius:6px;cursor:pointer;">Cancel</button>
             </div>
@@ -1912,6 +1925,36 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
 
 <!-- BOD 1: Mobile overlay -->
 <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileMenu()"></div>
+
+<!-- Shift hover tooltip -->
+<div id="shiftTooltip" style="display:none;position:fixed;z-index:3000;pointer-events:none;max-width:260px;">
+    <div style="background:#12131a;border:1px solid #2a2d3e;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.7);overflow:hidden;">
+        <div id="ttHeader" style="padding:10px 14px 8px;border-bottom:1px solid #1e2030;"></div>
+        <div style="padding:10px 14px 12px;">
+            <div id="ttTime" style="font-size:0.82rem;font-weight:700;color:#c8d0e0;margin-bottom:6px;"></div>
+            <div id="ttProduct" style="font-size:0.75rem;color:#8892a4;margin-bottom:4px;"></div>
+            <div id="ttNote" style="font-size:0.72rem;color:#555;font-style:italic;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Color Picker modal -->
+<div id="colorPickerModal" style="display:none;position:fixed;z-index:2100;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);">
+    <div style="background:#12131a;margin:4% auto;border-radius:14px;width:480px;max-width:96vw;color:#eee;box-shadow:0 32px 80px rgba(0,0,0,0.8);border:1px solid #1e2030;overflow:hidden;">
+        <div style="padding:20px 24px 14px;border-bottom:1px solid #1e2030;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-family:'Oswald';font-size:1.1rem;color:#fbc02d;letter-spacing:1px;">&#127912; COLOR SETTINGS</span>
+            <button onclick="closeColorPicker()" style="background:none;border:none;color:#666;font-size:1.3rem;cursor:pointer;">&#10005;</button>
+        </div>
+        <div style="padding:16px 24px;">
+            <input type="text" id="colorSearch" placeholder="Search warrior..." oninput="renderColorList()" style="width:100%;padding:8px 10px;background:#0a0b0f;border:1px solid #1e2030;color:#ccc;border-radius:6px;margin-bottom:12px;box-sizing:border-box;font-size:0.8rem;outline:none;">
+            <div id="colorList" style="max-height:400px;overflow-y:auto;"></div>
+            <div style="display:flex;gap:10px;margin-top:14px;">
+                <button onclick="resetAllColors()" style="padding:8px 16px;background:rgba(244,67,54,0.08);color:#e57373;border:1px solid rgba(244,67,54,0.2);border-radius:6px;cursor:pointer;font-size:0.72rem;font-weight:600;">RESET ALL</button>
+                <button onclick="closeColorPicker()" style="flex:1;padding:8px;background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);border-radius:6px;cursor:pointer;font-weight:700;font-family:'Oswald';letter-spacing:1px;">DONE</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Timezone toggle -->
 <button class="tz-toggle-btn" id="tzToggle" onclick="toggleTimezone()">
@@ -2079,7 +2122,8 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
         document.getElementById('mDeleteBtn').style.display = 'block';
         document.getElementById('mExchangeBtn').style.display = 'block';
         document.getElementById('mSplitBtn').style.display = 'block';
-        document.getElementById('mCoverBtn').style.display = 'block';
+        document.getElementById('mCrewBtn').style.display = 'block';
+        _crewMembers = []; renderCrewList();
         document.getElementById('mMode').value='edit';
         document.getElementById('oName').value=name;
         document.getElementById('oDate').value=date;
@@ -2169,8 +2213,8 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
         document.getElementById('mExchangeBtn').style.display = 'none';
         document.getElementById('mSplitBtn').style.display = 'none';
         document.getElementById('mSplitSection').style.display = 'none';
-        document.getElementById('mCoverBtn').style.display = 'none';
-        document.getElementById('mCoverSection').style.display = 'none';
+        document.getElementById('mCrewBtn').style.display = 'none';
+        document.getElementById('mCrewSection').style.display = 'none';
         document.getElementById('mMode').value='add';
         updateProductDropdown();
         // Default to currently viewed date in dashboard, not today
@@ -2228,22 +2272,22 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
         const btn = document.getElementById('mSplitBtn');
         const isOpen = sec.style.display === 'none';
         // Close cover if open
-        document.getElementById('mCoverSection').style.display = 'none';
-        document.getElementById('mCoverBtn').classList.remove('active');
-        document.getElementById('mCoverBtn').style.background='rgba(76,175,80,0.06)';
-        document.getElementById('mCoverBtn').style.borderColor='rgba(76,175,80,0.25)';
-        document.getElementById('mCoverBtn').style.color='#66bb6a';
+        document.getElementById('mCrewSection').style.display = 'none';
+        document.getElementById('mCrewBtn').classList.remove('active');
+        document.getElementById('mCrewBtn').style.background='rgba(76,175,80,0.06)';
+        document.getElementById('mCrewBtn').style.borderColor='rgba(76,175,80,0.25)';
+        document.getElementById('mCrewBtn').style.color='#66bb6a';
         sec.style.display = isOpen ? 'block' : 'none';
         btn.style.background = isOpen ? 'rgba(91,127,166,0.2)' : 'rgba(66,165,245,0.06)';
         btn.style.borderColor = isOpen ? 'rgba(91,127,166,0.5)' : 'rgba(66,165,245,0.25)';
         btn.style.color = isOpen ? '#7ba3cc' : '#42a5f5';
         if(isOpen) _updateSplitPreview();
     }
-    function toggleCoverMode(){
-        const sec = document.getElementById('mCoverSection');
-        const btn = document.getElementById('mCoverBtn');
+    let _crewMembers = [];
+    function toggleCrewMode(){
+        const sec = document.getElementById('mCrewSection');
+        const btn = document.getElementById('mCrewBtn');
         const isOpen = sec.style.display === 'none';
-        // Close split if open
         document.getElementById('mSplitSection').style.display = 'none';
         document.getElementById('mSplitBtn').style.background='rgba(66,165,245,0.06)';
         document.getElementById('mSplitBtn').style.borderColor='rgba(66,165,245,0.25)';
@@ -2260,6 +2304,22 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
             btn.style.borderColor='rgba(76,175,80,0.25)';
             btn.style.color='#66bb6a';
         }
+    }
+    function addCrewMember(){
+        const sel=document.getElementById('crewAddSelect');
+        _crewMembers.push({name:sel.value,start:'',end:''});
+        renderCrewList();
+    }
+    function removeCrewMember(i){ _crewMembers.splice(i,1); renderCrewList(); }
+    function updateCrewTime(i,field,val){ _crewMembers[i][field]=val; }
+    function renderCrewList(){
+        const el=document.getElementById('crewList');
+        el.innerHTML=_crewMembers.map((m,i)=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:6px 8px;background:rgba(76,175,80,0.06);border:1px solid rgba(76,175,80,0.15);border-radius:6px;">'
+            +'<span style="font-size:0.78rem;font-weight:600;color:#81c784;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+m.name+'</span>'
+            +'<input type="time" value="'+(m.start||'')+'" onchange="updateCrewTime('+i+',\\\'start\\\',this.value)" style="width:75px;padding:3px 4px;background:#0a0b0f;border:1px solid #1e2030;color:#ccc;border-radius:4px;font-size:0.7rem;" placeholder="start">'
+            +'<input type="time" value="'+(m.end||'')+'" onchange="updateCrewTime('+i+',\\\'end\\\',this.value)" style="width:75px;padding:3px 4px;background:#0a0b0f;border:1px solid #1e2030;color:#ccc;border-radius:4px;font-size:0.7rem;" placeholder="end">'
+            +'<button onclick="removeCrewMember('+i+')" style="background:rgba(244,67,54,0.1);color:#e57373;border:1px solid rgba(244,67,54,0.2);border-radius:4px;cursor:pointer;padding:2px 7px;font-size:0.8rem;">&#10005;</button>'
+            +'</div>').join('');
     }
     function _timeToMins(t){ const [h,m]=(t||'00:00').split(':').map(Number); return h*60+m; }
     function _minsToTime(m){ m=((m%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
@@ -2291,7 +2351,7 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
         };
         // DoubleShift / Split mode
         const splitOpen = document.getElementById('mSplitSection').style.display !== 'none';
-        const coverOpen = document.getElementById('mCoverSection').style.display !== 'none';
+        const coverOpen = document.getElementById('mCrewSection').style.display !== 'none';
         if (splitOpen) {
             const name2 = document.getElementById('mSplitName').value;
             if (!name2) { alert('Select second warrior'); return; }
@@ -2306,18 +2366,20 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
                 fetch('/add-shift', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(shift2)})
             ]);
             if (!r1.ok || !r2.ok) { alert('Error saving split shift'); return; }
-        } else if (coverOpen) {
-            const name2 = document.getElementById('mCoverName').value;
-            if (!name2) { alert('Select second warrior'); return; }
-            const coverNote = document.getElementById('mCoverNote').value.trim();
-            // Save original shift first
+        } else if (coverOpen && _crewMembers.length > 0) {
             const url = mode === 'add' ? '/add-shift' : '/update-shift';
             const r1 = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
             if (!r1.ok) { alert('Error saving shift'); return; }
-            // Save cover entry for second warrior (same time, cover note appended)
-            const coverData = {...data, name: name2, note: coverNote || (data.note ? 'Cover — ' + data.note : 'Cover')};
-            const r2 = await fetch('/add-shift', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(coverData)});
-            if (!r2.ok) { alert('Error saving cover entry'); return; }
+            for (const m of _crewMembers) {
+                const crewData = {...data,
+                    name: m.name,
+                    start: (m.start && m.start.match(/^\\d{1,2}:\\d{2}$/)) ? m.start : data.start,
+                    end: (m.end && m.end.match(/^\\d{1,2}:\\d{2}$/)) ? m.end : data.end,
+                    note: data.note ? data.note + ' [Crew]' : 'Crew'
+                };
+                const r = await fetch('/add-shift', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(crewData)});
+                if (!r.ok) { alert('Error saving crew entry for ' + m.name); return; }
+            }
         } else {
             const resp = await fetch(mode==='add'?'/add-shift':'/update-shift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
             if (!resp.ok) { alert('Error saving shift'); return; }
@@ -2606,6 +2668,7 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
 
     // BOD 2: Scroll vždy na začátek = Pondělí
     window.onload=()=>{
+        applyCustomColorsToDOM();
         // Clean up warp arrival overlay + remove ?warp=1 from URL
         const wa = document.getElementById('warpArrival');
         if (wa) {
@@ -2702,11 +2765,159 @@ ${req.query.warp === '1' ? '<div class="warp-arrival" id="warpArrival"></div>' :
     function closeExportModal() {
         document.getElementById('exportModal').style.display = 'none';
     }
+    function updateExportCount(){
+        const checked = document.querySelectorAll('.export-cb:checked');
+        document.getElementById('exportCountLabel').textContent = checked.length + ' selected' + (checked.length === 0 ? ' — downloads all' : '');
+    }
     function confirmExportCSV() {
-        const name = document.getElementById('exportPersonSelect').value;
-        const url = name ? '/export-csv?name=' + encodeURIComponent(name) : '/export-csv';
+        const checked = Array.from(document.querySelectorAll('.export-cb:checked')).map(c=>c.value);
         closeExportModal();
-        window.location.href = url;
+        if (checked.length === 0) { window.location.href = '/export-csv'; return; }
+        checked.forEach((name, i) => {
+            setTimeout(() => { window.location.href = '/export-csv?name=' + encodeURIComponent(name); }, i * 300);
+        });
+    }
+
+    // =============================================
+    // REFRESH BUTTON
+    // =============================================
+    function refreshDashboard(){
+        const btn=document.getElementById('refreshBtn');
+        if(btn) btn.style.transform='rotate(360deg)';
+        const p=new URLSearchParams(window.location.search);
+        p.set('sync','1');
+        setTimeout(()=>{ window.location.href='/dashboard?'+p.toString(); },300);
+    }
+
+    // =============================================
+    // SHIFT HOVER TOOLTIP
+    // =============================================
+    const _tt = document.getElementById('shiftTooltip');
+    let _ttTimer = null;
+    function _showTooltip(e, name, start, end, product, trading, note, personColor, prodColor) {
+        clearTimeout(_ttTimer);
+        const pc = pColors[name] || personColor || '#888';
+        document.getElementById('ttHeader').innerHTML =
+            '<div style="display:flex;align-items:center;gap:8px;">'
+            + '<span style="width:10px;height:10px;border-radius:50%;background:'+pc+';flex-shrink:0;box-shadow:0 0 6px '+pc+'66;"></span>'
+            + '<span style="font-weight:700;font-size:0.88rem;color:#e8eaf0;">'+name+'</span>'
+            + '</div>';
+        document.getElementById('ttTime').textContent = start + ' \\u2013 ' + end;
+        document.getElementById('ttProduct').innerHTML =
+            '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+prodColor+';margin-right:5px;vertical-align:middle;"></span>'
+            + trading + ' \\u203a ' + product;
+        const noteEl = document.getElementById('ttNote');
+        noteEl.textContent = note || '';
+        noteEl.style.display = note ? 'block' : 'none';
+        _positionTooltip(e);
+        _tt.style.display = 'block';
+    }
+    function _positionTooltip(e) {
+        const margin = 14;
+        const tw = 260, th = 130;
+        let x = e.clientX + margin;
+        let y = e.clientY + margin;
+        if (x + tw > window.innerWidth - 10) x = e.clientX - tw - margin;
+        if (y + th > window.innerHeight - 10) y = e.clientY - th - margin;
+        _tt.style.left = x + 'px';
+        _tt.style.top  = y + 'px';
+    }
+    function _hideTooltip() {
+        _ttTimer = setTimeout(() => { _tt.style.display = 'none'; }, 80);
+    }
+    document.addEventListener('mouseover', e => {
+        const pill = e.target.closest('.shift-pill');
+        if (!pill) return;
+        const name    = pill.dataset.person || pill.dataset.name || '';
+        const start   = pill.dataset.origStart || '';
+        const end     = pill.dataset.origEnd || '';
+        const product = pill.dataset.tooltipProduct || '';
+        const trading = pill.dataset.tooltipTrading || '';
+        const note    = pill.dataset.tooltipNote || '';
+        const pc      = pill.dataset.personColor || '';
+        const prodC   = pill.dataset.prodColor || '';
+        if (!name) return;
+        _showTooltip(e, name, start, end, product, trading, note, pc, prodC);
+    });
+    document.addEventListener('mousemove', e => {
+        if (_tt.style.display === 'none') return;
+        if (e.target.closest('.shift-pill')) _positionTooltip(e);
+    });
+    document.addEventListener('mouseout', e => {
+        if (e.target.closest('.shift-pill')) _hideTooltip();
+    });
+
+    // =============================================
+    // COLOR PICKER
+    // =============================================
+    function applyCustomColorsToDOM(){
+        try {
+            const cc = JSON.parse(localStorage.getItem('ygg_custom_colors')||'{}');
+            if(!Object.keys(cc).length) return;
+            Object.keys(cc).forEach(name => {
+                const newColor = cc[name];
+                if(!newColor) return;
+                const sideEl = document.querySelector('.user-item[data-name="'+name+'"]');
+                if(sideEl){
+                    sideEl.style.borderLeftColor = newColor;
+                    const dot = sideEl.querySelector('span');
+                    if(dot) dot.style.background = newColor;
+                }
+                document.querySelectorAll('.timeline-row[data-name="'+name+'"] span[style*="color"]').forEach(sp => {
+                    sp.style.color = newColor;
+                });
+                document.querySelectorAll('[data-person="'+name+'"], .shift-pill[data-name="'+name+'"]').forEach(el => {
+                    if(!el.classList.contains('shift-pill')) return;
+                    const prodColor = el.dataset.prodColor;
+                    if(!prodColor) return;
+                    el.dataset.personColor = newColor;
+                    el.style.background = newColor + '18';
+                    el.style.borderLeftColor = newColor;
+                    el.style.borderTopColor = newColor + '44';
+                    el.style.borderBottomColor = newColor + '22';
+                    el.style.boxShadow = '0 2px 8px ' + newColor + '22';
+                    const nameSpan = el.querySelector('span');
+                    if(nameSpan) nameSpan.style.color = newColor;
+                });
+            });
+        } catch(e){}
+    }
+
+    const _defaultColors = ${personColorsJSON};
+    function openColorPicker(){
+        document.getElementById('colorPickerModal').style.display='block';
+        renderColorList();
+    }
+    function closeColorPicker(){
+        document.getElementById('colorPickerModal').style.display='none';
+        applyCustomColorsToDOM();
+    }
+    function renderColorList(){
+        const q=(document.getElementById('colorSearch')||{}).value||'';
+        const cc=JSON.parse(localStorage.getItem('ygg_custom_colors')||'{}');
+        const names=Object.keys(pColors).filter(n=>!q||n.toLowerCase().includes(q.toLowerCase()));
+        document.getElementById('colorList').innerHTML=names.map(n=>{
+            const cur=cc[n]||pColors[n]||'#888';
+            return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1a1d2a;">'
+                +'<span style="width:10px;height:10px;border-radius:50%;background:'+cur+';flex-shrink:0;box-shadow:0 0 5px '+cur+'66;"></span>'
+                +'<span style="flex:1;font-size:0.82rem;color:#c8d0e0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+n+'</span>'
+                +'<input type="color" value="'+cur+'" onchange="setPersonColor(\\\''+n.replace(/'/g,'')+'\\\',this.value)" style="width:32px;height:24px;border:none;background:none;cursor:pointer;padding:0;">'
+                +'</div>';
+        }).join('');
+    }
+    function setPersonColor(name,color){
+        const cc=JSON.parse(localStorage.getItem('ygg_custom_colors')||'{}');
+        cc[name]=color;
+        localStorage.setItem('ygg_custom_colors',JSON.stringify(cc));
+        pColors[name]=color;
+        renderColorList();
+    }
+    function resetAllColors(){
+        if(!confirm('Reset all colors to default?')) return;
+        localStorage.removeItem('ygg_custom_colors');
+        Object.keys(_defaultColors).forEach(k => pColors[k] = _defaultColors[k]);
+        applyCustomColorsToDOM();
+        renderColorList();
     }
 </script>
 </body>
