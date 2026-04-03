@@ -6,12 +6,25 @@ const session = require('express-session');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const COOKIE_SECRET = 'yggdrasil-viking-secret-2026';
 app.use(session({
-    secret: 'yggdrasil-viking-secret-2026',
+    secret: COOKIE_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: { secure: false, httpOnly: true }
 }));
+const cookieParser = require('cookie-parser');
+app.use(cookieParser(COOKIE_SECRET));
+
+// Obnov session z remember cookie pokud session expirovala (Render restart)
+app.use((req, res, next) => {
+    if (!req.session.user && req.signedCookies.remember_token) {
+        try {
+            req.session.user = JSON.parse(req.signedCookies.remember_token);
+        } catch(e) {}
+    }
+    next();
+});
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -253,6 +266,13 @@ app.post('/login', async (req, res) => {
 
         if (foundUser) {
             req.session.user = foundUser;
+
+            // Remember me — signed cookie na 30 dni
+            if (req.body.remember === 'on') {
+                res.cookie('remember_token', JSON.stringify(foundUser), {
+                    signed: true, httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000
+                });
+            }
 
             // AuditLog - zapis prihlaseni
             try {
