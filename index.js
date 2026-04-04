@@ -74,6 +74,7 @@ const doc = new GoogleSpreadsheet('17iOEaSnL0ZxKYXCFiIuJkWoSbnB3INx1Ust0fBnLVg4'
 // --- CACHE (platna 2 minuty) ---
 let _shiftsCache = null;
 let _shiftsCacheTime = 0;
+let _hiddenSheets = new Set(); // Sheety skryte pres "Delete All Shifts This Month"
 const CACHE_TTL = 5 * 60 * 1000; // 5 minut
 
 function isCacheValid() {
@@ -945,8 +946,12 @@ app.post('/delete-month', async (req, res) => {
     if (!sheetTitle) return res.status(400).send('Missing sheetTitle');
     try {
         // Smaz smeny daneho mesice z cache (ne ze sheetu!)
+        // Pokud cache neexistuje, pridej sheetTitle do blacklistu
+        if (!_hiddenSheets) _hiddenSheets = new Set();
+        _hiddenSheets.add(sheetTitle);
         if (_shiftsCache) {
             _shiftsCache = _shiftsCache.filter(s => s._sheet !== sheetTitle);
+            _shiftsCacheTime = Date.now();
         }
 
         // AuditLog
@@ -1075,7 +1080,7 @@ app.get('/dashboard', async (req, res) => {
 
         // Projdi všechny listy které začínají na "Schedule -"
         const allSheetTitles = Object.keys(doc.sheetsByTitle);
-        const scheduleSheets = allSheetTitles.filter(t => t.startsWith('Schedule -'));
+        const scheduleSheets = allSheetTitles.filter(t => t.startsWith('Schedule -') && !_hiddenSheets.has(t));
 
         for (const sheetTitle of scheduleSheets) {
             const sheet = doc.sheetsByTitle[sheetTitle];
