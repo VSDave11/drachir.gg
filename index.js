@@ -1210,12 +1210,12 @@ app.get('/dashboard', async (req, res) => {
             }
         });
 
-        // Crew mapa: seskupi lidi na stejnem datu+produktu+casu
+        // Crew mapa: seskupi lidi na stejnem datu+produktu+casu (deduplikovane)
         const crewMap = {};
         allShifts.forEach(s => {
             const key = s.Date + '|' + s.Product + '|' + s.Start + '|' + s.End;
             if (!crewMap[key]) crewMap[key] = [];
-            crewMap[key].push(s.Name);
+            if (!crewMap[key].includes(s.Name)) crewMap[key].push(s.Name);
         });
         function getCrewmates(s) {
             const key = s.Date + '|' + s.Product + '|' + s.Start + '|' + s.End;
@@ -1252,16 +1252,27 @@ app.get('/dashboard', async (req, res) => {
             function buildPersonPill(s, name, dStr, dayIdx, left, width, personColor, prodColor) {
                 const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
                 const crew = getCrewmates(s);
-                const crewLabel = crew.length > 0 ? '<span style="margin-left:6px;font-size:0.62rem;opacity:0.7;background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:4px;">+' + crew.length + ' ' + crew.join(', ') + '</span>' : '';
+                const pillH = crew.length > 0 ? (34 + crew.length * 14) : 34;
+                let crewHTML = '';
+                if (crew.length > 0) {
+                    crewHTML = '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:1px;">';
+                    crew.forEach(c => {
+                        const cc = personColors[c] || '#888';
+                        crewHTML += '<span style="font-size:0.55rem;padding:1px 5px;border-radius:3px;background:' + cc + '33;color:' + cc + ';border:1px solid ' + cc + '55;white-space:nowrap;">' + c + '</span>';
+                    });
+                    crewHTML += '</div>';
+                }
                 return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-person="' + safe(name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
-                     + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:34px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';"'
+                     + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
                      + ' onclick="openViewModal(\'' + safe(name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                     + '<div style="display:flex;align-items:center;white-space:nowrap;">'
                      + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
                      + '<span style="margin:0 5px;opacity:0.5;">|</span>'
                      + '<span style="font-weight:700;">' + s.Product + '</span>'
                      + '<span style="margin:0 5px;opacity:0.5;">-</span>'
                      + '<span style="font-size:0.78rem;opacity:0.9;">' + name + '</span>'
-                     + crewLabel
+                     + '</div>'
+                     + crewHTML
                      + '</div>';
             }
 
@@ -1323,16 +1334,27 @@ app.get('/dashboard', async (req, res) => {
                     function buildProdPill(s, pName, dStr, dayIdx, left, width, personColor, prodColor) {
                         const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
                         const crew = getCrewmates(s);
-                        const crewLabel = crew.length > 0 ? '<span style="margin-left:6px;font-size:0.62rem;opacity:0.7;background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:4px;">+' + crew.length + ' ' + crew.join(', ') + '</span>' : '';
+                        const pillH = crew.length > 0 ? (34 + crew.length * 14) : 34;
+                        let crewHTML = '';
+                        if (crew.length > 0) {
+                            crewHTML = '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:1px;">';
+                            crew.forEach(c => {
+                                const cc = personColors[c] || '#888';
+                                crewHTML += '<span style="font-size:0.55rem;padding:1px 5px;border-radius:3px;background:' + cc + '33;color:' + cc + ';border:1px solid ' + cc + '55;white-space:nowrap;">' + c + '</span>';
+                            });
+                            crewHTML += '</div>';
+                        }
                         return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-person="' + safe(s.Name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(pName) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
-                             + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:34px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';"'
+                             + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
                              + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(pName) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                             + '<div style="display:flex;align-items:center;white-space:nowrap;">'
                              + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
                              + '<span style="margin:0 5px;opacity:0.5;">|</span>'
                              + '<span style="font-weight:700;">' + s.Name + '</span>'
                              + '<span style="margin:0 5px;opacity:0.5;">-</span>'
                              + '<span style="font-size:0.78rem;opacity:0.9;">' + pName + '</span>'
-                             + crewLabel
+                             + '</div>'
+                             + crewHTML
                              + '</div>';
                     }
 
@@ -2779,14 +2801,14 @@ app.get('/dashboard', async (req, res) => {
             const [sH,sM]=os.split(':').map(Number), [eH,eM]=oe.split(':').map(Number);
             let nsm=sH*60+sM+off*60, nem=eH*60+eM+off*60;
             let dOff=0;
-            if(nsm<0) dOff=-1; else if(nsm>=1440) dOff=1;
+            if(nsm<0){ dOff=-1; nsm+=1440; } else if(nsm>=1440){ dOff=1; nsm-=1440; }
+            if(nem<0) nem+=1440; else if(nem>=1440) nem-=1440;
             const nd=od+dOff;
             if(nd<0||nd>=7){pill.style.visibility='hidden';return;}
             pill.style.visibility='visible';
-            nsm=((nsm%1440)+1440)%1440; nem=((nem%1440)+1440)%1440;
             const sp=(nsm/1440)*100, ep=(nem/1440)*100;
             const left=(nd*100/7)+(sp/7);
-            let w=(ep-sp)/7; if(w<0) w=(100-sp+ep)/7;
+            let w=(ep-sp)/7; if(w<=0) w=(100-sp)/7;
             pill.style.left=left+'%'; pill.style.width=Math.max(w,0.3)+'%';
             const te=pill.querySelector('.pill-time');
             if(te){ const nh=Math.floor(nsm/60),nm=nsm%60; te.textContent=String(nh).padStart(2,'0')+':'+String(nm).padStart(2,'0'); }
