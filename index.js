@@ -1249,7 +1249,7 @@ app.get('/dashboard', async (req, res) => {
             }
 
             // Helper funkce pro pill
-            function buildPersonPill(s, name, dStr, dayIdx, left, width, personColor, prodColor) {
+            function buildPersonPill(s, name, dStr, dayIdx, left, width, personColor, prodColor, pillPart) {
                 const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
                 const crew = getCrewmates(s);
                 const pillH = crew.length > 0 ? (34 + crew.length * 14) : 34;
@@ -1262,7 +1262,7 @@ app.get('/dashboard', async (req, res) => {
                     });
                     crewHTML += '</div>';
                 }
-                return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-person="' + safe(name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
+                return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
                      + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
                      + ' onclick="openViewModal(\'' + safe(name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
                      + '<div style="display:flex;align-items:center;white-space:nowrap;">'
@@ -1290,7 +1290,7 @@ app.get('/dashboard', async (req, res) => {
                         const sp = timeToPercent(s.Start), ep = timeToPercent(s.End);
                         if (sp > ep && ep > 0) {
                             const pc2 = getProductColor(s.Trading, s.Product);
-                            sHTML += buildPersonPill(s, name, toISOLocal(startOfWeek), 0, 0, ep / 7, personColor, pc2);
+                            sHTML += buildPersonPill(s, name, toISOLocal(startOfWeek), 0, 0, ep / 7, personColor, pc2, 2);
                         }
                     });
 
@@ -1308,13 +1308,13 @@ app.get('/dashboard', async (req, res) => {
                             // Pill 1: od startu do konce dne (nebo do pulnoci pri overnight)
                             const left  = (d * 100 / 7) + (startPct / 7);
                             const width = isOvernight ? (100 - startPct) / 7 : (effEndPct - startPct) / 7;
-                            sHTML += buildPersonPill(s, name, dStr, d, left, width, personColor, prodColor);
+                            sHTML += buildPersonPill(s, name, dStr, d, left, width, personColor, prodColor, isOvernight ? 1 : 0);
 
                             // Pill 2: pokracovani overnight v nasledujicim dni
                             if (isOvernight && d < 6) {
                                 const nextDate = new Date(startOfWeek); nextDate.setDate(startOfWeek.getDate() + d + 1);
                                 const nextDStr = toISOLocal(nextDate);
-                                sHTML += buildPersonPill(s, name, nextDStr, d + 1, (d + 1) * 100 / 7, endPct / 7, personColor, prodColor);
+                                sHTML += buildPersonPill(s, name, nextDStr, d + 1, (d + 1) * 100 / 7, endPct / 7, personColor, prodColor, 2);
                             }
                         });
                     }
@@ -1331,7 +1331,7 @@ app.get('/dashboard', async (req, res) => {
                     let psHTML = "";
 
                     // Helper pro pill produktoveho radku
-                    function buildProdPill(s, pName, dStr, dayIdx, left, width, personColor, prodColor) {
+                    function buildProdPill(s, pName, dStr, dayIdx, left, width, personColor, prodColor, pillPart) {
                         const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
                         const crew = getCrewmates(s);
                         const pillH = crew.length > 0 ? (34 + crew.length * 14) : 34;
@@ -1344,7 +1344,7 @@ app.get('/dashboard', async (req, res) => {
                             });
                             crewHTML += '</div>';
                         }
-                        return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-person="' + safe(s.Name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(pName) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
+                        return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(s.Name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(pName) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
                              + ' style="left:' + left + '%;width:' + width + '%;top:14px;height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
                              + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(pName) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
                              + '<div style="display:flex;align-items:center;white-space:nowrap;">'
@@ -1364,7 +1364,7 @@ app.get('/dashboard', async (req, res) => {
                         if (sp > ep && ep > 0) {
                             const pc = personColors[s.Name] || '#555';
                             const prc = getProductColor(trading.name, pName);
-                            psHTML += buildProdPill(s, pName, toISOLocal(startOfWeek), 0, 0, ep / 7, pc, prc);
+                            psHTML += buildProdPill(s, pName, toISOLocal(startOfWeek), 0, 0, ep / 7, pc, prc, 2);
                         }
                     });
 
@@ -1383,13 +1383,13 @@ app.get('/dashboard', async (req, res) => {
                             const prodColor = getProductColor(trading.name, pName);
 
                             // Pill 1: od startu do pulnoci (nebo cely den)
-                            psHTML += buildProdPill(s, pName, dStr, d, left, width, personColor, prodColor);
+                            psHTML += buildProdPill(s, pName, dStr, d, left, width, personColor, prodColor, isOvernight2 ? 1 : 0);
 
                             // Pill 2: pokracovani overnight do nasledujiciho dne
                             if (isOvernight2 && d < 6) {
                                 const nextDate = new Date(startOfWeek); nextDate.setDate(startOfWeek.getDate() + d + 1);
                                 const nextDStr = toISOLocal(nextDate);
-                                psHTML += buildProdPill(s, pName, nextDStr, d + 1, (d + 1) * 100 / 7, endPct2 / 7, personColor, prodColor);
+                                psHTML += buildProdPill(s, pName, nextDStr, d + 1, (d + 1) * 100 / 7, endPct2 / 7, personColor, prodColor, 2);
                             }
                         });
                     }
@@ -1447,7 +1447,7 @@ app.get('/dashboard', async (req, res) => {
                         const personColor = personColors[s.Name] || '#555';
                         const prodColor   = getProductColor(s.Trading, s.Product);
                         const overnightBg2 = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
-                        dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
+                        dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-shift-date="' + s.Date + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
                                    + ' style="position:absolute;top:0px;height:' + h2 + 'px;left:4px;right:4px;background:' + overnightBg2 + ';color:#fff;border-radius:0 0 4px 4px;padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';opacity:0.85;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5);"'
                                    + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + prevDStr2 + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
                                    + '<span style="font-weight:700;">' + s.Name + '</span>'
@@ -1469,7 +1469,7 @@ app.get('/dashboard', async (req, res) => {
                     const personColor = personColors[s.Name] || '#555';
                     const prodColor   = getProductColor(s.Trading, s.Product);
                     const weekPillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
-                    dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
+                    dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-shift-date="' + s.Date + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
                                + ' style="position:absolute;top:' + sTop + 'px;height:' + height + 'px;left:4px;right:4px;background:' + weekPillBg + ';color:#fff;border-radius:' + (isOvernight ? '4px 4px 0 0' : '4px') + ';padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5);"'
                                + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
                                + '<span style="font-weight:700;">' + s.Name + '</span>'
@@ -1916,6 +1916,7 @@ app.get('/dashboard', async (req, res) => {
             </div>
         </div>
         <div class="modal-tags-row" id="mTagsRow"></div>
+        <div id="mCrewDisplay" style="display:none;padding:8px 24px 12px;"></div>
         <div class="modal-form-section">
             <input type="hidden" id="mMode">
             <input type="hidden" id="oName">
@@ -2092,6 +2093,7 @@ app.get('/dashboard', async (req, res) => {
             <div id="ttTime" style="font-size:0.82rem;font-weight:700;color:#c8d0e0;margin-bottom:6px;"></div>
             <div id="ttProduct" style="font-size:0.75rem;color:#8892a4;margin-bottom:4px;"></div>
             <div id="ttNote" style="font-size:0.72rem;color:#555;font-style:italic;"></div>
+            <div id="ttCrew" style="display:none;margin-top:6px;border-top:1px solid #1e2030;padding-top:6px;"></div>
         </div>
     </div>
 </div>
@@ -2125,6 +2127,7 @@ app.get('/dashboard', async (req, res) => {
     const pRoles = {}; ${personRolesJS}
     const tColors = {}; ${tradingColorsJS}
     ${productColorsClientJS}
+    const _crewMap = ${JSON.stringify(crewMap)};
 
     // SHOW ALL
     function showAllRows(el) {
@@ -2264,6 +2267,25 @@ app.get('/dashboard', async (req, res) => {
         const tc = pColorsProduct[product] || tColors[trading] || '#555';
         tr.innerHTML = '<span class="modal-tag" style="background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44;">'+trading+'</span>'
                      + (note?'<span class="modal-tag" style="background:#222;color:#ccc;">'+note+'</span>':'');
+
+        // Crew: zobraz ostatni lidi na stejne smene
+        const crewKey = date+'|'+product+'|'+start+'|'+end;
+        const crewAll = _crewMap[crewKey] || [];
+        const crewOthers = crewAll.filter(n => n !== name);
+        const crewEl = document.getElementById('mCrewDisplay');
+        if (crewOthers.length > 0) {
+            crewEl.innerHTML = '<div style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Also on this shift</div>'
+                + crewOthers.map(c => {
+                    const cc = pColors[c] || '#888';
+                    return '<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;background:'+cc+'22;border:1px solid '+cc+'44;margin:2px;">'
+                         + '<span style="width:8px;height:8px;border-radius:50%;background:'+cc+';"></span>'
+                         + '<span style="font-size:0.75rem;color:'+cc+';font-weight:600;">'+c+'</span>'
+                         + '</span>';
+                }).join('');
+            crewEl.style.display = 'block';
+        } else {
+            crewEl.style.display = 'none';
+        }
 
         // Uloz zdrojova data pro smazani + exchange
         // row muze byt 0 (prvni radek) - proto kontrolujeme !== undefined
@@ -2796,19 +2818,60 @@ app.get('/dashboard', async (req, res) => {
         const btn=document.getElementById('tzToggle');
         document.querySelectorAll('.shift-pill[data-orig-start]').forEach(pill=>{
             const od=parseInt(pill.dataset.origDay);
+            const pp=parseInt(pill.dataset.pillPart||'0');
             const os=pill.dataset.origStart, oe=pill.dataset.origEnd;
             if(!os||!oe) return;
             const [sH,sM]=os.split(':').map(Number), [eH,eM]=oe.split(':').map(Number);
             let nsm=sH*60+sM+off*60, nem=eH*60+eM+off*60;
+            // Normalize to 0-1440
+            while(nsm<0) nsm+=1440; while(nsm>=1440) nsm-=1440;
+            while(nem<0) nem+=1440; while(nem>=1440) nem-=1440;
+            // Compute day offset based on pill part
             let dOff=0;
-            if(nsm<0){ dOff=-1; nsm+=1440; } else if(nsm>=1440){ dOff=1; nsm-=1440; }
-            if(nem<0) nem+=1440; else if(nem>=1440) nem-=1440;
+            const origSm=sH*60+sM, shiftedSm=origSm+off*60;
+            if(shiftedSm<0) dOff=-1; else if(shiftedSm>=1440) dOff=1;
+            // For pill part 2 (overnight continuation), shift day accordingly
+            if(pp===2){
+                const origEm=eH*60+eM, shiftedEm=origEm+off*60;
+                if(shiftedEm<0) dOff=-1; else dOff=0;
+                const nd=od+dOff;
+                if(nd<0||nd>=7){pill.style.visibility='hidden';return;}
+                // Check if shift is still overnight in new tz: start > end (and end not exactly midnight)
+                const stillOvernight = nsm > nem && nem > 0;
+                if(!stillOvernight){
+                    // No longer crosses midnight — hide pill 2
+                    pill.style.visibility='hidden'; return;
+                }
+                // Still overnight — show pill 2 from 00:00 to new end
+                pill.style.visibility='visible';
+                const ep2=(nem/1440)*100;
+                const left2=(nd*100/7);
+                const w2=ep2/7;
+                pill.style.left=left2+'%'; pill.style.width=Math.max(w2,0.3)+'%';
+                const te2=pill.querySelector('.pill-time');
+                if(te2){ const nh=Math.floor(nem/60),nm2=nem%60; te2.textContent=String(nh).padStart(2,'0')+':'+String(nm2).padStart(2,'0'); }
+                return;
+            }
             const nd=od+dOff;
             if(nd<0||nd>=7){pill.style.visibility='hidden';return;}
             pill.style.visibility='visible';
             const sp=(nsm/1440)*100, ep=(nem/1440)*100;
             const left=(nd*100/7)+(sp/7);
-            let w=(ep-sp)/7; if(w<=0) w=(100-sp)/7;
+            let w;
+            if(pp===1){
+                // Overnight pill 1: check if still overnight in new tz
+                const stillON = nsm > nem && nem > 0;
+                if(!stillON){
+                    // No longer overnight — show full shift (start to end, or start to midnight if end=0)
+                    const effEp = nem === 0 ? 100 : ep;
+                    w=(effEp-sp)/7;
+                } else {
+                    // Still overnight — show start to midnight
+                    w=(100-sp)/7;
+                }
+            } else {
+                w=(ep-sp)/7; if(w<=0) w=(100-sp)/7;
+            }
             pill.style.left=left+'%'; pill.style.width=Math.max(w,0.3)+'%';
             const te=pill.querySelector('.pill-time');
             if(te){ const nh=Math.floor(nsm/60),nm=nsm%60; te.textContent=String(nh).padStart(2,'0')+':'+String(nm).padStart(2,'0'); }
@@ -2952,7 +3015,7 @@ app.get('/dashboard', async (req, res) => {
     // =============================================
     const _tt = document.getElementById('shiftTooltip');
     let _ttTimer = null;
-    function _showTooltip(e, name, start, end, product, trading, note, personColor, prodColor) {
+    function _showTooltip(e, name, start, end, product, trading, note, personColor, prodColor, shiftDate) {
         clearTimeout(_ttTimer);
         const pc = pColors[name] || personColor || '#888';
         document.getElementById('ttHeader').innerHTML =
@@ -2967,6 +3030,27 @@ app.get('/dashboard', async (req, res) => {
         const noteEl = document.getElementById('ttNote');
         noteEl.textContent = note || '';
         noteEl.style.display = note ? 'block' : 'none';
+        // Crew display in tooltip
+        const crewEl = document.getElementById('ttCrew');
+        if (crewEl && shiftDate) {
+            const crewKey = shiftDate+'|'+product+'|'+start+'|'+end;
+            const crewAll = _crewMap[crewKey] || [];
+            const crewOthers = crewAll.filter(n => n !== name);
+            if (crewOthers.length > 0) {
+                let h = '<div style="font-size:0.65rem;color:#8892a4;margin-bottom:3px;">Crew:</div><div style="display:flex;flex-wrap:wrap;gap:3px;">';
+                crewOthers.forEach(c => {
+                    const cc = pColors[c] || '#888';
+                    h += '<span style="font-size:0.6rem;padding:1px 6px;border-radius:3px;background:'+cc+'33;color:'+cc+';border:1px solid '+cc+'55;">'+c+'</span>';
+                });
+                h += '</div>';
+                crewEl.innerHTML = h;
+                crewEl.style.display = 'block';
+            } else {
+                crewEl.style.display = 'none';
+            }
+        } else if (crewEl) {
+            crewEl.style.display = 'none';
+        }
         _positionTooltip(e);
         _tt.style.display = 'block';
     }
@@ -2994,8 +3078,9 @@ app.get('/dashboard', async (req, res) => {
         const note    = pill.dataset.tooltipNote || '';
         const pc      = pill.dataset.personColor || '';
         const prodC   = pill.dataset.prodColor || '';
+        const sDate   = pill.dataset.shiftDate || '';
         if (!name) return;
-        _showTooltip(e, name, start, end, product, trading, note, pc, prodC);
+        _showTooltip(e, name, start, end, product, trading, note, pc, prodC, sDate);
     });
     document.addEventListener('mousemove', e => {
         if (_tt.style.display === 'none') return;
