@@ -1520,7 +1520,7 @@ app.get('/dashboard', async (req, res) => {
                                    + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + prevDStr2 + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
                                    + '<span style="font-weight:700;">' + s.Name + '</span>'
                                    + '<span style="margin:0 5px;opacity:0.5;">|</span>'
-                                   + '<span style="font-size:0.78rem;opacity:0.9;">' + s.Start + '-' + s.End + ' ' + s.Product + '</span>'
+                                   + '<span class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-product="' + safe(s.Product) + '" style="font-size:0.78rem;opacity:0.9;">' + s.Start + '-' + s.End + ' ' + s.Product + '</span>'
                                    + '</div>';
                     });
                 }
@@ -1542,7 +1542,7 @@ app.get('/dashboard', async (req, res) => {
                                + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
                                + '<span style="font-weight:700;">' + s.Name + '</span>'
                                + '<span style="margin:0 5px;opacity:0.5;">|</span>'
-                               + '<span style="font-size:0.78rem;opacity:0.9;">' + s.Start + '-' + s.End + ' ' + s.Product + '</span>'
+                               + '<span class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-product="' + safe(s.Product) + '" style="font-size:0.78rem;opacity:0.9;">' + s.Start + '-' + s.End + ' ' + s.Product + '</span>'
                                + '</div>';
                 });
                 dayColumn += '</div>'; weekGrid += dayColumn;
@@ -1580,7 +1580,7 @@ app.get('/dashboard', async (req, res) => {
                                   + ' style="display:flex;align-items:center;gap:12px;padding:8px 14px;background:#fff;border-radius:7px;margin-bottom:4px;cursor:pointer;border-left:3px solid ' + personColor + ';box-shadow:0 1px 3px rgba(0,0,0,0.07);transition:box-shadow 0.15s;"'
                                   + ' onmouseover="this.style.boxShadow=\'0 3px 8px rgba(0,0,0,0.14)\'" onmouseout="this.style.boxShadow=\'0 1px 3px rgba(0,0,0,0.07)\'"'
                                   + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
-                                  + '<span style="font-size:0.8rem;font-weight:700;color:#555;min-width:110px;flex-shrink:0;">' + s.Start + ' – ' + s.End + '</span>'
+                                  + '<span class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" style="font-size:0.8rem;font-weight:700;color:#555;min-width:110px;flex-shrink:0;">' + s.Start + ' – ' + s.End + '</span>'
                                   + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + personColor + ';flex-shrink:0;"></span>'
                                   + '<span style="font-weight:600;font-size:0.85rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + s.Name + '</span>'
                                   + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + prodColor + ';flex-shrink:0;"></span>'
@@ -1631,7 +1631,7 @@ app.get('/dashboard', async (req, res) => {
                                     + '<div style="font-size:0.74rem;color:#777;margin-top:1px;">' + s.Product + (s.Note ? ' <span style="color:#bbb">·</span> ' + s.Note : '') + '</div>'
                                     + '</div>'
                                     + '<div style="text-align:right;flex-shrink:0;">'
-                                    + '<div style="font-size:0.78rem;font-weight:600;color:#444;">' + s.Start + ' – ' + s.End + '</div>'
+                                    + '<div class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" style="font-size:0.78rem;font-weight:600;color:#444;">' + s.Start + ' – ' + s.End + '</div>'
                                     + '<div style="font-size:0.68rem;color:#aaa;">' + dur.toFixed(1) + 'h</div>'
                                     + '</div>'
                                     + '</div>';
@@ -1784,8 +1784,28 @@ app.get('/dashboard', async (req, res) => {
         .modal-input{width:100%;padding:10px 14px;background:rgba(0,0,0,0.4);border:1px solid #1e2030;border-radius:8px;color:#fff;font-family:'Montserrat',sans-serif;font-size:0.85rem;box-sizing:border-box;transition:all 0.2s;color-scheme:dark;}
         .modal-input:focus{outline:none;border-color:rgba(251,192,45,0.5);background:rgba(0,0,0,0.6);box-shadow:0 0 0 3px rgba(251,192,45,0.08),0 0 16px rgba(251,192,45,0.06);}
         .modal-input:hover:not(:focus){border-color:#2a2d3a;}
-        .modal-input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.7) sepia(1) saturate(3) hue-rotate(10deg);cursor:pointer;opacity:0.6;transition:opacity 0.2s;}
-        .modal-input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1;}
+        .date-pick-wrap{position:relative;flex:1;}
+        .date-pick-display{width:100%;padding:10px 14px;background:rgba(0,0,0,0.4);border:1px solid #1e2030;border-radius:8px;color:#e8eaf0;font-family:'Montserrat',sans-serif;font-size:0.85rem;box-sizing:border-box;transition:all 0.2s;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;}
+        .date-pick-display:hover{border-color:#2a2d3a;}
+        .date-pick-display.open{border-color:rgba(251,192,45,0.5);background:rgba(0,0,0,0.6);box-shadow:0 0 0 3px rgba(251,192,45,0.08);}
+        .date-pick-display .dp-icon{font-size:0.75rem;color:rgba(251,192,45,0.5);transition:color 0.2s;}
+        .date-pick-display:hover .dp-icon,.date-pick-display.open .dp-icon{color:#fbc02d;}
+        .dp-popup{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:1000;background:#12131a;border:1px solid #1e2030;border-radius:10px;padding:12px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.6),0 0 0 1px rgba(251,192,45,0.06);min-width:240px;}
+        .dp-popup.show{display:block;}
+        .dp-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+        .dp-nav button{background:none;border:none;color:#3a4050;cursor:pointer;font-size:0.85rem;padding:4px 8px;border-radius:4px;transition:0.15s;}
+        .dp-nav button:hover{color:#fbc02d;background:rgba(251,192,45,0.08);}
+        .dp-nav span{font-size:0.7rem;background:linear-gradient(90deg,#fbc02d,#ffe57f,#fbc02d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;}
+        .dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
+        .dp-hdr{font-size:0.55rem;color:#3a4050;font-weight:600;padding:4px 0;text-transform:uppercase;letter-spacing:0.5px;}
+        .dp-day{font-size:0.72rem;padding:6px 2px;border-radius:6px;cursor:pointer;color:#6b7585;transition:all 0.12s;font-variant-numeric:tabular-nums;}
+        .dp-day:hover{background:rgba(251,192,45,0.1);color:#fbc02d;}
+        .dp-day.other{color:#252730;cursor:default;}
+        .dp-day.other:hover{background:none;color:#252730;}
+        .dp-day.today{color:#fbc02d;font-weight:700;background:rgba(251,192,45,0.08);}
+        .dp-day.selected{background:rgba(251,192,45,0.2);color:#fbc02d;font-weight:700;box-shadow:0 0 8px rgba(251,192,45,0.15);}
+        .dp-today-btn{display:block;width:100%;margin-top:8px;padding:5px 0;background:none;border:1px solid #1e2030;border-radius:6px;color:#3a4050;font-size:0.6rem;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:1px;transition:all 0.15s;font-family:'Montserrat',sans-serif;}
+        .dp-today-btn:hover{border-color:rgba(251,192,45,0.3);color:#fbc02d;background:rgba(251,192,45,0.05);}
         .modal-row2{display:flex;gap:12px;}
         .modal-row2>div{flex:1;}
         .modal-actions{padding:18px 24px 22px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #1e2030;background:rgba(0,0,0,0.15);}
@@ -1898,7 +1918,7 @@ app.get('/dashboard', async (req, res) => {
                      + (activeWarriors.has(n) ? '<span class="status-dot"></span>' : '')
                      + (pc_target > 0 ? '<div style="width:100%;display:flex;align-items:center;gap:5px;margin-top:4px;">'
                      + '<div class="progress-container" style="flex:1;"><div class="progress-bar" style="width:' + pct + '%;background:' + hoursColor + ';box-shadow:0 0 4px ' + hoursColor + '66;"></div></div>'
-                     + '<span style="font-size:0.58rem;color:#3a4050;flex-shrink:0;min-width:34px;text-align:right;font-variant-numeric:tabular-nums;">' + Math.round((weekStats[n]||0)*10)/10 + '/' + pc_target + 'h</span>'
+                     + '<span style="font-size:0.58rem;color:' + hoursColor + ';opacity:0.85;flex-shrink:0;min-width:34px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;text-shadow:0 0 8px ' + hoursColor + '33;">' + Math.round((weekStats[n]||0)*10)/10 + '/' + pc_target + 'h</span>'
                      + '</div>' : '')
                      + '</div>';
             }).join('') + '</div>'
@@ -1997,7 +2017,20 @@ app.get('/dashboard', async (req, res) => {
                 <button type="button" id="mAddTraderBtn" onclick="addExtraTrader()" style="padding:5px 12px;background:rgba(76,175,80,0.1);color:#66bb6a;border:1px solid rgba(76,175,80,0.25);border-radius:6px;cursor:pointer;font-size:0.7rem;font-weight:600;letter-spacing:0.5px;" onmouseover="this.style.background='rgba(76,175,80,0.2)'" onmouseout="this.style.background='rgba(76,175,80,0.1)'">+ Add Trader</button>
             </div>
             <label>Date</label>
-            <input type="date" id="mDate" class="modal-input">
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input type="hidden" id="mDate">
+                <div class="date-pick-wrap" id="dpWrap1">
+                    <div class="date-pick-display" onclick="dpToggle('dp1')"><span id="dp1Text">--.--.----</span><span class="dp-icon">&#128197;</span></div>
+                    <div class="dp-popup" id="dp1"></div>
+                </div>
+                <span id="mDateToLabel" style="display:none;font-size:0.7rem;color:rgba(251,192,45,0.6);font-weight:600;white-space:nowrap;">to</span>
+                <input type="hidden" id="mDateTo">
+                <div class="date-pick-wrap" id="dpWrap2" style="display:none;">
+                    <div class="date-pick-display" onclick="dpToggle('dp2')"><span id="dp2Text">--.--.----</span><span class="dp-icon">&#128197;</span></div>
+                    <div class="dp-popup" id="dp2"></div>
+                </div>
+                <button type="button" id="mMultiDayBtn" onclick="toggleMultiDay()" style="padding:5px 10px;background:rgba(91,127,166,0.08);color:rgba(91,127,166,0.7);border:1px solid rgba(91,127,166,0.2);border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:600;letter-spacing:0.5px;white-space:nowrap;display:none;" onmouseover="this.style.background='rgba(91,127,166,0.18)'" onmouseout="if(!this.classList.contains('active')){this.style.background='rgba(91,127,166,0.08)'}">Multi-day</button>
+            </div>
             <label>Trading Category</label>
             <select id="mTrading" class="modal-input" onchange="updateProductDropdown()">${tradingHierarchy.map(t => '<option value="' + t.name + '">' + t.name + '</option>').join('')}</select>
             <label>Product</label>
@@ -2378,6 +2411,7 @@ app.get('/dashboard', async (req, res) => {
         document.getElementById('oStart').value=start;
         document.getElementById('mName').value=name;
         document.getElementById('mDate').value=date;
+        dpSetText('dp1',date);
         document.getElementById('mStart').value=start;
         document.getElementById('mEnd').value=end;
         document.getElementById('mTrading').value=trading;
@@ -2394,6 +2428,10 @@ app.get('/dashboard', async (req, res) => {
         document.getElementById('mStart').style.opacity='1';
         document.getElementById('mEnd').readOnly=false;
         document.getElementById('mEnd').style.opacity='1';
+        // Hide multi-day in edit mode
+        document.getElementById('mMultiDayBtn').style.display='none';
+        document.getElementById('dpWrap2').style.display='none';
+        document.getElementById('mDateToLabel').style.display='none';
         // Auto-detect all-day shifts
         if(start==='00:00' && (end==='23:59'||end==='24:00')){
             adBtn.classList.add('active');
@@ -2466,7 +2504,9 @@ app.get('/dashboard', async (req, res) => {
         updateProductDropdown();
         // Default to currently viewed date in dashboard, not today
         const defDate = _viewDate ? new Date(_viewDate) : new Date();
-        document.getElementById('mDate').value=defDate.toISOString().split('T')[0];
+        const defVal = defDate.getFullYear()+'-'+String(defDate.getMonth()+1).padStart(2,'0')+'-'+String(defDate.getDate()).padStart(2,'0');
+        document.getElementById('mDate').value=defVal;
+        dpSetText('dp1',defVal);
         document.getElementById('mStart').value='';
         document.getElementById('mEnd').value='';
         document.getElementById('mProd').value='';
@@ -2481,10 +2521,137 @@ app.get('/dashboard', async (req, res) => {
         document.getElementById('mStart').style.opacity='1';
         document.getElementById('mEnd').readOnly=false;
         document.getElementById('mEnd').style.opacity='1';
+        // Reset & show multi-day
+        const mdBtn=document.getElementById('mMultiDayBtn');
+        mdBtn.classList.remove('active');
+        mdBtn.style.background='rgba(91,127,166,0.08)';
+        mdBtn.style.color='rgba(91,127,166,0.7)';
+        mdBtn.style.display='';
+        document.getElementById('dpWrap2').style.display='none';
+        document.getElementById('mDateTo').value='';
+        document.getElementById('mDateToLabel').style.display='none';
         document.getElementById('modal').style.display='block';
     }
 
     function closeModal(){ document.getElementById('modal').style.display='none'; }
+
+    function toggleMultiDay(){
+        const btn=document.getElementById('mMultiDayBtn');
+        const toWrap=document.getElementById('dpWrap2');
+        const toLabel=document.getElementById('mDateToLabel');
+        const isActive=btn.classList.toggle('active');
+        if(isActive){
+            btn.style.background='rgba(91,127,166,0.2)';
+            btn.style.color='#5b8dd9';
+            toWrap.style.display='';
+            toLabel.style.display='';
+            const v=document.getElementById('mDate').value;
+            document.getElementById('mDateTo').value=v;
+            dpSetText('dp2',v);
+        } else {
+            btn.style.background='rgba(91,127,166,0.08)';
+            btn.style.color='rgba(91,127,166,0.7)';
+            toWrap.style.display='none';
+            toLabel.style.display='none';
+            document.getElementById('mDateTo').value='';
+        }
+    }
+
+    // Custom date picker
+    const _dpState={dp1:{year:2026,month:3},dp2:{year:2026,month:3}};
+    const _dpMonths=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const _dpDays=['Mo','Tu','We','Th','Fr','Sa','Su'];
+    const _dpInput={dp1:'mDate',dp2:'mDateTo'};
+
+    function dpSetText(id,val){
+        if(!val){document.getElementById(id+'Text').textContent='--.--.----';return;}
+        const p=val.split('-');
+        document.getElementById(id+'Text').textContent=p[2]+'.'+p[1]+'.'+p[0];
+    }
+
+    function dpToggle(id){
+        const popup=document.getElementById(id);
+        const isOpen=popup.classList.contains('show');
+        // Close all popups first
+        document.querySelectorAll('.dp-popup.show').forEach(p=>p.classList.remove('show'));
+        document.querySelectorAll('.date-pick-display.open').forEach(d=>d.classList.remove('open'));
+        if(!isOpen){
+            // Init month/year from current value
+            const v=document.getElementById(_dpInput[id]).value;
+            if(v){const p=v.split('-');_dpState[id].year=parseInt(p[0]);_dpState[id].month=parseInt(p[1])-1;}
+            dpRender(id);
+            popup.classList.add('show');
+            popup.previousElementSibling.classList.add('open');
+        }
+    }
+
+    function dpRender(id){
+        const st=_dpState[id];
+        const curVal=document.getElementById(_dpInput[id]).value;
+        const today=new Date();
+        const todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+        const first=new Date(st.year,st.month,1);
+        let startDay=first.getDay()-1; if(startDay<0) startDay=6;
+        const daysInMonth=new Date(st.year,st.month+1,0).getDate();
+        const daysInPrev=new Date(st.year,st.month,0).getDate();
+
+        let html='<div class="dp-nav">';
+        html+='<button data-dp-nav="-1">&#9664;</button>';
+        html+='<span>'+_dpMonths[st.month]+' '+st.year+'</span>';
+        html+='<button data-dp-nav="1">&#9654;</button>';
+        html+='</div><div class="dp-grid">';
+        _dpDays.forEach(function(d){html+='<div class="dp-hdr">'+d+'</div>';});
+        for(let i=startDay-1;i>=0;i--){
+            html+='<div class="dp-day other">'+(daysInPrev-i)+'</div>';
+        }
+        for(let d=1;d<=daysInMonth;d++){
+            const iso=st.year+'-'+String(st.month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+            const cls=[];
+            if(iso===todayStr) cls.push('today');
+            if(iso===curVal) cls.push('selected');
+            html+='<div class="dp-day '+cls.join(' ')+'" data-dp-val="'+iso+'">'+d+'</div>';
+        }
+        const totalCells=startDay+daysInMonth;
+        const rem=totalCells%7===0?0:7-totalCells%7;
+        for(let i=1;i<=rem;i++){
+            html+='<div class="dp-day other">'+i+'</div>';
+        }
+        html+='</div>';
+        html+='<button class="dp-today-btn" data-dp-val="'+todayStr+'">Today</button>';
+        document.getElementById(id).innerHTML=html;
+    }
+
+    // Event delegation for date pickers (avoids inline onclick escaping issues)
+    ['dp1','dp2'].forEach(function(id){
+        document.getElementById(id).addEventListener('click',function(e){
+            e.stopPropagation();
+            const nav=e.target.closest('[data-dp-nav]');
+            if(nav){
+                const dir=parseInt(nav.dataset.dpNav);
+                _dpState[id].month+=dir;
+                if(_dpState[id].month>11){_dpState[id].month=0;_dpState[id].year++;}
+                if(_dpState[id].month<0){_dpState[id].month=11;_dpState[id].year--;}
+                dpRender(id);
+                return;
+            }
+            const sel=e.target.closest('[data-dp-val]');
+            if(sel){
+                const iso=sel.dataset.dpVal;
+                document.getElementById(_dpInput[id]).value=iso;
+                dpSetText(id,iso);
+                document.getElementById(id).classList.remove('show');
+                document.getElementById(id).previousElementSibling.classList.remove('open');
+            }
+        });
+    });
+
+    // Close date picker on outside click
+    document.addEventListener('click',function(e){
+        if(!e.target.closest('.date-pick-wrap')){
+            document.querySelectorAll('.dp-popup.show').forEach(p=>p.classList.remove('show'));
+            document.querySelectorAll('.date-pick-display.open').forEach(d=>d.classList.remove('open'));
+        }
+    });
 
     function toggleAllDay(){
         const btn = document.getElementById('mAllDayBtn');
@@ -2578,7 +2745,7 @@ app.get('/dashboard', async (req, res) => {
 
     async function saveShift(){
         const mode = document.getElementById('mMode').value;
-        const data = {
+        const baseData = {
             originalName:  document.getElementById('oName').value,
             originalDate:  document.getElementById('oDate').value,
             originalStart: document.getElementById('oStart').value,
@@ -2590,6 +2757,23 @@ app.get('/dashboard', async (req, res) => {
             trading: document.getElementById('mTrading').value,
             note:    document.getElementById('mNote').value
         };
+        // Build array of dates (multi-day support)
+        const dateTo = document.getElementById('mDateTo').value;
+        const multiDay = document.getElementById('mMultiDayBtn').classList.contains('active') && dateTo && mode === 'add';
+        const dates = [];
+        if (multiDay) {
+            const d1 = new Date(baseData.date + 'T12:00:00');
+            const d2 = new Date(dateTo + 'T12:00:00');
+            if (d2 < d1) { alert('End date must be after start date'); return; }
+            for (let dt = new Date(d1); dt <= d2; dt.setDate(dt.getDate() + 1)) {
+                const y=dt.getFullYear(), m=String(dt.getMonth()+1).padStart(2,'0'), dd=String(dt.getDate()).padStart(2,'0');
+                dates.push(y+'-'+m+'-'+dd);
+            }
+        } else {
+            dates.push(baseData.date);
+        }
+        for (const saveDate of dates) {
+        const data = {...baseData, date: saveDate};
         // DoubleShift / Split mode
         const splitOpen = document.getElementById('mSplitSection').style.display !== 'none';
         if (splitOpen) {
@@ -2632,8 +2816,9 @@ app.get('/dashboard', async (req, res) => {
             const resp = await fetch(mode==='add'?'/add-shift':'/update-shift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
             if (!resp.ok) { alert('Error saving shift'); return; }
         }
+        } // end for-each saveDate
         // Navigate to the week containing the saved shift's date
-        const savedDate = data.date;
+        const savedDate = baseData.date;
         const currentParams = new URLSearchParams(window.location.search);
         const currentDate = currentParams.get('date');
         if (savedDate && savedDate !== currentDate) {
@@ -2887,7 +3072,10 @@ app.get('/dashboard', async (req, res) => {
         const btn=document.getElementById('tzToggle');
         // Remove any timezone continuation clones from previous toggle
         document.querySelectorAll('.tz-clone-pill').forEach(el=>el.remove());
-        document.querySelectorAll('.shift-pill[data-orig-start]').forEach(pill=>{
+        // Only reposition timeline pills (not week/list/agenda)
+        const _tlVp=document.getElementById('viewport');
+        if(!_tlVp){ /* not in timeline view — skip pill repositioning */ } else
+        _tlVp.querySelectorAll('.shift-pill[data-orig-start]').forEach(pill=>{
             const od=parseInt(pill.dataset.origDay);
             const pp=parseInt(pill.dataset.pillPart||'0');
             const os=pill.dataset.origStart, oe=pill.dataset.origEnd;
@@ -3005,6 +3193,27 @@ app.get('/dashboard', async (req, res) => {
                 te.textContent=nsH+':'+nsMin+' - '+neH+':'+neMin;
             }
         });
+
+        // Update time text in Week, List, Agenda views (.tz-time elements)
+        document.querySelectorAll('.tz-time').forEach(el=>{
+            const os=el.dataset.origStart, oe=el.dataset.origEnd;
+            if(!os||!oe) return;
+            const [sH,sM]=os.split(':').map(Number),[eH,eM]=oe.split(':').map(Number);
+            let ns=sH*60+sM+off*60, ne=eH*60+eM+off*60;
+            while(ns<0) ns+=1440; while(ns>=1440) ns-=1440;
+            while(ne<0) ne+=1440; while(ne>=1440) ne-=1440;
+            const nsH=String(Math.floor(ns/60)).padStart(2,'0'), nsMin=String(ns%60).padStart(2,'0');
+            const neH=String(Math.floor(ne/60)).padStart(2,'0'), neMin=String(ne%60).padStart(2,'0');
+            const prod=el.dataset.product;
+            if(prod){
+                // Week view: "HH:MM-HH:MM Product"
+                el.textContent=nsH+':'+nsMin+'-'+neH+':'+neMin+' '+prod;
+            } else {
+                // List/Agenda view: "HH:MM – HH:MM"
+                el.textContent=nsH+':'+nsMin+' \\u2013 '+neH+':'+neMin;
+            }
+        });
+
         if(curTz==='lima'){
             btn.classList.add('lima-active');
             document.getElementById('tzLabel').textContent='LIMA';
