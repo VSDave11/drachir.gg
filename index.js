@@ -91,8 +91,8 @@ function invalidateCache() {
 
 
 // BOD 1: SLACK NOTIFIKACE
-// Nastav svuj Slack Incoming Webhook URL:
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || '';
+const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN || '';
 
 async function sendSlackMessage(text) {
     if (!SLACK_WEBHOOK_URL) return;
@@ -112,6 +112,116 @@ async function sendSlackMessage(text) {
             req.end();
         });
     } catch(e) { console.error('Slack send error:', e.message); }
+}
+
+// Slack DM via Bot Token (chat.postMessage)
+async function sendSlackDM(slackUserId, text) {
+    if (!SLACK_BOT_TOKEN || !slackUserId) return;
+    try {
+        const https = require('https');
+        const body = JSON.stringify({ channel: slackUserId, text, unfurl_links: false });
+        return new Promise((resolve) => {
+            const req = https.request({
+                hostname: 'slack.com',
+                path: '/api/chat.postMessage',
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SLACK_BOT_TOKEN, 'Content-Length': Buffer.byteLength(body) }
+            }, res => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try { const j = JSON.parse(data); if (!j.ok) console.error('Slack DM error:', j.error); } catch(e) {}
+                    resolve();
+                });
+            });
+            req.on('error', e => console.error('Slack DM error:', e.message));
+            req.write(body);
+            req.end();
+        });
+    } catch(e) { console.error('Slack DM send error:', e.message); }
+}
+
+// Slack ID map (jmeno -> slack_id) and subscriptions cache
+let _slackIdMap = {};
+let _slackSubscriptions = [];
+let _slackDataLoaded = false;
+
+async function loadSlackData() {
+    try {
+        await doc.loadInfo();
+        // Load slack_id from uzivatele
+        const uzSheet = doc.sheetsByTitle['uzivatele'];
+        if (uzSheet) {
+            await uzSheet.loadCells('A1:Z200');
+            let colJmeno = -1, colSlackId = -1;
+            for (let c = 0; c < 15; c++) {
+                const v = uzSheet.getCell(0, c).value?.toString().trim().toLowerCase();
+                if (v === 'jmeno') colJmeno = c;
+                if (v === 'slack_id') colSlackId = c;
+            }
+            if (colJmeno >= 0 && colSlackId >= 0) {
+                const map = {};
+                for (let r = 1; r < Math.min(uzSheet.rowCount, 200); r++) {
+                    const name = uzSheet.getCell(r, colJmeno).value?.toString().trim();
+                    const sid = uzSheet.getCell(r, colSlackId).value?.toString().trim();
+                    if (name && sid) map[name] = sid;
+                }
+                _slackIdMap = map;
+                console.log('Loaded Slack IDs for', Object.keys(map).length, 'users');
+            }
+        }
+        // Load subscriptions from SlackSubscriptions sheet
+        const subSheet = doc.sheetsByTitle['SlackSubscriptions'];
+        if (subSheet) {
+            await subSheet.loadCells('A1:B500');
+            let colSub = -1, colTarget = -1;
+            for (let c = 0; c < 5; c++) {
+                const v = subSheet.getCell(0, c).value?.toString().trim().toLowerCase();
+                if (v === 'subscriber') colSub = c;
+                if (v === 'target') colTarget = c;
+            }
+            if (colSub >= 0 && colTarget >= 0) {
+                const subs = [];
+                for (let r = 1; r < Math.min(subSheet.rowCount, 500); r++) {
+                    const subscriber = subSheet.getCell(r, colSub).value?.toString().trim();
+                    const target = subSheet.getCell(r, colTarget).value?.toString().trim();
+                    if (subscriber && target) subs.push({ subscriber, target });
+                }
+                _slackSubscriptions = subs;
+                console.log('Loaded', subs.length, 'Slack subscriptions');
+            }
+        }
+        _slackDataLoaded = true;
+    } catch(e) { console.error('Error loading Slack data:', e.message); }
+}
+
+async function notifyShiftChange(actionBy, targetName, changeType, details) {
+    if (!SLACK_BOT_TOKEN) return;
+    if (!_slackDataLoaded) await loadSlackData();
+    const promises = [];
+    // 1. DM to person who made the change
+    const actionBySlack = _slackIdMap[actionBy];
+    if (actionBySlack) {
+        promises.push(sendSlackDM(actionBySlack, ':pencil2: You ' + changeType + ': ' + details));
+    }
+    // 2. DM to person whose shift was changed (if different)
+    if (targetName && targetName !== actionBy) {
+        const targetSlack = _slackIdMap[targetName];
+        if (targetSlack) {
+            promises.push(sendSlackDM(targetSlack, ':bell: ' + actionBy + ' ' + changeType + ' your shift: ' + details));
+        }
+    }
+    // 3. DM to all subscribers watching targetName
+    if (targetName) {
+        const subs = _slackSubscriptions.filter(s => s.target === targetName && s.subscriber !== actionBy && s.subscriber !== targetName);
+        for (const sub of subs) {
+            const subSlack = _slackIdMap[sub.subscriber];
+            if (subSlack) {
+                promises.push(sendSlackDM(subSlack, ':eyes: ' + actionBy + ' ' + changeType + ' shift for ' + targetName + ': ' + details));
+            }
+        }
+    }
+    await Promise.allSettled(promises);
 }
 
 // --- BOD 5: INDIVIDUÁLNÍ BARVY KAŽDÉHO ČLOVĚKA ---
@@ -266,14 +376,15 @@ app.post('/login', async (req, res) => {
         await sheet.loadCells('A1:Z500');
 
         // Najdi sloupce podle hlavicky v radku 1
-        let colJmeno=-1, colEmail=-1, colHeslo=-1, colRole=-1, colLocation=-1;
-        for (let c = 0; c < 10; c++) {
+        let colJmeno=-1, colEmail=-1, colHeslo=-1, colRole=-1, colLocation=-1, colSlackId=-1;
+        for (let c = 0; c < 15; c++) {
             const v = sheet.getCell(0, c).value?.toString().trim().toLowerCase();
             if (v === 'jmeno')    colJmeno    = c;
             if (v === 'email')    colEmail    = c;
             if (v === 'heslo')    colHeslo    = c;
             if (v === 'role')     colRole     = c;
             if (v === 'location') colLocation = c;
+            if (v === 'slack_id') colSlackId  = c;
         }
 
         let foundUser = null;
@@ -285,7 +396,8 @@ app.post('/login', async (req, res) => {
                     jmeno:    colJmeno    >= 0 ? sheet.getCell(r, colJmeno).value?.toString().trim()    : '',
                     email:    email,
                     role:     colRole     >= 0 ? sheet.getCell(r, colRole).value?.toString().trim()     : 'User',
-                    location: colLocation >= 0 ? sheet.getCell(r, colLocation).value?.toString().trim() : ''
+                    location: colLocation >= 0 ? sheet.getCell(r, colLocation).value?.toString().trim() : '',
+                    slack_id: colSlackId  >= 0 ? sheet.getCell(r, colSlackId).value?.toString().trim()  : ''
                 };
                 break;
             }
@@ -750,7 +862,8 @@ app.post('/add-shift', async (req, res) => {
             const auditSheet = doc.sheetsByTitle['AuditLog'];
             if (auditSheet) await auditSheet.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location||'', Action: 'ADD_SHIFT|' + req.body.name + '|' + req.body.product + '|' + req.body.date });
         } catch(e) {}
-        invalidateCache(); // Zrusit cache po pridani smeny
+        invalidateCache();
+        notifyShiftChange(req.user.jmeno, req.body.name, 'added shift', req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + ')');
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
 });
@@ -845,6 +958,7 @@ app.post('/update-shift', async (req, res) => {
         } catch(e) {}
 
         invalidateCache();
+        notifyShiftChange(req.user.jmeno, name || originalName, 'edited shift', (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + ')');
         res.json({ success: true, found: true });
     } catch(e) { res.status(500).send(e.message); }
 });
@@ -897,6 +1011,7 @@ app.post('/delete-shift', async (req, res) => {
         } catch(e) {}
 
         sendSlackMessage(':x: *Shift deleted* by ' + req.user.jmeno + ': ' + name + ' from ' + sheetTitle);
+        notifyShiftChange(req.user.jmeno, name, 'deleted shift', name + ' from ' + sheetTitle);
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
 });
@@ -937,6 +1052,8 @@ app.post('/exchange-shift', async (req, res) => {
         } catch(e) {}
         // Slack notifikace
         sendSlackMessage(':arrows_counterclockwise: *Shift exchange* by ' + req.user.jmeno + ': ' + name1 + ' <-> ' + name2);
+        notifyShiftChange(req.user.jmeno, name1, 'exchanged shifts', name1 + ' ↔ ' + name2 + ' on ' + (date1 || ''));
+        notifyShiftChange(req.user.jmeno, name2, 'exchanged shifts', name1 + ' ↔ ' + name2 + ' on ' + (date2 || ''));
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
 });
@@ -1011,6 +1128,42 @@ app.post('/delete-month', async (req, res) => {
 
         res.json({ success: true, deleted: deletedCount, info: deletedCount + ' manual shifts deleted for ' + m[1] + ' ' + targetYear });
     } catch(e) { res.status(500).send(e.message); }
+});
+
+// --- SLACK SUBSCRIPTIONS API ---
+
+app.get('/api/slack-subscriptions', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    if (!_slackDataLoaded) await loadSlackData();
+    const mySubs = _slackSubscriptions.filter(s => s.subscriber === req.user.jmeno).map(s => s.target);
+    res.json({ subscriptions: mySubs });
+});
+
+app.post('/api/slack-subscriptions', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const { target, action } = req.body; // action: 'add' or 'remove'
+    if (!target || !action) return res.status(400).json({ error: 'Missing target or action' });
+    try {
+        await doc.loadInfo();
+        let subSheet = doc.sheetsByTitle['SlackSubscriptions'];
+        if (!subSheet) {
+            subSheet = await doc.addSheet({ title: 'SlackSubscriptions', headerValues: ['Subscriber', 'Target'] });
+        }
+        if (action === 'add') {
+            // Check duplicate
+            const exists = _slackSubscriptions.some(s => s.subscriber === req.user.jmeno && s.target === target);
+            if (!exists) {
+                await subSheet.addRow({ Subscriber: req.user.jmeno, Target: target });
+                _slackSubscriptions.push({ subscriber: req.user.jmeno, target });
+            }
+        } else if (action === 'remove') {
+            const rows = await subSheet.getRows();
+            const row = rows.find(r => r.get('Subscriber') === req.user.jmeno && r.get('Target') === target);
+            if (row) await row.delete();
+            _slackSubscriptions = _slackSubscriptions.filter(s => !(s.subscriber === req.user.jmeno && s.target === target));
+        }
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // --- DASHBOARD ---
@@ -1994,6 +2147,7 @@ app.get('/dashboard', async (req, res) => {
             <div class="topbar-right" style="display:flex;align-items:center;gap:12px;">
                 <div class="month-label" style="font-weight:700;font-size:0.9rem;color:#5b7fa6;font-family:'Oswald';letter-spacing:1.5px;">${queryDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'}).toUpperCase()}</div>
                 <button onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
+                <button onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
                 <!-- Uzivatel + logout -->
                 <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#13151e;border-radius:10px;border:1px solid #1e2030;">
@@ -2212,6 +2366,23 @@ app.get('/dashboard', async (req, res) => {
         <div class="confirm-btns">
             <button class="confirm-yes" id="confirmYesBtn">Yes</button>
             <button class="confirm-no" onclick="closeConfirm()">No</button>
+        </div>
+    </div>
+</div>
+
+<!-- Slack Settings Modal -->
+<div id="slackModal" style="display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.85);">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#12131a;border:1px solid #1e2030;border-radius:14px;width:380px;max-height:80vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="padding:18px 24px;border-bottom:1px solid #1e2030;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+                <div style="font-size:0.9rem;font-weight:700;color:#e8eaf0;">&#128276; Slack Notifications</div>
+                <div style="font-size:0.62rem;color:#3a4050;margin-top:2px;">Subscribe to shift changes for traders</div>
+            </div>
+            <button onclick="closeSlackSettings()" style="background:none;border:none;color:#3a4050;font-size:1.2rem;cursor:pointer;">&times;</button>
+        </div>
+        <div id="slackSubsList" style="padding:12px 24px;max-height:55vh;overflow-y:auto;"></div>
+        <div style="padding:12px 24px 18px;border-top:1px solid #1e2030;text-align:right;">
+            <button onclick="closeSlackSettings()" style="padding:8px 20px;background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);border-radius:8px;cursor:pointer;font-size:0.75rem;font-weight:700;letter-spacing:0.5px;">DONE</button>
         </div>
     </div>
 </div>
@@ -3054,6 +3225,46 @@ app.get('/dashboard', async (req, res) => {
     }
     function closeConfirm() { document.getElementById('confirmDialog').style.display = 'none'; }
 
+    // Slack subscriptions settings
+    const _allTraderNames = ${JSON.stringify(allNames)};
+    let _mySlackSubs = [];
+
+    async function openSlackSettings() {
+        document.getElementById('slackModal').style.display = 'block';
+        const list = document.getElementById('slackSubsList');
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:#3a4050;font-size:0.75rem;">Loading...</div>';
+        try {
+            const r = await fetch('/api/slack-subscriptions');
+            const data = await r.json();
+            _mySlackSubs = data.subscriptions || [];
+        } catch(e) { _mySlackSubs = []; }
+        renderSlackSubs();
+    }
+
+    function renderSlackSubs() {
+        const list = document.getElementById('slackSubsList');
+        list.innerHTML = _allTraderNames.map(function(name) {
+            const checked = _mySlackSubs.includes(name);
+            return '<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-bottom:1px solid #0e0f16;transition:background 0.1s;" onmouseover="this.style.background=\\'rgba(251,192,45,0.03)\\'" onmouseout="this.style.background=\\'transparent\\'">'
+                + '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="toggleSlackSub(\\'' + name.replace(/'/g,'') + '\\',this.checked)" style="accent-color:#fbc02d;width:16px;height:16px;cursor:pointer;">'
+                + '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (pColors[name] || '#555') + ';flex-shrink:0;"></span>'
+                + '<span style="font-size:0.78rem;color:' + (checked ? '#e8eaf0' : '#4a5060') + ';font-weight:' + (checked ? '600' : '400') + ';">' + name + '</span>'
+                + '</label>';
+        }).join('');
+    }
+
+    async function toggleSlackSub(name, add) {
+        if (add) { _mySlackSubs.push(name); } else { _mySlackSubs = _mySlackSubs.filter(function(n){ return n !== name; }); }
+        renderSlackSubs();
+        await fetch('/api/slack-subscriptions', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ target: name, action: add ? 'add' : 'remove' })
+        });
+    }
+
+    function closeSlackSettings() { document.getElementById('slackModal').style.display = 'none'; }
+
     // BOD 2: Loading spinner pro sync
     function startSync() {
         const btn = document.getElementById('syncBtn');
@@ -3564,4 +3775,7 @@ app.get('/dashboard', async (req, res) => {
     } catch (e) { res.status(500).send("Dashboard Error: "+e.message); }
 });
 
-app.listen(PORT, () => { console.log('Yggdrasil.gg active'); });
+app.listen(PORT, () => {
+    console.log('Yggdrasil.gg active');
+    loadSlackData().catch(e => console.error('Initial Slack data load failed:', e.message));
+});
