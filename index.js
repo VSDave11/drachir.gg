@@ -985,6 +985,11 @@ app.post('/delete-month', async (req, res) => {
             }
         }
 
+        // Hide the Schedule sheet so those shifts don't reappear on reload
+        // (force sync via ?sync=1 will clear _hiddenSheets and bring them back)
+        if (!_hiddenSheets) _hiddenSheets = new Set();
+        _hiddenSheets.add(sheetTitle);
+
         // Invalidate cache
         _shiftsCache = null;
         _shiftsCacheTime = 0;
