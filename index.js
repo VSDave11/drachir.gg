@@ -1858,11 +1858,11 @@ app.get('/dashboard', async (req, res) => {
         @keyframes spin{to{transform:rotate(360deg);}}
 
         /* Timezone toggle */
-        .tz-toggle-btn{position:fixed;bottom:20px;right:20px;background:#0e1621;color:#5b7fa6;border:1px solid #1e2d3d;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:0.15s;display:flex;align-items:center;gap:8px;font-family:'Montserrat',sans-serif;}
-        .tz-toggle-btn:hover{background:#162030;color:#7ba3cc;border-color:rgba(91,127,166,0.5);}
+        .tz-toggle-btn{position:fixed;bottom:20px;right:20px;background:#0e1621;color:#c0d4e8;border:1px solid #2a4060;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:700;font-size:0.8rem;letter-spacing:1px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:0.15s;display:flex;align-items:center;gap:8px;font-family:'Montserrat',sans-serif;}
+        .tz-toggle-btn:hover{background:#162030;color:#e0ecf6;border-color:rgba(91,127,166,0.6);}
         .tz-badge{font-size:0.65rem;background:#0a1018;color:#6090b8;padding:2px 7px;border-radius:4px;font-family:'Montserrat';letter-spacing:1px;border:1px solid #2a4060;}
         .tz-toggle-btn:hover .tz-badge{background:#162030;color:#7ba3cc;}
-        .tz-toggle-btn.lima-active{background:#162030;color:#7ba3cc;border-color:rgba(91,127,166,0.5);box-shadow:0 4px 16px rgba(91,127,166,0.15);}
+        .tz-toggle-btn.lima-active{background:#162030;color:#e0ecf6;border-color:rgba(91,127,166,0.6);box-shadow:0 4px 16px rgba(91,127,166,0.15);}
         .tz-toggle-btn.lima-active .tz-badge{background:#0e1a28;color:#7ba3cc;border-color:rgba(91,127,166,0.5);}
     </style>
     <!-- Early filter: hide unselected rows before first paint to prevent flash -->
