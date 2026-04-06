@@ -1199,7 +1199,7 @@ app.get('/dashboard', async (req, res) => {
         allShifts.forEach(s => {
             const d = new Date(s.Date);
             if(d >= startOfWeek && d <= endOfWeek) {
-                if(weekStats[s.Name] !== undefined && !_offProducts.has(s.Product)) weekStats[s.Name] += calculateDuration(s.Start, s.End);
+                if(weekStats[s.Name] !== undefined && s.Product !== 'RIP') weekStats[s.Name] += calculateDuration(s.Start, s.End);
             }
             if(_offProducts.has(s.Product)) return; // RIP/Vacation = no green dot
             if(s.Date === todayStr) {
