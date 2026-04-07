@@ -2532,6 +2532,7 @@ app.get('/dashboard', async (req, res) => {
     })();
 
     function changeDate(off){
+        saveSelection();
         const p = new URLSearchParams(window.location.search);
         let d = p.get('date') ? new Date(p.get('date')) : new Date();
         d.setDate(d.getDate()+off);
@@ -3302,7 +3303,7 @@ app.get('/dashboard', async (req, res) => {
             const ds=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(i).padStart(2,'0');
             const cellDate=new Date(calYear,calMonth,i);
             const inWeek=cellDate>=weekMon&&cellDate<=weekSun;
-            h+='<div class="m-date'+(isT?' today':'')+(inWeek?' cur-week':'')+'" onclick="location.href=\\'/dashboard?date='+ds+'\\'">' +i+'</div>';
+            h+='<div class="m-date'+(isT?' today':'')+(inWeek?' cur-week':'')+'" onclick="saveSelection();location.href=\\'/dashboard?date='+ds+'\\'">' +i+'</div>';
         }
         document.getElementById('miniCal').innerHTML=h+'</div>';
     }
