@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1); // Render reverse proxy
 
-const COOKIE_SECRET = 'yggdrasil-viking-secret-2026';
+const COOKIE_SECRET = 'drachir-viking-secret-2026';
 app.use(session({
     secret: COOKIE_SECRET,
     resave: false,
@@ -463,13 +463,13 @@ app.get('/change-password', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Change Password — YGGDRASIL.GG</title>
+    <title>Change Password — DRACHIR.GG</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600;700&family=Russo+One&display=swap" rel="stylesheet">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;}
         :root{--gold:#fbc02d;--gold-dim:rgba(251,192,45,0.15);--gold-glow:rgba(251,192,45,0.5);--bg:#0a0b0f;--card:#0d0e14;--border:#1e2030;--text:#e0e0e0;--muted:rgba(255,255,255,0.4);}
         body{font-family:'Chakra Petch',sans-serif;background:var(--bg);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;overflow:hidden;}
-        body::before{content:'';position:fixed;inset:-30px;background:linear-gradient(180deg,rgba(10,11,15,0.25) 0%,rgba(10,11,15,0.55) 100%),url('/images/yggdrasil-bg.jpg') center 30%/cover;z-index:-1;filter:saturate(1.2) brightness(0.9);}
+        body::before{content:'';position:fixed;inset:-30px;background:linear-gradient(180deg,rgba(10,11,15,0.25) 0%,rgba(10,11,15,0.55) 100%),url('/images/drachir-bg.jpg') center 30%/cover;z-index:-1;filter:saturate(1.2) brightness(0.9);}
         body::after{content:'';position:fixed;inset:0;box-shadow:inset 0 0 200px 60px rgba(0,0,0,0.6);z-index:0;pointer-events:none;}
         .card{position:relative;z-index:1;width:100%;max-width:480px;background:rgba(13,14,20,0.88);border:1px solid var(--border);border-radius:20px;overflow:hidden;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(251,192,45,0.06);animation:cardIn 0.5s cubic-bezier(0.16,1,0.3,1);}
         @keyframes cardIn{0%{opacity:0;transform:translateY(20px) scale(0.97);}100%{opacity:1;transform:none;}}
@@ -512,7 +512,7 @@ app.get('/change-password', (req, res) => {
 <div class="card">
     <div class="card-top-line"></div>
     <div class="card-header">
-        <div class="logo">YGGDRASIL.GG</div>
+        <div class="logo">DRACHIR.GG</div>
         <div class="subtitle">Change Password</div>
     </div>
     <div class="card-body">
@@ -734,7 +734,7 @@ app.get('/export-csv', async (req, res) => {
         const month = new Date().toISOString().slice(0,7);
         const fileSuffix = filterName ? '-' + filterName.replace(/[^a-zA-Z0-9]/g, '_') : '';
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="yggdrasil-shifts-' + month + fileSuffix + '.csv"');
+        res.setHeader('Content-Disposition', 'attachment; filename="drachir-shifts-' + month + fileSuffix + '.csv"');
         res.send('\uFEFF' + csv); // BOM pro Excel
     } catch(e) { res.status(500).send('Error: ' + e.message); }
 });
@@ -1847,7 +1847,7 @@ app.get('/dashboard', async (req, res) => {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>YGGDRASIL.GG - Elite Terminal</title>
+    <title>DRACHIR.GG - Elite Terminal</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <style>
         body{background:#0d0e14;color:#333;margin:0;display:block;overflow:hidden;font-family:'Montserrat',sans-serif;}
@@ -1950,7 +1950,7 @@ app.get('/dashboard', async (req, res) => {
         .hidden-row{display:none!important;}
 
         /* BOD 1: Redesign modal – TeamUp styl s tmavým tématem */
-        /* === Shift Modal — Yggdrasil dark theme === */
+        /* === Shift Modal — Drachir dark theme === */
         #modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(5,5,12,0.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
         .modal-outer{background:#0d0e14;margin:3% auto;border-radius:16px;width:560px;max-width:96vw;overflow:hidden;color:#e0e0e0;box-shadow:0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(251,192,45,0.08);border:1px solid #1e2030;animation:modalSlideIn 0.25s cubic-bezier(0.16,1,0.3,1);}
         @keyframes modalSlideIn{0%{opacity:0;transform:translateY(16px) scale(0.97);}100%{opacity:1;transform:translateY(0) scale(1);}}
@@ -2073,7 +2073,7 @@ app.get('/dashboard', async (req, res) => {
     <aside class="sidebar">
         <div class="logo-area">
             <img src="images/oddin-logo.png" alt="Oddin.gg" style="mix-blend-mode:lighten;opacity:0.85;" onerror="this.style.display='none';">
-            <span class="logo-fallback">YGGDRASIL.GG</span>
+            <span class="logo-fallback">DRACHIR.GG</span>
         </div>
         <div class="sidebar-inner">
         <input type="text" id="warriorSearch" placeholder="&#128269; Search traders..." onkeyup="filterWarriors()" style="width:100%;padding:8px 10px;background:#13151e;border:1px solid #1e2030;color:#8892a4;border-radius:6px;margin-bottom:12px;box-sizing:border-box;font-size:0.8rem;outline:none;transition:0.15s;" onfocus="this.style.borderColor='rgba(251,192,45,0.4)';this.style.color='#d0d8e8'" onblur="this.style.borderColor='#1e2030';this.style.color='#8892a4'">
@@ -3777,6 +3777,6 @@ app.get('/dashboard', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log('Yggdrasil.gg active');
+    console.log('Drachir.gg active');
     loadSlackData().catch(e => console.error('Initial Slack data load failed:', e.message));
 });
