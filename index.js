@@ -1737,51 +1737,92 @@ app.get('/dashboard', async (req, res) => {
                 dayColumn += '</div>'; weekGrid += dayColumn;
             }
 
-            mainContentHTML = '<div style="display:flex;flex-direction:column;flex-grow:1;overflow:hidden;background:#f7f7f7;">'
-                            + '<div style="display:flex;background:#fff;position:sticky;top:0;z-index:10;">' + weekHeader + '</div>'
-                            + '<div style="display:flex;flex-grow:1;overflow-y:auto;position:relative;" id="weekViewport">' + weekGrid + '</div>'
+            mainContentHTML = '<div class="week-wrapper" style="display:flex;flex-direction:column;flex-grow:1;overflow:hidden;background:#f7f7f7;">'
+                            + '<div class="week-header-row" style="display:flex;background:#fff;position:sticky;top:0;z-index:10;min-width:760px;">' + weekHeader + '</div>'
+                            + '<div class="week-grid-row" style="display:flex;flex-grow:1;overflow-y:auto;position:relative;min-width:760px;" id="weekViewport">' + weekGrid + '</div>'
                             + '</div>';
         }
 
         // LIST ZOBRAZENÍ
         else if (view === 'list') {
-            const daysFullArr = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            let listHTML = '<div style="flex-grow:1;overflow-y:auto;padding:16px 24px;" id="listViewport">';
-            for (let d = 0; d < 7; d++) {
-                const date = new Date(startOfWeek); date.setDate(startOfWeek.getDate() + d);
-                const dStr = toISOLocal(date);
-                const isToday = dStr === todayStr;
-                const isWeekendL = d >= 5;
-                const dayShifts = allShifts.filter(s => s.Date === dStr).sort((a, b) => a.Start.localeCompare(b.Start));
-                listHTML += '<div style="margin-bottom:18px;">';
-                listHTML += '<div style="padding:10px 0 6px;font-weight:bold;font-size:0.88rem;color:' + (isToday ? '#fbc02d' : isWeekendL ? '#5b8dd9' : '#666') + ';border-bottom:2px solid ' + (isToday ? '#fbc02d' : isWeekendL ? '#b8d0f5' : '#e8e8e8') + ';margin-bottom:6px;display:flex;align-items:center;gap:8px;background:' + (isWeekendL && !isToday ? '#f0f6ff' : 'transparent') + ';border-radius:4px;padding-left:' + (isWeekendL ? '6px' : '0') + ';">'
-                          + (isToday ? '<span style="background:#fbc02d;color:#333;padding:1px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;">TODAY</span>' : '')
-                          + daysFullArr[d] + ', ' + date.getDate() + '. ' + (date.getMonth()+1) + '. ' + date.getFullYear()
-                          + '<span style="font-size:0.72rem;font-weight:normal;color:#bbb;margin-left:auto;">' + (dayShifts.length || 'No') + ' shift' + (dayShifts.length !== 1 ? 's' : '') + '</span>'
-                          + '</div>';
+            const daysShortL = ['sun','mon','tue','wed','thu','fri','sat'];
+            const fmtD = function(dt) { return dt.getDate().toString().padStart(2,'0') + '.' + (dt.getMonth()+1).toString().padStart(2,'0') + '.' + dt.getFullYear(); };
+            function getISOWeek(dt) {
+                const tmp = new Date(dt.getTime()); tmp.setDate(tmp.getDate() + 3 - (tmp.getDay() + 6) % 7);
+                const w1 = new Date(tmp.getFullYear(), 0, 4);
+                return 1 + Math.round(((tmp - w1) / 86400000 - (w1.getDay() + 6) % 7 + 3) / 7);
+            }
+
+            // Server renders 5 weeks: 2 before, current, 2 after. Client JS will load more on scroll.
+            const listStart = new Date(startOfWeek); listStart.setDate(listStart.getDate() - 14);
+            const totalDays = 35;
+
+            let listHTML = '<div class="list-viewport" style="flex-grow:1;overflow-y:auto;background:#f7f7f7;" id="listViewport">';
+
+            function buildListDay(date, dStr, isToday, dow, isWeekendL, dayShifts, showWeekHeader) {
+                let h = '';
+                if (showWeekHeader) {
+                    const wkStart = new Date(date);
+                    if (dow !== 1) { wkStart.setDate(wkStart.getDate() - (dow === 0 ? 6 : dow - 1)); }
+                    const wkEnd = new Date(wkStart); wkEnd.setDate(wkStart.getDate() + 6);
+                    const wn = getISOWeek(date);
+                    const isCurrentWeek = toISOLocal(wkStart) === toISOLocal(startOfWeek);
+                    h += '<div id="' + (isCurrentWeek ? 'listCurrentWeek' : '') + '" style="display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:#eef0f4;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5;">'
+                       + '<span style="font-size:0.8rem;font-weight:600;color:#666;">' + fmtD(wkStart) + ' &ndash; ' + fmtD(wkEnd) + '</span>'
+                       + '<span style="font-size:0.75rem;font-weight:700;color:#999;">Week ' + wn + '</span>'
+                       + '</div>';
+                }
+                h += '<div style="display:flex;min-height:58px;border-bottom:1px solid #e8e8e8;' + (isToday ? 'background:#fffde7;' : isWeekendL ? 'background:#f0f6ff;' : 'background:#fff;') + '" id="' + (isToday ? 'listToday' : '') + '">';
+                h += '<div style="width:52px;flex-shrink:0;padding:12px 0;text-align:center;' + (isToday ? 'border-left:3px solid #fbc02d;' : 'border-left:3px solid transparent;') + '">'
+                   + '<div style="font-size:1.5rem;font-weight:700;color:' + (isToday ? '#e6a800' : isWeekendL ? '#5b8dd9' : '#333') + ';line-height:1;">' + date.getDate() + '</div>'
+                   + '<div style="font-size:0.6rem;font-weight:600;color:' + (isToday ? '#e6a800' : isWeekendL ? '#7aabec' : '#999') + ';margin-top:2px;">' + daysShortL[dow] + '</div>'
+                   + '</div>';
+                h += '<div style="flex:1;padding:8px 12px 8px 8px;">';
                 if (dayShifts.length === 0) {
-                    listHTML += '<div style="padding:6px 0;font-size:0.78rem;color:#ccc;font-style:italic;">No shifts scheduled</div>';
+                    h += '<div style="padding:8px 0;font-size:0.78rem;color:#bbb;font-style:italic;">No events</div>';
                 } else {
                     dayShifts.forEach(s => {
                         const personColor = personColors[s.Name] || '#555';
                         const prodColor   = getProductColor(s.Trading, s.Product);
-                        listHTML += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '"'
-                                  + ' style="display:flex;align-items:center;gap:12px;padding:8px 14px;background:#fff;border-radius:7px;margin-bottom:4px;cursor:pointer;border-left:3px solid ' + personColor + ';box-shadow:0 1px 3px rgba(0,0,0,0.07);transition:box-shadow 0.15s;"'
-                                  + ' onmouseover="this.style.boxShadow=\'0 3px 8px rgba(0,0,0,0.14)\'" onmouseout="this.style.boxShadow=\'0 1px 3px rgba(0,0,0,0.07)\'"'
-                                  + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
-                                  + '<span class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" style="font-size:0.8rem;font-weight:700;color:#555;min-width:110px;flex-shrink:0;">' + s.Start + ' – ' + s.End + '</span>'
-                                  + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + personColor + ';flex-shrink:0;"></span>'
-                                  + '<span style="font-weight:600;font-size:0.85rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + s.Name + '</span>'
-                                  + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + prodColor + ';flex-shrink:0;"></span>'
-                                  + '<span style="font-size:0.82rem;color:#666;white-space:nowrap;">' + s.Product + '</span>'
-                                  + (s.Note ? '<span style="font-size:0.72rem;color:#999;background:#f5f5f5;padding:2px 8px;border-radius:10px;margin-left:4px;white-space:nowrap;">' + s.Note + '</span>' : '')
-                                  + '</div>';
+                        const dur = calculateDuration(s.Start, s.End);
+                        h += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '"'
+                           + ' style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0f0f0;border-radius:10px;margin-bottom:5px;cursor:pointer;border-left:4px solid ' + prodColor + ';box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:box-shadow 0.15s;"'
+                           + ' onmouseover="this.style.boxShadow=\'0 3px 8px rgba(0,0,0,0.12)\'" onmouseout="this.style.boxShadow=\'0 1px 3px rgba(0,0,0,0.06)\'"'
+                           + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                           + '<div style="flex:1;min-width:0;">'
+                           + '<div style="font-weight:700;font-size:0.85rem;color:#222;display:flex;align-items:center;gap:6px;">'
+                           + '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + prodColor + ';flex-shrink:0;"></span>'
+                           + s.Product + '</div>'
+                           + '<div style="font-size:0.72rem;color:#888;margin-top:3px;">'
+                           + '<span class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '">' + s.Start + ' - ' + s.End + '</span>'
+                           + ', ' + s.Trading + ' &gt; ' + s.Name
+                           + '</div>'
+                           + '</div>'
+                           + '<div style="text-align:right;flex-shrink:0;color:#aaa;font-size:0.68rem;">' + dur.toFixed(1) + 'h</div>'
+                           + '</div>';
                     });
                 }
-                listHTML += '</div>';
+                h += '</div></div>';
+                return h;
+            }
+
+            for (let d = 0; d < totalDays; d++) {
+                const date = new Date(listStart); date.setDate(listStart.getDate() + d);
+                const dStr = toISOLocal(date);
+                const isToday = dStr === todayStr;
+                const dow = date.getDay();
+                const isWeekendL = dow === 0 || dow === 6;
+                const dayShifts = allShifts.filter(s => s.Date === dStr).sort((a, b) => a.Start.localeCompare(b.Start));
+                const showWeekHeader = dow === 1 || d === 0;
+                listHTML += buildListDay(date, dStr, isToday, dow, isWeekendL, dayShifts, showWeekHeader);
             }
             listHTML += '</div>';
-            mainContentHTML = '<div style="display:flex;flex-direction:column;flex-grow:1;overflow:hidden;background:#f7f7f7;">' + listHTML + '</div>';
+
+            // Serialize allShifts dates for client-side infinite scroll
+            const listShiftsJSON = JSON.stringify(allShifts.map(s => ({D:s.Date,N:s.Name,S:s.Start,E:s.End,P:s.Product,T:s.Trading,No:s.Note||'',_s:s._sheet||'',_r:s._row||0,_c:s._col||0})));
+
+            mainContentHTML = '<div class="list-wrapper" style="display:flex;flex-direction:column;flex-grow:1;overflow:hidden;">' + listHTML + '</div>'
+                            + '<script>window._listShifts=' + listShiftsJSON + ';window._listStartISO="' + toISOLocal(listStart) + '";window._listDaysRendered=' + totalDays + ';</script>';
         }
 
         // AGENDA ZOBRAZENÍ
@@ -1847,6 +1888,13 @@ app.get('/dashboard', async (req, res) => {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0d0e14">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
+    <link rel="apple-touch-icon" href="/images/icon.svg">
     <title>DRACHIR.GG - Elite Terminal</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <style>
@@ -1860,10 +1908,50 @@ app.get('/dashboard', async (req, res) => {
             .sidebar{display:none!important;}
             .mobile-menu-btn{display:flex!important;}
             .sidebar.mobile-open{display:flex!important;position:fixed;left:0;top:0;width:280px;height:100vh;z-index:999;box-shadow:4px 0 32px rgba(0,0,0,0.7);}
-            .topbar-right{gap:8px!important;}
+            .topbar-right{gap:4px!important;}
             .topbar-right .month-label{display:none;}
+            .topbar-right .user-box{display:none!important;}
+            .topbar-right .btn-slack{display:none!important;}
+            .mobile-user-compact{display:flex!important;}
+            /* View toggle - menší, LIST first na mobilu */
+            .view-toggle-bar{flex-wrap:nowrap;}
+            .view-toggle-bar button{padding:6px 8px!important;font-size:0.62rem!important;}
+            .view-toggle-bar .vt-list{order:-1!important;}
+            .btn-current-week{padding:5px 8px!important;font-size:0.62rem!important;letter-spacing:0!important;}
+            /* TZ toggle — skrýt fixed button, ukázat sidebar verzi */
+            .tz-toggle-btn{display:none!important;}
+            .sidebar-tz-toggle{display:flex!important;}
+            /* Modal na celou šířku */
+            .modal-outer{margin:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;height:100vh!important;max-height:100vh!important;display:flex;flex-direction:column;}
+            .modal-form-section{overflow-y:auto;flex:1;}
+            .modal-actions{flex-shrink:0;}
+            .modal-info-strip{flex-wrap:wrap;padding:10px 16px!important;gap:12px!important;}
+            .modal-header{padding:16px!important;}
+            .modal-form-section{padding:14px 16px!important;}
+            .modal-actions{padding:14px 16px!important;}
+            .modal-tags-row{padding:10px 16px!important;}
+            .modal-row2{flex-direction:column!important;gap:0!important;}
+            /* Sidebar: Color Settings skrýt, Logout ukázat */
+            .sidebar-color-btn{display:none!important;}
+            .sidebar-logout-btn{display:block!important;}
+            /* Week view na mobilu — horizontální scroll */
+            .week-wrapper{overflow-x:auto!important;-webkit-overflow-scrolling:touch;}
+            /* List view na mobilu — uz dark, jen drobne tweaky */
+            .list-viewport{padding:0!important;}
+            /* Agenda na mobilu */
+            #agendaViewport .user-row{gap:6px!important;padding:6px 8px!important;}
+        }
+        @media (max-width: 480px) {
+            .view-toggle-bar button{padding:5px 7px!important;font-size:0.6rem!important;letter-spacing:0!important;}
+            .topbar-main{padding:8px 10px!important;}
+            .shift-pill{font-size:0.55rem!important;padding:0 4px!important;}
+            .mobile-user-compact{font-size:0.7rem!important;}
+            .list-viewport{padding:0!important;}
         }
         .mobile-menu-btn{display:none;background:#000;border:1px solid #333;color:#fbc02d;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:1.1rem;align-items:center;}
+        .sidebar-logout-btn{display:none;}
+        .sidebar-tz-toggle{display:none;}
+        .mobile-user-compact{display:none!important;}
         .mobile-overlay{display:none;position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:998;}
         .mobile-overlay.show{display:block;}
         .dashboard-container{display:grid;grid-template-columns:280px 1fr;height:100vh;}
@@ -2054,9 +2142,19 @@ app.get('/dashboard', async (req, res) => {
         .tz-toggle-btn.lima-active{background:#162030;color:#e0ecf6;border-color:rgba(91,127,166,0.6);box-shadow:0 4px 16px rgba(91,127,166,0.15);}
         .tz-toggle-btn.lima-active .tz-badge{background:#0e1a28;color:#7ba3cc;border-color:rgba(91,127,166,0.5);}
     </style>
-    <!-- Early filter: hide unselected rows before first paint to prevent flash -->
+    <!-- Early: restore saved view + hide unselected rows before first paint -->
     <script>
     (function(){
+        // Restore saved view if no ?view= in URL
+        const p=new URLSearchParams(window.location.search);
+        if(!p.has('view')){
+            const sv=localStorage.getItem('ygg_view');
+            if(sv && ['timeline','week','list','agenda'].includes(sv) && sv!=='timeline'){
+                p.set('view',sv);
+                window.location.replace('/dashboard?'+p.toString());
+                return;
+            }
+        }
         const names=(localStorage.getItem('ygg_sel_names')||'').split('||').filter(Boolean);
         const prods=(localStorage.getItem('ygg_sel_prods')||'').split('||').filter(Boolean);
         if(names.length||prods.length){
@@ -2126,31 +2224,42 @@ app.get('/dashboard', async (req, res) => {
             }).join('')
         ).join('')}
         </div>
-        <div style="padding:12px 16px;border-top:1px solid #1e2030;">
-            <button onclick="openColorPicker()" style="width:100%;padding:9px;background:rgba(255,255,255,0.03);border:1px solid #1e2030;border-radius:8px;color:#5b7fa6;cursor:pointer;font-size:0.72rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">&#127912; Color Settings</button>
+        <div style="padding:12px 16px;border-top:1px solid #1e2030;flex-shrink:0;">
+            <button class="sidebar-color-btn" onclick="openColorPicker()" style="width:100%;padding:9px;background:rgba(255,255,255,0.03);border:1px solid #1e2030;border-radius:8px;color:#5b7fa6;cursor:pointer;font-size:0.72rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;margin-bottom:6px;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">&#127912; Color Settings</button>
+            <button class="sidebar-tz-toggle" onclick="toggleTimezone()" style="width:100%;padding:9px;background:#0e1621;border:1px solid #2a4060;border-radius:8px;color:#c0d4e8;cursor:pointer;font-size:0.72rem;font-weight:700;letter-spacing:1px;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;margin-bottom:8px;font-family:'Montserrat',sans-serif;">&#127757; <span class="sidebar-tz-label">EUROPE</span> <span class="tz-badge" style="font-size:0.6rem;background:#0a1018;color:#6090b8;padding:2px 7px;border-radius:4px;letter-spacing:1px;border:1px solid #2a4060;">-&gt; LIMA</span></button>
+            <div class="sidebar-logout-btn">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0 10px;">
+                    <div style="width:32px;height:32px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(251,192,45,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#fbc02d;font-size:0.9rem;flex-shrink:0;">${req.user.jmeno ? req.user.jmeno.charAt(0).toUpperCase() : '?'}</div>
+                    <div>
+                        <div style="font-weight:700;font-size:0.85rem;color:#c8d0e0;">${req.user.jmeno || ''}</div>
+                        <span style="font-size:0.6rem;padding:1px 7px;border-radius:10px;font-weight:700;${req.user.role === 'Admin' ? 'background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.22);' : 'background:rgba(33,150,243,0.1);color:#64b5f6;border:1px solid rgba(33,150,243,0.22);'}">${req.user.role || 'User'}</span>
+                    </div>
+                </div>
+                <a href="/logout" style="display:block;width:100%;padding:10px;background:rgba(251,192,45,0.08);border:1px solid rgba(251,192,45,0.2);border-radius:8px;color:#fbc02d;font-size:0.75rem;font-weight:700;font-family:'Oswald',sans-serif;letter-spacing:1.5px;text-transform:uppercase;text-align:center;text-decoration:none;transition:all 0.2s;box-sizing:border-box;" onmouseover="this.style.background='rgba(251,192,45,0.18)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'">&#10151; LOGOUT</a>
+            </div>
         </div>
         </div>
     </aside>
 
     <main style="display:flex;flex-direction:column;overflow:hidden;background:#fafafa;">
-        <div style="padding:10px 20px;border-bottom:1px solid #1e2030;display:flex;justify-content:space-between;align-items:center;background:#0d0e14;">
+        <div class="topbar-main" style="padding:10px 20px;border-bottom:1px solid #1e2030;display:flex;justify-content:space-between;align-items:center;background:#0d0e14;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <!-- BOD 1: Mobilni menu tlacitko -->
                 <button class="mobile-menu-btn" onclick="toggleMobileMenu()" title="Menu">&#9776;</button>
-                <div style="background:#13151e;border-radius:8px;padding:3px;display:inline-flex;gap:1px;border:1px solid #1e2030;">
+                <div class="view-toggle-bar" style="background:#13151e;border-radius:8px;padding:3px;display:inline-flex;gap:1px;border:1px solid #1e2030;">
                     <button onclick="switchView('timeline')" style="padding:6px 13px;border:none;cursor:pointer;border-radius:5px;font-weight:700;font-size:0.75rem;letter-spacing:0.5px;transition:0.15s;${view==='timeline'?'background:#1e2030;color:#fbc02d;':'background:transparent;color:#4a5060;'}">TIMELINE</button>
                     <button onclick="switchView('week')" style="padding:6px 13px;border:none;cursor:pointer;border-radius:5px;font-weight:700;font-size:0.75rem;letter-spacing:0.5px;transition:0.15s;${view==='week'?'background:#1e2030;color:#fbc02d;':'background:transparent;color:#4a5060;'}">WEEK</button>
-                    <button onclick="switchView('list')" style="padding:6px 13px;border:none;cursor:pointer;border-radius:5px;font-weight:700;font-size:0.75rem;letter-spacing:0.5px;transition:0.15s;${view==='list'?'background:#1e2030;color:#fbc02d;':'background:transparent;color:#4a5060;'}">LIST</button>
+                    <button class="vt-list" onclick="switchView('list')" style="padding:6px 13px;border:none;cursor:pointer;border-radius:5px;font-weight:700;font-size:0.75rem;letter-spacing:0.5px;transition:0.15s;${view==='list'?'background:#1e2030;color:#fbc02d;':'background:transparent;color:#4a5060;'}">LIST</button>
                     <button onclick="switchView('agenda')" style="padding:6px 13px;border:none;cursor:pointer;border-radius:5px;font-weight:700;font-size:0.75rem;letter-spacing:0.5px;transition:0.15s;${view==='agenda'?'background:#1e2030;color:#fbc02d;':'background:transparent;color:#4a5060;'}">AGENDA</button>
                 </div>
             </div>
             <div class="topbar-right" style="display:flex;align-items:center;gap:12px;">
                 <div class="month-label" style="font-weight:700;font-size:0.9rem;color:#5b7fa6;font-family:'Oswald';letter-spacing:1.5px;">${queryDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'}).toUpperCase()}</div>
-                <button onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
-                <button onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
+                <button class="btn-current-week" onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
+                <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
-                <!-- Uzivatel + logout -->
-                <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#13151e;border-radius:10px;border:1px solid #1e2030;">
+                <!-- Uzivatel desktop -->
+                <div class="user-box" style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#13151e;border-radius:10px;border:1px solid #1e2030;">
                     <div style="width:36px;height:36px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(251,192,45,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#fbc02d;font-size:1rem;flex-shrink:0;">
                         ${req.user.jmeno ? req.user.jmeno.charAt(0).toUpperCase() : '?'}
                     </div>
@@ -2163,6 +2272,17 @@ app.get('/dashboard', async (req, res) => {
                     </div>
                     <a href="/change-password" style="padding:6px 11px;background:#0a0b0f;color:#3a4050;border-radius:6px;text-decoration:none;font-size:0.68rem;border:1px solid #1e2030;transition:0.15s;" onmouseover="this.style.color='#8892a4';this.style.borderColor='#2e3348'" onmouseout="this.style.color='#3a4050';this.style.borderColor='#1e2030'" title="Change Password">&#128274; PWD</a>
                     <a href="/logout" style="padding:6px 14px;background:rgba(251,192,45,0.08);color:#fbc02d;border-radius:6px;text-decoration:none;font-size:0.75rem;font-weight:700;font-family:'Oswald';letter-spacing:1px;border:1px solid rgba(251,192,45,0.2);transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.18)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'">LOGOUT</a>
+                </div>
+                <!-- Uzivatel mobile - compact -->
+                <div class="mobile-user-compact" style="align-items:center;gap:5px;padding:4px 8px;background:#13151e;border-radius:8px;border:1px solid #1e2030;cursor:pointer;position:relative;" onclick="var m=document.getElementById('mobileUserMenu');m.style.display=m.style.display==='block'?'none':'block';">
+                    <div style="width:24px;height:24px;border-radius:50%;background:#0a0b0f;border:1.5px solid rgba(251,192,45,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#fbc02d;font-size:0.7rem;flex-shrink:0;">
+                        ${req.user.jmeno ? req.user.jmeno.charAt(0).toUpperCase() : '?'}
+                    </div>
+                    <span style="color:#c8d0e0;font-size:0.65rem;font-weight:600;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${req.user.jmeno || ''}</span>
+                    <div id="mobileUserMenu" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:#13151e;border:1px solid #1e2030;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.6);min-width:140px;z-index:999;overflow:hidden;">
+                        <a href="/change-password" style="display:block;padding:10px 14px;color:#8892a4;text-decoration:none;font-size:0.72rem;border-bottom:1px solid #1e2030;transition:0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">&#128274; Change Password</a>
+                        <a href="/logout" style="display:block;padding:10px 14px;color:#fbc02d;text-decoration:none;font-size:0.72rem;font-weight:700;transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.08)'" onmouseout="this.style.background='transparent'">&#10151; Logout</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2538,7 +2658,7 @@ app.get('/dashboard', async (req, res) => {
         d.setDate(d.getDate()+off);
         window.location.href='/dashboard?view=${view}&date='+d.toISOString().split('T')[0];
     }
-    function switchView(v){ saveSelection(); const p=new URLSearchParams(window.location.search); p.set('view',v); window.location.href='/dashboard?'+p.toString(); }
+    function switchView(v){ saveSelection(); localStorage.setItem('ygg_view',v); const p=new URLSearchParams(window.location.search); p.set('view',v); window.location.href='/dashboard?'+p.toString(); }
 
     // BOD 1: MODAL
     function openViewModal(name,date,start,end,product,note,trading,personColor,prodColor,sheetTitle,row,col){
@@ -3166,7 +3286,33 @@ app.get('/dashboard', async (req, res) => {
         const overlay = document.getElementById('mobileOverlay');
         sidebar.classList.toggle('mobile-open');
         overlay.classList.toggle('show');
+        document.body.style.overflow = sidebar.classList.contains('mobile-open') ? 'hidden' : '';
     }
+    function closeMobileMenu() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('mobileOverlay');
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+    // Swipe to close sidebar
+    (function() {
+        let touchStartX = 0, touchStartY = 0, swiping = false;
+        document.addEventListener('touchstart', function(e) {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar.classList.contains('mobile-open')) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            swiping = true;
+        }, {passive: true});
+        document.addEventListener('touchend', function(e) {
+            if (!swiping) return;
+            swiping = false;
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+            if (dx < -60 && dy < 100) closeMobileMenu();
+        }, {passive: true});
+    })();
 
     // =============================================
     // BOD 3+5: DELETE SHIFT a DELETE MONTH
@@ -3442,6 +3588,24 @@ app.get('/dashboard', async (req, res) => {
             }
         });
 
+        // Week view: reposition pills vertically
+        const _wkVp=document.getElementById('weekViewport');
+        if(_wkVp){
+            _wkVp.querySelectorAll('.shift-pill[data-orig-start]').forEach(pill=>{
+                const os=pill.dataset.origStart, oe=pill.dataset.origEnd;
+                if(!os||!oe) return;
+                const [sH,sM]=os.split(':').map(Number),[eH,eM]=oe.split(':').map(Number);
+                let nsm=sH*60+sM+off*60, nem=eH*60+eM+off*60;
+                while(nsm<0) nsm+=1440; while(nsm>=1440) nsm-=1440;
+                while(nem<0) nem+=1440; while(nem>=1440) nem-=1440;
+                const isON=nsm>nem&&nem>0;
+                const sTop=(nsm/1440)*(24*40);
+                const height=isON?(1-nsm/1440)*(24*40):((nem===0?1440:nem)-nsm)/1440*(24*40);
+                pill.style.top=sTop+'px';
+                pill.style.height=Math.max(height,12)+'px';
+            });
+        }
+
         // Update time text in Week, List, Agenda views (.tz-time elements)
         document.querySelectorAll('.tz-time').forEach(el=>{
             const os=el.dataset.origStart, oe=el.dataset.origEnd;
@@ -3458,19 +3622,24 @@ app.get('/dashboard', async (req, res) => {
                 el.textContent=nsH+':'+nsMin+'-'+neH+':'+neMin+' '+prod;
             } else {
                 // List/Agenda view: "HH:MM – HH:MM"
-                el.textContent=nsH+':'+nsMin+' \\u2013 '+neH+':'+neMin;
+                el.textContent=nsH+':'+nsMin+' \u2013 '+neH+':'+neMin;
             }
         });
 
         if(curTz==='lima'){
-            btn.classList.add('lima-active');
+            if(btn){btn.classList.add('lima-active');}
             document.getElementById('tzLabel').textContent='LIMA';
             document.getElementById('tzBadge').textContent='-> EUROPE';
         } else {
-            btn.classList.remove('lima-active');
+            if(btn){btn.classList.remove('lima-active');}
             document.getElementById('tzLabel').textContent='EUROPE';
             document.getElementById('tzBadge').textContent='-> LIMA';
         }
+        // Sync sidebar TZ toggle
+        const sTz=document.querySelector('.sidebar-tz-label');
+        const sTzBadge=document.querySelector('.sidebar-tz-toggle .tz-badge');
+        if(sTz) sTz.textContent=curTz==='lima'?'LIMA':'EUROPE';
+        if(sTzBadge) sTzBadge.textContent=curTz==='lima'?'-> EUROPE':'-> LIMA';
     }
 
     // BOD 2: Scroll vždy na začátek = Pondělí
@@ -3495,6 +3664,67 @@ app.get('/dashboard', async (req, res) => {
         // Agenda view: scroll to today
         const agendaToday = document.getElementById('agendaToday');
         if (agendaToday) agendaToday.scrollIntoView({ block: 'start' });
+
+        // List view: scroll to today + infinite scroll
+        const listToday = document.getElementById('listToday');
+        if (listToday) listToday.scrollIntoView({ block: 'start' });
+        const _lv = document.getElementById('listViewport');
+        if (_lv && window._listShifts) {
+            const pColors = JSON.parse('${personColorsJSON}');
+            let _ldRendered = window._listDaysRendered;
+            let _ldStart = new Date(window._listStartISO);
+            let _loading = false;
+            function _isoLocal(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+dd;}
+            function _fmtD(dt){return dt.getDate().toString().padStart(2,'0')+'.'+(dt.getMonth()+1).toString().padStart(2,'0')+'.'+dt.getFullYear();}
+            function _getWk(dt){const t=new Date(dt.getTime());t.setDate(t.getDate()+3-(t.getDay()+6)%7);const w=new Date(t.getFullYear(),0,4);return 1+Math.round(((t-w)/864e5-(w.getDay()+6)%7+3)/7);}
+            const _dN=['sun','mon','tue','wed','thu','fri','sat'];
+            function _calcDur(s,e){const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);let d=(eh*60+em-sh*60-sm)/60;if(d<=0)d+=24;return d;}
+            function _appendWeek(){
+                if(_loading) return;
+                _loading = true;
+                const start = _ldRendered;
+                for(let d=start;d<start+7;d++){
+                    const dt=new Date(_ldStart);dt.setDate(_ldStart.getDate()+d);
+                    const dStr=_isoLocal(dt), dow=dt.getDay(), isWE=dow===0||dow===6;
+                    const shifts=window._listShifts.filter(s=>s.D===dStr).sort((a,b)=>a.S.localeCompare(b.S));
+                    let h='';
+                    if(dow===1||(d===start&&dow!==1)){
+                        const ws=new Date(dt);if(dow!==1)ws.setDate(ws.getDate()-(dow===0?6:dow-1));
+                        const we=new Date(ws);we.setDate(ws.getDate()+6);
+                        h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:#eef0f4;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5;">'
+                          +'<span style="font-size:0.8rem;font-weight:600;color:#666;">'+_fmtD(ws)+' &ndash; '+_fmtD(we)+'</span>'
+                          +'<span style="font-size:0.75rem;font-weight:700;color:#999;">Week '+_getWk(dt)+'</span></div>';
+                    }
+                    h+='<div style="display:flex;min-height:58px;border-bottom:1px solid #e8e8e8;'+(isWE?'background:#f0f6ff;':'background:#fff;')+'">';
+                    h+='<div style="width:52px;flex-shrink:0;padding:12px 0;text-align:center;border-left:3px solid transparent;">'
+                      +'<div style="font-size:1.5rem;font-weight:700;color:'+(isWE?'#5b8dd9':'#333')+';line-height:1;">'+dt.getDate()+'</div>'
+                      +'<div style="font-size:0.6rem;font-weight:600;color:'+(isWE?'#7aabec':'#999')+';margin-top:2px;">'+_dN[dow]+'</div></div>';
+                    h+='<div style="flex:1;padding:8px 12px 8px 8px;">';
+                    if(shifts.length===0){h+='<div style="padding:8px 0;font-size:0.78rem;color:#bbb;font-style:italic;">No events</div>';}
+                    else{shifts.forEach(s=>{
+                        const pc=pColors[s.N]||'#555',prc=s.P in (window.pColorsProduct||{})?window.pColorsProduct[s.P]:'#888';
+                        h+='<div class="user-row product-row" data-name="'+s.N+'" data-product-row="'+s.P+'" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0f0f0;border-radius:10px;margin-bottom:5px;cursor:pointer;border-left:4px solid '+prc+';box-shadow:0 1px 3px rgba(0,0,0,0.06);"'
+                          +' onclick="openViewModal(\\''+s.N.replace(/'/g,'')+'\\',\\''+dStr+'\\',\\''+s.S+'\\',\\''+s.E+'\\',\\''+s.P.replace(/'/g,'')+'\\',\\''+s.No.replace(/'/g,'')+'\\',\\''+s.T+'\\',\\''+pc+'\\',\\''+prc+'\\',\\''+s._s+'\\','+s._r+','+s._c+')">'
+                          +'<div style="flex:1;min-width:0;">'
+                          +'<div style="font-weight:700;font-size:0.85rem;color:#222;display:flex;align-items:center;gap:6px;">'
+                          +'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+prc+';flex-shrink:0;"></span>'+s.P+'</div>'
+                          +'<div style="font-size:0.72rem;color:#888;margin-top:3px;">'
+                          +'<span class="tz-time" data-orig-start="'+s.S+'" data-orig-end="'+s.E+'">'+s.S+' - '+s.E+'</span>, '+s.T+' &gt; '+s.N+'</div></div>'
+                          +'<div style="text-align:right;flex-shrink:0;color:#aaa;font-size:0.68rem;">'+_calcDur(s.S,s.E).toFixed(1)+'h</div></div>';
+                    });}
+                    h+='</div></div>';
+                    _lv.insertAdjacentHTML('beforeend',h);
+                }
+                _ldRendered+=7;
+                _loading=false;
+                if(typeof applyAllFilters==='function') applyAllFilters();
+            }
+            if(window.innerWidth<=768){
+                _lv.addEventListener('scroll',function(){
+                    if(_lv.scrollTop+_lv.clientHeight>=_lv.scrollHeight-200) _appendWeek();
+                });
+            }
+        }
 
         // Obnov vybrane osoby / produkty z localStorage
         const savedNames = (localStorage.getItem('ygg_sel_names') || '').split('||').filter(Boolean);
@@ -3627,7 +3857,7 @@ app.get('/dashboard', async (req, res) => {
             dispStart = _convTime(start, LIMA);
             dispEnd = _convTime(end, LIMA);
         }
-        document.getElementById('ttTime').textContent = dispStart + ' \\u2013 ' + dispEnd;
+        document.getElementById('ttTime').textContent = dispStart + ' \u2013 ' + dispEnd;
         document.getElementById('ttProduct').innerHTML =
             '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+prodColor+';margin-right:5px;vertical-align:middle;"></span>'
             + trading + ' \\u203a ' + product;

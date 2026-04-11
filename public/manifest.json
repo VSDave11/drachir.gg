@@ -1,0 +1,18 @@
+{
+  "name": "Drachir.gg - Schedule Calendar",
+  "short_name": "Drachir.gg",
+  "description": "Esims Schedule Calendar",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0d0e14",
+  "theme_color": "#0d0e14",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/images/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
