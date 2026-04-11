@@ -1908,14 +1908,17 @@ app.get('/dashboard', async (req, res) => {
             .sidebar{display:none!important;}
             .mobile-menu-btn{display:flex!important;}
             .sidebar.mobile-open{display:flex!important;position:fixed;left:0;top:0;width:280px;height:100vh;z-index:999;box-shadow:4px 0 32px rgba(0,0,0,0.7);}
-            .topbar-right{gap:4px!important;}
+            /* Topbar — dva řádky na mobilu */
+            .topbar-main{flex-wrap:wrap!important;padding:6px 10px!important;gap:6px!important;}
+            .topbar-left{width:100%;display:flex;align-items:center;gap:8px;}
+            .topbar-right{width:100%;display:flex;align-items:center;justify-content:flex-end;gap:6px!important;}
             .topbar-right .month-label{display:none;}
             .topbar-right .user-box{display:none!important;}
             .topbar-right .btn-slack{display:none!important;}
             .mobile-user-compact{display:flex!important;}
             /* View toggle - menší, LIST first na mobilu */
-            .view-toggle-bar{flex-wrap:nowrap;}
-            .view-toggle-bar button{padding:6px 8px!important;font-size:0.62rem!important;}
+            .view-toggle-bar{flex:1;}
+            .view-toggle-bar button{padding:6px 8px!important;font-size:0.62rem!important;flex:1;}
             .view-toggle-bar .vt-list{order:-1!important;}
             .btn-current-week{padding:5px 8px!important;font-size:0.62rem!important;letter-spacing:0!important;}
             /* TZ toggle — skrýt fixed button, ukázat sidebar verzi */
@@ -1942,8 +1945,7 @@ app.get('/dashboard', async (req, res) => {
             #agendaViewport .user-row{gap:6px!important;padding:6px 8px!important;}
         }
         @media (max-width: 480px) {
-            .view-toggle-bar button{padding:5px 7px!important;font-size:0.6rem!important;letter-spacing:0!important;}
-            .topbar-main{padding:8px 10px!important;}
+            .view-toggle-bar button{padding:5px 6px!important;font-size:0.58rem!important;}
             .shift-pill{font-size:0.55rem!important;padding:0 4px!important;}
             .mobile-user-compact{font-size:0.7rem!important;}
             .list-viewport{padding:0!important;}
@@ -2243,7 +2245,7 @@ app.get('/dashboard', async (req, res) => {
 
     <main style="display:flex;flex-direction:column;overflow:hidden;background:#fafafa;">
         <div class="topbar-main" style="padding:10px 20px;border-bottom:1px solid #1e2030;display:flex;justify-content:space-between;align-items:center;background:#0d0e14;">
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="topbar-left" style="display:flex;align-items:center;gap:10px;">
                 <!-- BOD 1: Mobilni menu tlacitko -->
                 <button class="mobile-menu-btn" onclick="toggleMobileMenu()" title="Menu">&#9776;</button>
                 <div class="view-toggle-bar" style="background:#13151e;border-radius:8px;padding:3px;display:inline-flex;gap:1px;border:1px solid #1e2030;">
