@@ -1908,19 +1908,19 @@ app.get('/dashboard', async (req, res) => {
             .sidebar{display:none!important;}
             .mobile-menu-btn{display:flex!important;}
             .sidebar.mobile-open{display:flex!important;position:fixed;left:0;top:0;width:280px;height:100vh;z-index:999;box-shadow:4px 0 32px rgba(0,0,0,0.7);}
-            /* Topbar — dva řádky na mobilu */
-            .topbar-main{flex-wrap:wrap!important;padding:6px 10px!important;gap:6px!important;}
-            .topbar-left{width:100%;display:flex;align-items:center;gap:8px;}
-            .topbar-right{width:100%;display:flex;align-items:center;justify-content:flex-end;gap:6px!important;}
-            .topbar-right .month-label{display:none;}
+            /* Topbar — jedna řada, kompaktní */
+            .topbar-main{padding:6px 8px!important;}
+            .topbar-left{gap:6px!important;}
+            .topbar-right{gap:4px!important;}
+            .topbar-right .month-label{display:none!important;}
             .topbar-right .user-box{display:none!important;}
             .topbar-right .btn-slack{display:none!important;}
+            .topbar-right .btn-current-week{display:none!important;}
             .mobile-user-compact{display:flex!important;}
             /* View toggle - menší, LIST first na mobilu */
-            .view-toggle-bar{flex:1;}
-            .view-toggle-bar button{padding:6px 8px!important;font-size:0.62rem!important;flex:1;}
+            .view-toggle-bar{gap:0px!important;}
+            .view-toggle-bar button{padding:5px 7px!important;font-size:0.6rem!important;letter-spacing:0!important;}
             .view-toggle-bar .vt-list{order:-1!important;}
-            .btn-current-week{padding:5px 8px!important;font-size:0.62rem!important;letter-spacing:0!important;}
             /* TZ toggle — skrýt fixed button, ukázat sidebar verzi */
             .tz-toggle-btn{display:none!important;}
             .sidebar-tz-toggle{display:flex!important;}
@@ -1939,15 +1939,15 @@ app.get('/dashboard', async (req, res) => {
             .sidebar-logout-btn{display:block!important;}
             /* Week view na mobilu — horizontální scroll */
             .week-wrapper{overflow-x:auto!important;-webkit-overflow-scrolling:touch;}
-            /* List view na mobilu — uz dark, jen drobne tweaky */
+            /* List view na mobilu */
             .list-viewport{padding:0!important;}
             /* Agenda na mobilu */
             #agendaViewport .user-row{gap:6px!important;padding:6px 8px!important;}
         }
         @media (max-width: 480px) {
-            .view-toggle-bar button{padding:5px 6px!important;font-size:0.58rem!important;}
+            .view-toggle-bar button{padding:4px 5px!important;font-size:0.55rem!important;}
             .shift-pill{font-size:0.55rem!important;padding:0 4px!important;}
-            .mobile-user-compact{font-size:0.7rem!important;}
+            .mobile-user-compact span{display:none!important;}
             .list-viewport{padding:0!important;}
         }
         .mobile-menu-btn{display:none;background:#000;border:1px solid #333;color:#fbc02d;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:1.1rem;align-items:center;}
