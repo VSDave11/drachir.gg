@@ -1908,8 +1908,8 @@ app.get('/dashboard', async (req, res) => {
             .sidebar{display:none!important;}
             .mobile-menu-btn{display:flex!important;}
             .sidebar.mobile-open{display:flex!important;position:fixed;left:0;top:0;width:280px;height:100vh;z-index:999;box-shadow:4px 0 32px rgba(0,0,0,0.7);}
-            /* Main — na mobilu scroll, aby sticky topbar fungoval */
-            .main-content{overflow-y:auto!important;-webkit-overflow-scrolling:touch;}
+            /* Main — na mobilu scroll POUZE pro list view, aby sticky topbar fungoval */
+            .main-view-list{overflow-y:auto!important;-webkit-overflow-scrolling:touch;}
             /* Topbar — fixni na vrchu, nikdy nezmizi */
             .topbar-main{padding:6px 8px!important;position:sticky!important;top:0!important;z-index:100!important;flex-shrink:0!important;min-height:40px!important;}
             .topbar-left{gap:6px!important;}
@@ -2247,7 +2247,7 @@ app.get('/dashboard', async (req, res) => {
         </div>
     </aside>
 
-    <main class="main-content" style="display:flex;flex-direction:column;overflow:hidden;background:#fafafa;">
+    <main class="main-content main-view-${view}" style="display:flex;flex-direction:column;overflow:hidden;background:#fafafa;">
         <div class="topbar-main" style="padding:10px 20px;border-bottom:1px solid #1e2030;display:flex;justify-content:space-between;align-items:center;background:#0d0e14;">
             <div class="topbar-left" style="display:flex;align-items:center;gap:10px;">
                 <!-- BOD 1: Mobilni menu tlacitko -->
