@@ -1893,8 +1893,8 @@ app.get('/dashboard', async (req, res) => {
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
-    <link rel="apple-touch-icon" href="/images/icon.svg">
+    <link rel="icon" type="image/jpeg" href="/images/drachir-bg.jpg">
+    <link rel="apple-touch-icon" href="/images/drachir-bg.jpg">
     <title>DRACHIR.GG - Elite Terminal</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <style>
