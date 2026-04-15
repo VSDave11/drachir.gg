@@ -16,5 +16,8 @@
     "express-session": "^1.19.0",
     "google-auth-library": "^10.6.1",
     "google-spreadsheet": "^5.2.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
   }
 }

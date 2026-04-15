@@ -298,6 +298,147 @@ const productColors = {
     "Madden":          "#795548",
 };
 
+// --- SDÍLENÁ DATA (dashboard + stats) ---
+const peopleHierarchy = [
+    { label: "Head of Trading - eSims", color: "#fbc02d", target: 0,  members: ["David Winkler"] },
+    { label: "Quality Assurance",       color: "#03a9f4", target: 16, members: ["Ondřej Merxbauer"] },
+    { label: "Master Scheduler",        color: "#e91e63", target: 24, members: ["David Kuchař"] },
+    { label: "Team Leaders",            color: "#4caf50", target: 20, members: ["Lukáš Novotný", "FIlip Sklenička", "Jindřich Lacina", "David Tročino", "David Lamač", "Tomáš Komenda", "Dominik Chvátal", "Marcelo Goto"] },
+    { label: "Title Experts",           color: "#9c27b0", target: 24, members: ["Adam Zach", "Andrej Rybalka", "Ivan Čitári", "Jan Bouška", "Jan Kubelka", "Kevin Rojas", "Ladislav Bánský", "Richard Mojš", "Robert Šobíšek", "Vojtěch Malár", "Benjamin Drzymalla"] },
+    { label: "Traders - Europe",        color: "#8bc34a", target: 40, members: ["Denis M.", "Jakub K.", "Jan K.", "Jiří K.", "Lukáš T.", "Marek M.", "Martin J.", "Martin N.", "Matěj K.", "Matyáš P.", "Michal F.", "Michal P.", "Michal W.", "Patrik Ř.", "Petr H.", "Petr R.", "Przemyslaw K.", "Sebastian W.", "Stanislav U.", "Tadeáš F.", "Tomáš M.", "Viet"] },
+    { label: "Traders - Lima",          color: "#ff5722", target: 40, members: ["Andres", "Christian C.", "David Z.", "Flabio T.", "Francesco", "Franco M.", "Gustavo P.", "Hadi B.", "James H.", "Jose C.", "Martin M. M.", "Santiago B.", "William M."] }
+];
+
+const productMapping = [
+    { name: "Valhalla Cup A",  startCol: 2,  trading: "FIFA",       slots: [{o:0,s:'23:16',e:'07:12'},{o:1,s:'07:12',e:'15:28'},{o:2,s:'15:28',e:'23:16'}] },
+    { name: "Valhalla Cup B",  startCol: 6,  trading: "FIFA",       slots: [{o:0,s:'23:18',e:'07:14'},{o:1,s:'07:14',e:'15:30'},{o:2,s:'15:30',e:'23:18'}] },
+    { name: "Valhalla Cup C",  startCol: 10, trading: "FIFA",       slots: [{o:0,s:'00:04',e:'08:04'},{o:1,s:'08:04',e:'16:04'},{o:2,s:'16:04',e:'00:04'}] },
+    { name: "Valkyrie Cup A",  startCol: 14, trading: "FIFA",       slots: [{o:0,s:'23:22',e:'07:38'},{o:1,s:'07:38',e:'15:34'},{o:2,s:'15:34',e:'23:22'}] },
+    { name: "Valkyrie Cup B",  startCol: 18, trading: "FIFA",       slots: [{o:0,s:'23:24',e:'07:40'},{o:1,s:'07:40',e:'15:36'},{o:2,s:'15:36',e:'23:24'}] },
+    { name: "Valhalla League", startCol: 22, trading: "NBA",        slots: [{o:0,s:'23:44',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'23:44'}] },
+    { name: "Yodha League",    startCol: 26, trading: "Cricket",    slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
+    { name: "CS 2 Duels",      startCol: 30, trading: "Duels",      slots: [{o:0,s:'00:00',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:00'}] },
+    { name: "Dota 2 Duels",    startCol: 34, trading: "Duels",      slots: [{o:0,s:'00:01',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:01'}] },
+    { name: "Madden",          startCol: 38, trading: "eTouchdown", slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] }
+];
+
+function convertSheetTime(val) {
+    if (!val) return null;
+    if (typeof val === 'number' && val >= 0 && val < 1) {
+        const totalMinutes = Math.round(val * 24 * 60);
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    }
+    const s = val.toString().trim();
+    if (/^\d{1,2}:\d{2}$/.test(s)) return s;
+    return s;
+}
+
+async function loadAllShifts(forceSync) {
+    if (isCacheValid() && !forceSync) {
+        console.log('Cache HIT - pouzivam ulozena data (' + _shiftsCache.length + ' smen)');
+        return _shiftsCache;
+    }
+    console.log('Cache MISS - nacitam z Google Sheets...');
+    if (forceSync) _hiddenSheets.clear();
+    await doc.loadInfo();
+
+    const allShifts = [];
+
+    // 1. SYNC Z PLANNERU - cte vsechny listy "Schedule - *"
+    const allSheetTitles = Object.keys(doc.sheetsByTitle);
+    const scheduleSheets = allSheetTitles.filter(t => t.startsWith('Schedule -') && !_hiddenSheets.has(t));
+
+    console.log('[SYNC] Found schedule sheets:', scheduleSheets);
+    console.log('[SYNC] Hidden sheets:', [..._hiddenSheets]);
+    for (const sheetTitle of scheduleSheets) {
+        const sheet = doc.sheetsByTitle[sheetTitle];
+        if (!sheet) { console.log('[SYNC] Sheet not found in doc:', sheetTitle); continue; }
+        try {
+            await sheet.loadCells('A1:AQ500');
+            let sheetShiftCount = 0;
+            for (let r = 0; r < Math.min(sheet.rowCount, 500); r++) {
+                const dateCell = sheet.getCell(r, 0);
+                const rawDate = dateCell.formattedValue || dateCell.value;
+                const dateVal = convertCzechDate(rawDate);
+                if (!dateVal) continue;
+                productMapping.forEach(pm => {
+                    pm.slots.forEach(slot => {
+                        const col = pm.startCol + slot.o;
+                        const cell = sheet.getCell(r, col);
+                        const val = cell.value ? cell.value.toString().trim() : '';
+                        if (val !== '' && val !== '-') {
+                            let shiftDate = dateVal;
+                            const startH = parseInt(slot.s.split(':')[0]), endH = parseInt(slot.e.split(':')[0]);
+                            if (startH >= 20 && endH < 12) {
+                                const d = new Date(dateVal + 'T12:00:00');
+                                d.setDate(d.getDate() - 1);
+                                shiftDate = d.toISOString().slice(0, 10);
+                            }
+                            val.split(',').forEach(n => {
+                                const name = n.trim();
+                                if (name) { sheetShiftCount++; allShifts.push({
+                                    Date: shiftDate, Name: name,
+                                    Trading: pm.trading, Product: pm.name,
+                                    Start: slot.s, End: slot.e, Note: "",
+                                    _sheet: sheetTitle, _row: r, _col: col
+                                }); }
+                            });
+                        }
+                    });
+                });
+            }
+            console.log('[SYNC] Sheet "' + sheetTitle + '": loaded ' + sheetShiftCount + ' shifts');
+        } catch (sheetErr) {
+            console.error('Chyba pri cteni listu ' + sheetTitle + ':', sheetErr.message);
+        }
+    }
+
+    // 2. MANUAL SHIFTS ze listu ManualShifts
+    try {
+        const manualSheet = doc.sheetsByTitle['ManualShifts'];
+        if (manualSheet) {
+            await manualSheet.loadCells('A1:Z500');
+            let mColDate=-1,mColName=-1,mColTrading=-1,mColProduct=-1,mColStart=-1,mColEnd=-1,mColNote=-1;
+            for (let c = 0; c < 10; c++) {
+                const v = manualSheet.getCell(0, c).value?.toString().trim().toLowerCase();
+                if (v === 'date')    mColDate    = c;
+                if (v === 'name')    mColName    = c;
+                if (v === 'trading') mColTrading = c;
+                if (v === 'product') mColProduct = c;
+                if (v === 'start')   mColStart   = c;
+                if (v === 'end')     mColEnd     = c;
+                if (v === 'note')    mColNote    = c;
+            }
+            for (let r = 1; r < Math.min(manualSheet.rowCount, 500); r++) {
+                const rawD = mColDate >= 0 ? manualSheet.getCell(r, mColDate).value : null;
+                const d = convertCzechDate(rawD) || (rawD ? rawD.toString().trim() : null);
+                const n = mColName >= 0 ? manualSheet.getCell(r, mColName).value?.toString().trim() : null;
+                console.log('ManualShifts row', r, '-> rawD:', rawD, 'converted:', d, 'name:', n);
+                if (!d || !n || n === '') continue;
+                allShifts.push({
+                    Date:    d,
+                    Name:    n,
+                    Trading: mColTrading >= 0 ? manualSheet.getCell(r, mColTrading).value?.toString() || 'Other' : 'Other',
+                    Product: mColProduct >= 0 ? manualSheet.getCell(r, mColProduct).value?.toString() || '' : '',
+                    Start:   mColStart >= 0 ? convertSheetTime(manualSheet.getCell(r, mColStart).value) || '00:00' : '00:00',
+                    End:     mColEnd   >= 0 ? convertSheetTime(manualSheet.getCell(r, mColEnd).value)   || '01:00' : '01:00',
+                    Note:    mColNote    >= 0 ? manualSheet.getCell(r, mColNote).value?.toString()    || '' : '',
+                    _sheet: 'ManualShifts',
+                    _row:   r,
+                    _col:   mColName >= 0 ? mColName : 1,
+                    _manual: true
+                });
+            }
+        }
+    } catch(e) { console.log('ManualShifts:', e.message); }
+
+    setCache(allShifts);
+    console.log('Nacteno z Sheets a ulozeno do cache: ' + allShifts.length + ' smen');
+    return allShifts;
+}
+
 // --- POMOCNÉ FUNKCE ---
 
 function toISOLocal(date) {
@@ -1166,6 +1307,371 @@ app.post('/api/slack-subscriptions', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- STATS ---
+
+app.get('/stats', async (req, res) => {
+    if (!req.user) return res.redirect('/');
+
+    const isAdmin = req.user.role === 'Admin';
+    const isTL = peopleHierarchy.find(g => g.label === 'Team Leaders')?.members.includes(req.user.jmeno);
+    const canSeeAll = isAdmin || isTL;
+
+    // Period handling
+    const period = req.query.period || 'week';
+    const anchorDate = req.query.date ? new Date(req.query.date) : new Date();
+    let periodStart, periodEnd, periodLabel;
+
+    if (period === 'month') {
+        periodStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+        periodEnd = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
+        periodEnd.setHours(23,59,59,999);
+        periodLabel = anchorDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    } else if (period === 'custom' && req.query.from && req.query.to) {
+        periodStart = new Date(req.query.from);
+        periodEnd = new Date(req.query.to);
+        periodEnd.setHours(23,59,59,999);
+        periodLabel = periodStart.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) + ' – ' + periodEnd.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+    } else {
+        // week (default)
+        periodStart = new Date(anchorDate);
+        const dayIdx = periodStart.getDay() || 7;
+        periodStart.setHours(0,0,0,0);
+        periodStart.setDate(periodStart.getDate() - (dayIdx - 1));
+        periodEnd = new Date(periodStart);
+        periodEnd.setDate(periodEnd.getDate() + 6);
+        periodEnd.setHours(23,59,59,999);
+        periodLabel = periodStart.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) + ' – ' + periodEnd.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+    }
+
+    // Navigation URLs
+    let prevDate, nextDate;
+    if (period === 'month') {
+        const pm = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - 1, 1);
+        const nm = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1);
+        prevDate = pm.toISOString().slice(0,10);
+        nextDate = nm.toISOString().slice(0,10);
+    } else {
+        const pw = new Date(periodStart); pw.setDate(pw.getDate() - 7);
+        const nw = new Date(periodStart); nw.setDate(nw.getDate() + 7);
+        prevDate = pw.toISOString().slice(0,10);
+        nextDate = nw.toISOString().slice(0,10);
+    }
+
+    try {
+        const allShifts = await loadAllShifts(false);
+
+        // Lima members set
+        const limaGroup = peopleHierarchy.find(g => g.label === 'Traders - Lima');
+        const limaMembers = new Set(limaGroup ? limaGroup.members : []);
+
+        // Classify a shift: isWeekend, isNight, isRIP, isVacation
+        function classifyShift(shift) {
+            const isLima = limaMembers.has(shift.Name);
+            let startH = parseInt(shift.Start.split(':')[0]);
+            let endH = parseInt(shift.End.split(':')[0]);
+            let startM = parseInt(shift.Start.split(':')[1]) || 0;
+            let endM = parseInt(shift.End.split(':')[1]) || 0;
+            let shiftDate = new Date(shift.Date + 'T12:00:00');
+
+            if (isLima) {
+                startH -= 6; endH -= 6;
+                if (startH < 0) { startH += 24; shiftDate.setDate(shiftDate.getDate() - 1); }
+                if (endH < 0) endH += 24;
+            }
+
+            const dow = shiftDate.getDay();
+            const isWeekend = (dow === 0 || dow === 6);
+            const startMin = startH * 60 + startM;
+            const endMin = endH * 60 + endM;
+            const isOvernight = startMin > endMin;
+
+            return {
+                isWeekend,
+                isNight: isOvernight && !isWeekend,
+                isRIP: shift.Product === 'RIP',
+                isVacation: shift.Product === 'Vacation'
+            };
+        }
+
+        // Compute number of weeks in period for target calculation
+        const periodDays = Math.round((periodEnd - periodStart) / (1000*60*60*24)) + 1;
+        const periodWeeks = periodDays / 7;
+
+        // Build per-person stats
+        const statsMap = {};
+
+        // Init all people (or just the current user)
+        peopleHierarchy.forEach(group => {
+            group.members.forEach(name => {
+                if (!canSeeAll && name !== req.user.jmeno) return;
+                statsMap[name] = {
+                    name,
+                    group: group.label,
+                    groupColor: group.color,
+                    personColor: personColors[name] || '#666',
+                    targetWeekly: group.target,
+                    targetPeriod: Math.round(group.target * periodWeeks * 10) / 10,
+                    totalHours: 0,
+                    ripCount: 0,
+                    vacationCount: 0,
+                    nightCount: 0,
+                    weekendCount: 0,
+                    totalShifts: 0
+                };
+            });
+        });
+
+        // Aggregate shifts in period
+        allShifts.forEach(s => {
+            const d = new Date(s.Date);
+            if (d < periodStart || d > periodEnd) return;
+            const stats = statsMap[s.Name];
+            if (!stats) return;
+
+            const cls = classifyShift(s);
+            if (cls.isRIP) { stats.ripCount++; stats.totalShifts++; return; }
+            if (cls.isVacation) { stats.vacationCount++; stats.totalShifts++; return; }
+
+            stats.totalHours += calculateDuration(s.Start, s.End);
+            stats.totalShifts++;
+            if (cls.isWeekend) stats.weekendCount++;
+            else if (cls.isNight) stats.nightCount++;
+        });
+
+        // Convert to sorted array
+        const statsArr = Object.values(statsMap);
+        statsArr.sort((a,b) => b.totalHours - a.totalHours);
+
+        // Summary totals
+        const sumHours = Math.round(statsArr.reduce((a,b) => a + b.totalHours, 0) * 10) / 10;
+        const sumRIP = statsArr.reduce((a,b) => a + b.ripCount, 0);
+        const sumNight = statsArr.reduce((a,b) => a + b.nightCount, 0);
+        const sumWeekend = statsArr.reduce((a,b) => a + b.weekendCount, 0);
+        const maxHours = statsArr.length > 0 ? Math.max(...statsArr.map(s => s.totalHours)) : 1;
+
+        // Group people for table sections
+        const groupOrder = peopleHierarchy.map(g => g.label);
+
+        // Build table rows HTML
+        let tableRowsHTML = '';
+        let currentGroup = '';
+        const sortedByGroup = [...statsArr].sort((a,b) => {
+            const ai = groupOrder.indexOf(a.group);
+            const bi = groupOrder.indexOf(b.group);
+            if (ai !== bi) return ai - bi;
+            return b.totalHours - a.totalHours;
+        });
+
+        sortedByGroup.forEach(s => {
+            if (s.group !== currentGroup) {
+                currentGroup = s.group;
+                tableRowsHTML += '<tr class="group-header" data-group="' + currentGroup.replace(/"/g,'&quot;') + '" style="cursor:pointer;" onclick="toggleGroup(this)"><td colspan="9" style="padding:10px 14px;font-weight:700;font-family:Oswald;font-size:0.85rem;color:' + s.groupColor + ';letter-spacing:1px;border-bottom:1px solid #1e2030;background:#0a0b10;">' + currentGroup.toUpperCase() + ' <span style="font-size:0.7rem;color:#3a4050;margin-left:6px;">&#9660;</span></td></tr>';
+            }
+            const pct = s.targetPeriod > 0 ? Math.round((s.totalHours / s.targetPeriod) * 100) : (s.totalHours > 0 ? 999 : 0);
+            const barW = s.targetPeriod > 0 ? Math.min(100, pct) : (s.totalHours > 0 ? 100 : 0);
+            const barColor = pct >= 100 ? '#4caf50' : pct >= 80 ? '#fbc02d' : '#f44336';
+            tableRowsHTML += '<tr class="stat-row" data-group="' + currentGroup.replace(/"/g,'&quot;') + '" data-hours="' + s.totalHours.toFixed(1) + '" data-name="' + s.name + '">';
+            tableRowsHTML += '<td style="padding:8px 12px;font-weight:600;color:#c8d0e0;font-size:0.82rem;white-space:nowrap;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + s.personColor + ';margin-right:8px;"></span>' + s.name + '</td>';
+            tableRowsHTML += '<td class="col-group" style="padding:8px 10px;color:' + s.groupColor + ';font-size:0.72rem;font-weight:600;">' + s.group.replace('Traders - ','').replace('Head of Trading - eSims','HoT') + '</td>';
+            tableRowsHTML += '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#e0e6f0;font-size:0.82rem;">' + s.totalHours.toFixed(1) + 'h</td>';
+            tableRowsHTML += '<td style="padding:8px 10px;text-align:right;color:#4a5060;font-size:0.78rem;">' + s.targetPeriod.toFixed(0) + 'h</td>';
+            tableRowsHTML += '<td style="padding:8px 10px;min-width:100px;"><div style="background:#1a1c28;border-radius:4px;height:16px;overflow:hidden;position:relative;"><div style="width:' + barW + '%;height:100%;background:' + barColor + ';border-radius:4px;transition:width 0.5s;"></div><span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:0.6rem;font-weight:700;color:#c8d0e0;">' + pct + '%</span></div></td>';
+            tableRowsHTML += '<td style="padding:8px 10px;text-align:center;color:#ef5350;font-weight:600;font-size:0.8rem;">' + (s.ripCount || '–') + '</td>';
+            tableRowsHTML += '<td style="padding:8px 10px;text-align:center;color:#7c4dff;font-weight:600;font-size:0.8rem;">' + (s.nightCount || '–') + '</td>';
+            tableRowsHTML += '<td style="padding:8px 10px;text-align:center;color:#ffa726;font-weight:600;font-size:0.8rem;">' + (s.weekendCount || '–') + '</td>';
+            tableRowsHTML += '<td class="col-total" style="padding:8px 10px;text-align:center;color:#4a5060;font-size:0.78rem;">' + s.totalShifts + '</td>';
+            tableRowsHTML += '</tr>';
+        });
+
+        // Build bar chart HTML
+        let barChartHTML = '';
+        statsArr.slice(0, 30).forEach(s => {
+            const barPct = maxHours > 0 ? Math.round((s.totalHours / maxHours) * 100) : 0;
+            barChartHTML += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">';
+            barChartHTML += '<div style="width:90px;text-align:right;font-size:0.72rem;color:#8892a4;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + s.name + '</div>';
+            barChartHTML += '<div style="flex:1;background:#1a1c28;border-radius:4px;height:20px;overflow:hidden;"><div style="width:' + barPct + '%;height:100%;background:linear-gradient(90deg,' + s.personColor + ',' + s.personColor + '88);border-radius:4px;transition:width 0.5s;"></div></div>';
+            barChartHTML += '<div style="width:45px;font-size:0.72rem;color:#c8d0e0;font-weight:700;">' + s.totalHours.toFixed(1) + 'h</div>';
+            barChartHTML += '</div>';
+        });
+
+        res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Statistics – Drachir.gg</title>
+<link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0d0e14;color:#c8d0e0;font-family:'Montserrat',sans-serif;min-height:100vh;}
+.stats-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:#0e1118;border-bottom:1px solid #1e2030;flex-wrap:wrap;gap:10px;}
+.stats-topbar-left{display:flex;align-items:center;gap:14px;}
+.stats-topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.btn-back{padding:7px 16px;background:#13151e;border:1px solid #1e2030;border-radius:8px;color:#5b7fa6;text-decoration:none;font-size:0.78rem;font-weight:700;font-family:'Oswald';letter-spacing:1px;transition:0.15s;}
+.btn-back:hover{border-color:rgba(91,127,166,0.5);color:#7ba3cc;}
+.stats-title{font-family:'Oswald';font-weight:700;font-size:1.4rem;color:#fbc02d;letter-spacing:2px;}
+.period-btn{padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;font-family:'Oswald';}
+.period-btn:hover{border-color:rgba(91,127,166,0.5);color:#7ba3cc;}
+.period-btn.active{background:#1e2030;color:#fbc02d;border-color:rgba(251,192,45,0.3);}
+.nav-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+.nav-arrow{padding:5px 12px;background:#13151e;border:1px solid #1e2030;border-radius:6px;color:#5b7fa6;text-decoration:none;font-size:0.9rem;font-weight:700;transition:0.15s;}
+.nav-arrow:hover{border-color:rgba(91,127,166,0.5);color:#7ba3cc;}
+.period-label{font-size:0.82rem;color:#8892a4;font-weight:600;min-width:160px;text-align:center;}
+.stats-container{max-width:1200px;margin:0 auto;padding:20px;}
+.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.summary-card{background:#13151e;border:1px solid #1e2030;border-radius:12px;padding:20px;text-align:center;}
+.summary-card .val{font-family:'Oswald';font-size:2rem;font-weight:700;margin-bottom:4px;}
+.summary-card .lbl{font-size:0.7rem;color:#4a5060;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;}
+.stats-section{background:#13151e;border:1px solid #1e2030;border-radius:12px;margin-bottom:20px;overflow:hidden;}
+.stats-section-title{padding:16px 20px;font-family:'Oswald';font-weight:700;font-size:0.95rem;color:#fbc02d;letter-spacing:1.5px;border-bottom:1px solid #1e2030;}
+table{width:100%;border-collapse:collapse;}
+th{padding:10px 12px;text-align:left;font-size:0.68rem;color:#3a4050;font-weight:700;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #1e2030;cursor:pointer;user-select:none;white-space:nowrap;}
+th:hover{color:#5b7fa6;}
+td{border-bottom:1px solid #0d0e14;}
+.stat-row:hover{background:rgba(251,192,45,0.03);}
+.bar-chart-wrap{padding:20px;}
+.custom-range{display:none;align-items:center;gap:8px;margin-top:6px;}
+.custom-range input[type=date]{padding:5px 10px;background:#0e1621;border:1px solid #1e2d3d;border-radius:6px;color:#c8d0e0;font-size:0.78rem;font-family:'Montserrat';}
+.custom-range button{padding:5px 14px;background:rgba(251,192,45,0.1);border:1px solid rgba(251,192,45,0.3);border-radius:6px;color:#fbc02d;font-weight:700;font-size:0.72rem;cursor:pointer;font-family:'Oswald';letter-spacing:0.5px;}
+@media(max-width:768px){
+    .stats-topbar{padding:10px 14px;}
+    .stats-title{font-size:1.1rem;}
+    .summary-cards{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .stats-container{padding:14px;}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .col-group,.col-total{display:none;}
+    .bar-chart-wrap{padding:14px;}
+}
+@media(max-width:480px){
+    .summary-cards{grid-template-columns:1fr 1fr;}
+    .summary-card .val{font-size:1.5rem;}
+    .summary-card{padding:14px;}
+}
+</style>
+</head>
+<body>
+<div class="stats-topbar">
+    <div class="stats-topbar-left">
+        <a href="/dashboard" class="btn-back">&larr; DASHBOARD</a>
+        <span class="stats-title">STATISTICS</span>
+    </div>
+    <div class="stats-topbar-right">
+        <button class="period-btn ${period==='week'?'active':''}" onclick="switchPeriod('week')">WEEK</button>
+        <button class="period-btn ${period==='month'?'active':''}" onclick="switchPeriod('month')">MONTH</button>
+        <button class="period-btn ${period==='custom'?'active':''}" onclick="showCustomRange()">CUSTOM</button>
+        <div class="nav-row">
+            <a href="/stats?period=${period}&date=${prevDate}" class="nav-arrow">&larr;</a>
+            <span class="period-label">${periodLabel}</span>
+            <a href="/stats?period=${period}&date=${nextDate}" class="nav-arrow">&rarr;</a>
+        </div>
+        <div class="custom-range" id="customRange">
+            <input type="date" id="cfrom" value="${req.query.from || toISOLocal(periodStart)}">
+            <span style="color:#4a5060;">–</span>
+            <input type="date" id="cto" value="${req.query.to || toISOLocal(periodEnd)}">
+            <button onclick="applyCustom()">GO</button>
+        </div>
+    </div>
+</div>
+
+<div class="stats-container">
+    <div class="summary-cards">
+        <div class="summary-card"><div class="val" style="color:#4caf50;">${sumHours}</div><div class="lbl">Total Hours</div></div>
+        <div class="summary-card"><div class="val" style="color:#ef5350;">${sumRIP}</div><div class="lbl">RIP Shifts</div></div>
+        <div class="summary-card"><div class="val" style="color:#7c4dff;">${sumNight}</div><div class="lbl">Night Shifts</div></div>
+        <div class="summary-card"><div class="val" style="color:#ffa726;">${sumWeekend}</div><div class="lbl">Weekend Shifts</div></div>
+    </div>
+
+    <div class="stats-section">
+        <div class="stats-section-title">PEOPLE OVERVIEW</div>
+        <div class="table-wrap">
+        <table>
+            <thead><tr>
+                <th onclick="sortTable(0,'str')">Name</th>
+                <th class="col-group" onclick="sortTable(1,'str')">Group</th>
+                <th onclick="sortTable(2,'num')" style="text-align:right;">Hours</th>
+                <th onclick="sortTable(3,'num')" style="text-align:right;">Target</th>
+                <th>Progress</th>
+                <th onclick="sortTable(5,'num')" style="text-align:center;">RIP</th>
+                <th onclick="sortTable(6,'num')" style="text-align:center;">Night</th>
+                <th onclick="sortTable(7,'num')" style="text-align:center;">Wknd</th>
+                <th class="col-total" onclick="sortTable(8,'num')" style="text-align:center;">Total</th>
+            </tr></thead>
+            <tbody id="statsBody">
+                ${tableRowsHTML}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="stats-section">
+        <div class="stats-section-title">HOURS CHART</div>
+        <div class="bar-chart-wrap">
+            ${barChartHTML}
+        </div>
+    </div>
+</div>
+
+<script>
+function switchPeriod(p) {
+    var u = new URL(location);
+    u.searchParams.set('period', p);
+    u.searchParams.delete('from');
+    u.searchParams.delete('to');
+    if (p !== 'custom') u.searchParams.delete('date');
+    location.href = u;
+}
+function showCustomRange() {
+    var cr = document.getElementById('customRange');
+    cr.style.display = cr.style.display === 'flex' ? 'none' : 'flex';
+}
+function applyCustom() {
+    var u = new URL(location);
+    u.searchParams.set('period', 'custom');
+    u.searchParams.set('from', document.getElementById('cfrom').value);
+    u.searchParams.set('to', document.getElementById('cto').value);
+    location.href = u;
+}
+function toggleGroup(el) {
+    var g = el.dataset.group;
+    var arrow = el.querySelector('span');
+    var rows = document.querySelectorAll('tr.stat-row[data-group="'+g+'"]');
+    var hidden = rows[0] && rows[0].style.display === 'none';
+    rows.forEach(function(r){ r.style.display = hidden ? '' : 'none'; });
+    arrow.innerHTML = hidden ? '&#9660;' : '&#9654;';
+}
+var sortDir = {};
+function sortTable(colIdx, type) {
+    var body = document.getElementById('statsBody');
+    var rows = Array.from(body.querySelectorAll('tr.stat-row'));
+    var dir = sortDir[colIdx] === 'asc' ? 'desc' : 'asc';
+    sortDir[colIdx] = dir;
+    rows.sort(function(a,b){
+        var av = a.children[colIdx] ? a.children[colIdx].textContent.trim() : '';
+        var bv = b.children[colIdx] ? b.children[colIdx].textContent.trim() : '';
+        if (type === 'num') {
+            av = parseFloat(av) || 0;
+            bv = parseFloat(bv) || 0;
+            return dir === 'asc' ? av - bv : bv - av;
+        }
+        return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    // Remove group headers
+    body.querySelectorAll('tr.group-header').forEach(function(h){ h.remove(); });
+    // Re-append rows (without group headers for simplicity after sort)
+    rows.forEach(function(r){ body.appendChild(r); });
+}
+// Show custom range if active
+if ('${period}' === 'custom') { document.getElementById('customRange').style.display = 'flex'; }
+</script>
+</body>
+</html>`);
+
+    } catch(err) {
+        console.error('Stats error:', err);
+        res.status(500).send('Error loading stats: ' + err.message);
+    }
+});
+
 // --- DASHBOARD ---
 
 app.get('/dashboard', async (req, res) => {
@@ -1174,15 +1680,6 @@ app.get('/dashboard', async (req, res) => {
     let hHTML = ""; let rHTML = ""; let pRowsHTML = ""; let mainContentHTML = "";
     let allShifts = [];
 
-    const peopleHierarchy = [
-        { label: "Head of Trading - eSims", color: "#fbc02d", target: 0,  members: ["David Winkler"] },
-        { label: "Quality Assurance",       color: "#03a9f4", target: 16, members: ["Ondřej Merxbauer"] },
-        { label: "Master Scheduler",        color: "#e91e63", target: 24, members: ["David Kuchař"] },
-        { label: "Team Leaders",            color: "#4caf50", target: 20, members: ["Lukáš Novotný", "FIlip Sklenička", "Jindřich Lacina", "David Tročino", "David Lamač", "Tomáš Komenda", "Dominik Chvátal", "Marcelo Goto"] },
-        { label: "Title Experts",           color: "#9c27b0", target: 24, members: ["Adam Zach", "Andrej Rybalka", "Ivan Čitári", "Jan Bouška", "Jan Kubelka", "Kevin Rojas", "Ladislav Bánský", "Richard Mojš", "Robert Šobíšek", "Vojtěch Malár", "Benjamin Drzymalla"] },
-        { label: "Traders - Europe",        color: "#8bc34a", target: 40, members: ["Denis M.", "Jakub K.", "Jan K.", "Jiří K.", "Lukáš T.", "Marek M.", "Martin J.", "Martin N.", "Matěj K.", "Matyáš P.", "Michal F.", "Michal P.", "Michal W.", "Patrik Ř.", "Petr H.", "Petr R.", "Przemyslaw K.", "Sebastian W.", "Stanislav U.", "Tadeáš F.", "Tomáš M.", "Viet"] },
-        { label: "Traders - Lima",          color: "#ff5722", target: 40, members: ["Andres", "Christian C.", "David Z.", "Flabio T.", "Francesco", "Franco M.", "Gustavo P.", "Hadi B.", "James H.", "Jose C.", "Martin M. M.", "Santiago B.", "William M."] }
-    ];
     const tradingHierarchy = [
         { name: "FIFA",       color: "#fbc02d", icon: "&#9917;",  subs: ["Valhalla Cup A", "Valhalla Cup B", "Valhalla Cup C", "Valkyrie Cup A", "Valkyrie Cup B"] },
         { name: "NBA",        color: "#2196f3", icon: "&#127936;", subs: ["Valhalla League"] },
@@ -1220,165 +1717,8 @@ app.get('/dashboard', async (req, res) => {
         const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(endOfWeek.getDate() + 6);
         endOfWeek.setHours(23,59,59,999);
 
-        // Pouzij cache pokud je platna a neni vynuceny sync
-        if (isCacheValid() && !forceSync) {
-            allShifts = _shiftsCache;
-            console.log('Cache HIT - pouzivam ulozena data (' + allShifts.length + ' smen)');
-        } else {
-            console.log('Cache MISS - nacitam z Google Sheets...');
-            // Force sync clears hidden sheets so deleted months can be re-synced
-            if (forceSync) _hiddenSheets.clear();
-            await doc.loadInfo();
-
-        // 1. SYNC Z PLANNERU - cte vsechny listy "Schedule - *"
-        // BOD 6: Kazdy produkt ma sve presne casy smeny
-        const productMapping = [
-            { name: "Valhalla Cup A",  startCol: 2,  trading: "FIFA",
-              slots: [{o:0,s:'23:16',e:'07:12'},{o:1,s:'07:12',e:'15:28'},{o:2,s:'15:28',e:'23:16'}] },
-            { name: "Valhalla Cup B",  startCol: 6,  trading: "FIFA",
-              slots: [{o:0,s:'23:18',e:'07:14'},{o:1,s:'07:14',e:'15:30'},{o:2,s:'15:30',e:'23:18'}] },
-            { name: "Valhalla Cup C",  startCol: 10, trading: "FIFA",
-              slots: [{o:0,s:'00:04',e:'08:04'},{o:1,s:'08:04',e:'16:04'},{o:2,s:'16:04',e:'00:04'}] },
-            { name: "Valkyrie Cup A",  startCol: 14, trading: "FIFA",
-              slots: [{o:0,s:'23:22',e:'07:38'},{o:1,s:'07:38',e:'15:34'},{o:2,s:'15:34',e:'23:22'}] },
-            { name: "Valkyrie Cup B",  startCol: 18, trading: "FIFA",
-              slots: [{o:0,s:'23:24',e:'07:40'},{o:1,s:'07:40',e:'15:36'},{o:2,s:'15:36',e:'23:24'}] },
-            { name: "Valhalla League", startCol: 22, trading: "NBA",
-              slots: [{o:0,s:'23:44',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'23:44'}] },
-            { name: "Yodha League",    startCol: 26, trading: "Cricket",
-              slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
-            { name: "CS 2 Duels",      startCol: 30, trading: "Duels",
-              slots: [{o:0,s:'00:00',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:00'}] },
-            { name: "Dota 2 Duels",    startCol: 34, trading: "Duels",
-              slots: [{o:0,s:'00:01',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:01'}] },
-            { name: "Madden",          startCol: 38, trading: "eTouchdown",
-              slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] }
-        ];
-
-        // Pomocna funkce: prevod data z Google Sheets na "2026-04-06"
-        // Pomocna funkce: prevod Google Sheets time decimal na "HH:MM"
-        // Google Sheets ukládá čas jako desetinné číslo (0.75 = 18:00)
-        function convertSheetTime(val) {
-            if (!val) return null;
-            if (typeof val === 'number' && val >= 0 && val < 1) {
-                const totalMinutes = Math.round(val * 24 * 60);
-                const h = Math.floor(totalMinutes / 60);
-                const m = totalMinutes % 60;
-                return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-            }
-            // Uz je string "07:38"
-            const s = val.toString().trim();
-            if (/^\d{1,2}:\d{2}$/.test(s)) return s;
-            return s;
-        }
-
-        // Projdi všechny listy které začínají na "Schedule -"
-        const allSheetTitles = Object.keys(doc.sheetsByTitle);
-        const scheduleSheets = allSheetTitles.filter(t => t.startsWith('Schedule -') && !_hiddenSheets.has(t));
-
-        console.log('[SYNC] Found schedule sheets:', scheduleSheets);
-        console.log('[SYNC] Hidden sheets:', [..._hiddenSheets]);
-        for (const sheetTitle of scheduleSheets) {
-            const sheet = doc.sheetsByTitle[sheetTitle];
-            if (!sheet) { console.log('[SYNC] Sheet not found in doc:', sheetTitle); continue; }
-            try {
-                // loadCells nevyzaduje hlavicku - cte primo bunky
-                await sheet.loadCells('A1:AQ500');
-                let sheetShiftCount = 0;
-                for (let r = 0; r < Math.min(sheet.rowCount, 500); r++) {
-                    const dateCell = sheet.getCell(r, 0);
-                    // Zkus formattedValue (napr "6.4.2026") i value (napr 46118)
-                    const rawDate = dateCell.formattedValue || dateCell.value;
-                    const dateVal = convertCzechDate(rawDate);
-                    if (!dateVal) continue;
-                    productMapping.forEach(pm => {
-                        pm.slots.forEach(slot => {
-                            const col = pm.startCol + slot.o;
-                            const cell = sheet.getCell(r, col);
-                            const val = cell.value ? cell.value.toString().trim() : '';
-                            if (val !== '' && val !== '-') {
-                                // Nocni smena (start > end, napr 23:16-07:12): v sheetu je na radku pondeli,
-                                // ale zacina v nedeli — posun datum o 1 den zpet
-                                let shiftDate = dateVal;
-                                const startH = parseInt(slot.s.split(':')[0]), endH = parseInt(slot.e.split(':')[0]);
-                                if (startH >= 20 && endH < 12) {
-                                    const d = new Date(dateVal + 'T12:00:00');
-                                    d.setDate(d.getDate() - 1);
-                                    shiftDate = d.toISOString().slice(0, 10);
-                                }
-                                val.split(',').forEach(n => {
-                                    const name = n.trim();
-                                    if (name) { sheetShiftCount++; allShifts.push({
-                                        Date: shiftDate, Name: name,
-                                        Trading: pm.trading, Product: pm.name,
-                                        Start: slot.s, End: slot.e, Note: "",
-                                        // Uloz zdroj pro moznost smazani
-                                        _sheet: sheetTitle, _row: r, _col: col
-                                    }); }
-                                });
-                            }
-                        });
-                    });
-                }
-                console.log('[SYNC] Sheet "' + sheetTitle + '": loaded ' + sheetShiftCount + ' shifts');
-            } catch (sheetErr) {
-                console.error('Chyba pri cteni listu ' + sheetTitle + ':', sheetErr.message);
-            }
-        }
-
-        // 2. MANUAL SHIFTS ze listu ManualShifts
-        try {
-            const manualSheet = doc.sheetsByTitle['ManualShifts'];
-            if (manualSheet) {
-                // Pouzijeme loadCells aby meli radky svuj index pro delete
-                await manualSheet.loadCells('A1:Z500');
-                // Zjisti indexy sloupcu z hlavicky
-                let mColDate=-1,mColName=-1,mColTrading=-1,mColProduct=-1,mColStart=-1,mColEnd=-1,mColNote=-1;
-                for (let c = 0; c < 10; c++) {
-                    const v = manualSheet.getCell(0, c).value?.toString().trim().toLowerCase();
-                    if (v === 'date')    mColDate    = c;
-                    if (v === 'name')    mColName    = c;
-                    if (v === 'trading') mColTrading = c;
-                    if (v === 'product') mColProduct = c;
-                    if (v === 'start')   mColStart   = c;
-                    if (v === 'end')     mColEnd     = c;
-                    if (v === 'note')    mColNote    = c;
-                }
-                for (let r = 1; r < Math.min(manualSheet.rowCount, 500); r++) {
-                    const rawD = mColDate >= 0 ? manualSheet.getCell(r, mColDate).value : null;
-                    const d = convertCzechDate(rawD) || (rawD ? rawD.toString().trim() : null);
-                    const n = mColName >= 0 ? manualSheet.getCell(r, mColName).value?.toString().trim() : null;
-                    console.log('ManualShifts row', r, '-> rawD:', rawD, 'converted:', d, 'name:', n);
-                    if (!d || !n || n === '') continue;
-                    allShifts.push({
-                        Date:    d,
-                        Name:    n,
-                        Trading: mColTrading >= 0 ? manualSheet.getCell(r, mColTrading).value?.toString() || 'Other' : 'Other',
-                        Product: mColProduct >= 0 ? manualSheet.getCell(r, mColProduct).value?.toString() || '' : '',
-                        Start:   mColStart >= 0 ? convertSheetTime(manualSheet.getCell(r, mColStart).value) || '00:00' : '00:00',
-                        End:     mColEnd   >= 0 ? convertSheetTime(manualSheet.getCell(r, mColEnd).value)   || '01:00' : '01:00',
-                        Note:    mColNote    >= 0 ? manualSheet.getCell(r, mColNote).value?.toString()    || '' : '',
-                        // Dulezite: uloz zdroj pro delete
-                        _sheet: 'ManualShifts',
-                        _row:   r,
-                        _col:   mColName >= 0 ? mColName : 1,
-                        _manual: true
-                    });
-                }
-            }
-        } catch(e) { console.log('ManualShifts:', e.message); }
-
-            // Uloz do cache
-            setCache(allShifts);
-            console.log('Nacteno z Sheets a ulozeno do cache: ' + allShifts.length + ' smen');
-        } // konec else (cache miss)
-
-        // DEBUG: vypis prvnich 5 nactenych smen do konzole
+        allShifts = await loadAllShifts(forceSync);
         console.log('Nacteno smen celkem:', allShifts.length);
-        if (allShifts.length > 0) {
-            console.log('Prvni 3 smeny:', JSON.stringify(allShifts.slice(0,3)));
-            console.log('startOfWeek:', toISOLocal(startOfWeek), 'endOfWeek:', toISOLocal(endOfWeek));
-        }
 
         // 3. STATISTIKY A AKTIVNÍ PUNTÍK
         const weekStats = {}; allNames.forEach(n => weekStats[n] = 0);
@@ -1916,6 +2256,7 @@ app.get('/dashboard', async (req, res) => {
             .topbar-right .month-label{display:none!important;}
             .topbar-right .user-box{display:none!important;}
             .topbar-right .btn-slack{display:none!important;}
+            .topbar-right .btn-stats{display:none!important;}
             .topbar-right .btn-current-week{display:none!important;}
             .mobile-user-compact{display:flex!important;}
             /* View toggle - menší, LIST first na mobilu */
@@ -2258,6 +2599,7 @@ app.get('/dashboard', async (req, res) => {
             <div class="topbar-right" style="display:flex;align-items:center;gap:12px;">
                 <div class="month-label" style="font-weight:700;font-size:0.9rem;color:#5b7fa6;font-family:'Oswald';letter-spacing:1.5px;">${queryDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'}).toUpperCase()}</div>
                 <button class="btn-current-week" onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
+                <a href="/stats" class="btn-stats" title="Statistics" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128202;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
                 <!-- Uzivatel desktop -->
