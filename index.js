@@ -1321,65 +1321,36 @@ app.get('/stats', async (req, res) => {
     // Block non-admins from seeing others
     if (!canSeeAll && selectedPerson !== req.user.jmeno) selectedPerson = req.user.jmeno;
 
-    // Period handling — default is month
-    const period = req.query.period || 'month';
+    // Anchor date
     const anchorDate = req.query.date ? new Date(req.query.date) : new Date();
-    let periodStart, periodEnd, periodLabel;
+    anchorDate.setHours(12,0,0,0);
 
-    if (period === 'month') {
-        periodStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
-        periodEnd = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
-        periodEnd.setHours(23,59,59,999);
-        periodLabel = anchorDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-    } else if (period === 'custom' && req.query.from && req.query.to) {
-        periodStart = new Date(req.query.from);
-        periodEnd = new Date(req.query.to);
-        periodEnd.setHours(23,59,59,999);
-        periodLabel = periodStart.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) + ' &ndash; ' + periodEnd.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
-    } else {
-        // week
-        periodStart = new Date(anchorDate);
-        const dayIdx = periodStart.getDay() || 7;
-        periodStart.setHours(0,0,0,0);
-        periodStart.setDate(periodStart.getDate() - (dayIdx - 1));
-        periodEnd = new Date(periodStart);
-        periodEnd.setDate(periodEnd.getDate() + 6);
-        periodEnd.setHours(23,59,59,999);
-        periodLabel = periodStart.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) + ' &ndash; ' + periodEnd.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
-    }
+    // Three ranges: day, week (Mon–Sun of anchor), month (of anchor)
+    const dayStart = new Date(anchorDate); dayStart.setHours(0,0,0,0);
+    const dayEnd = new Date(anchorDate); dayEnd.setHours(23,59,59,999);
+    const weekStart = new Date(anchorDate);
+    const wDow = weekStart.getDay() || 7;
+    weekStart.setHours(0,0,0,0);
+    weekStart.setDate(weekStart.getDate() - (wDow - 1));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setHours(23,59,59,999);
+    const monthStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+    const monthEnd = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
+    monthEnd.setHours(23,59,59,999);
 
-    // Navigation URLs
-    let prevDate, nextDate;
-    if (period === 'month') {
-        const pm = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - 1, 1);
-        const nm = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1);
-        prevDate = pm.toISOString().slice(0,10);
-        nextDate = nm.toISOString().slice(0,10);
-    } else {
-        const pw = new Date(periodStart); pw.setDate(pw.getDate() - 7);
-        const nw = new Date(periodStart); nw.setDate(nw.getDate() + 7);
-        prevDate = pw.toISOString().slice(0,10);
-        nextDate = nw.toISOString().slice(0,10);
-    }
+    const dayLabel = anchorDate.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const weekLabel = weekStart.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) + ' &ndash; ' + weekEnd.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+    const monthLabel = anchorDate.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+
+    // Prev/next day navigation
+    const pd = new Date(anchorDate); pd.setDate(pd.getDate() - 1);
+    const nd = new Date(anchorDate); nd.setDate(nd.getDate() + 1);
+    const prevDate = toISOLocal(pd);
+    const nextDate = toISOLocal(nd);
 
     try {
         const allShifts = await loadAllShifts(false);
-
-        // Build month options for dropdown
-        const monthSet = new Set();
-        allShifts.forEach(s => { if (s.Date && s.Date.length >= 7) monthSet.add(s.Date.slice(0, 7)); });
-        // Ensure current month is always available
-        monthSet.add(anchorDate.getFullYear() + '-' + String(anchorDate.getMonth() + 1).padStart(2, '0'));
-        const availableMonths = [...monthSet].sort();
-        const currentMonthKey = anchorDate.getFullYear() + '-' + String(anchorDate.getMonth() + 1).padStart(2, '0');
-        let monthOptionsHTML = '';
-        availableMonths.forEach(m => {
-            const [y, mo] = m.split('-');
-            const d = new Date(parseInt(y), parseInt(mo) - 1, 1);
-            const label = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-            const sel = (period === 'month' && m === currentMonthKey) ? ' selected' : '';
-            monthOptionsHTML += '<option value="' + m + '"' + sel + '>' + label + '</option>';
-        });
 
         // Classify shift type by start hour
         function classifyShift(shift) {
@@ -1391,45 +1362,52 @@ app.get('/stats', async (req, res) => {
             return { shiftType, isRIP: shift.Product === 'RIP', isVacation: shift.Product === 'Vacation' };
         }
 
-        const periodDays = Math.round((periodEnd - periodStart) / (1000*60*60*24)) + 1;
-        const periodWeeks = periodDays / 7;
-
-        // Build stats for everyone (or just current user)
-        const statsMap = {};
-        peopleHierarchy.forEach(group => {
-            group.members.forEach(name => {
-                if (!canSeeAll && name !== req.user.jmeno) return;
-                statsMap[name] = {
-                    name, group: group.label, groupColor: group.color,
-                    personColor: personColors[name] || '#666',
-                    targetWeekly: group.target,
-                    targetPeriod: Math.round(group.target * periodWeeks * 10) / 10,
-                    totalHours: 0, ripCount: 0, vacationCount: 0,
-                    morningCount: 0, afternoonCount: 0, nightCount: 0,
-                    totalShifts: 0
-                };
+        function computeStats(rangeStart, rangeEnd) {
+            const rangeDays = Math.round((rangeEnd - rangeStart) / (1000*60*60*24)) + 1;
+            const rangeWeeks = rangeDays / 7;
+            const map = {};
+            peopleHierarchy.forEach(group => {
+                group.members.forEach(name => {
+                    if (!canSeeAll && name !== req.user.jmeno) return;
+                    map[name] = {
+                        name, group: group.label, groupColor: group.color,
+                        personColor: personColors[name] || '#666',
+                        targetWeekly: group.target,
+                        targetPeriod: Math.round(group.target * rangeWeeks * 10) / 10,
+                        totalHours: 0, ripCount: 0, vacationCount: 0,
+                        morningCount: 0, afternoonCount: 0, nightCount: 0,
+                        totalShifts: 0
+                    };
+                });
             });
-        });
+            allShifts.forEach(s => {
+                const d = new Date(s.Date);
+                if (d < rangeStart || d > rangeEnd) return;
+                const stats = map[s.Name];
+                if (!stats) return;
+                const cls = classifyShift(s);
+                if (cls.isRIP) { stats.ripCount++; stats.totalShifts++; return; }
+                if (cls.isVacation) { stats.vacationCount++; stats.totalShifts++; return; }
+                stats.totalHours += calculateDuration(s.Start, s.End);
+                stats.totalShifts++;
+                if (cls.shiftType === 'morning') stats.morningCount++;
+                else if (cls.shiftType === 'afternoon') stats.afternoonCount++;
+                else if (cls.shiftType === 'night') stats.nightCount++;
+            });
+            return map;
+        }
 
-        allShifts.forEach(s => {
-            const d = new Date(s.Date);
-            if (d < periodStart || d > periodEnd) return;
-            const stats = statsMap[s.Name];
-            if (!stats) return;
-            const cls = classifyShift(s);
-            if (cls.isRIP) { stats.ripCount++; stats.totalShifts++; return; }
-            if (cls.isVacation) { stats.vacationCount++; stats.totalShifts++; return; }
-            stats.totalHours += calculateDuration(s.Start, s.End);
-            stats.totalShifts++;
-            if (cls.shiftType === 'morning') stats.morningCount++;
-            else if (cls.shiftType === 'afternoon') stats.afternoonCount++;
-            else if (cls.shiftType === 'night') stats.nightCount++;
-        });
+        const dayMap = computeStats(dayStart, dayEnd);
+        const weekMap = computeStats(weekStart, weekEnd);
+        const monthMap = computeStats(monthStart, monthEnd);
 
-        const statsArr = Object.values(statsMap);
+        // Legacy aliases so downstream code (sidebar) keeps compiling — sidebar shows MONTH totals
+        const statsMap = monthMap;
+        const statsArr = Object.values(monthMap);
+        const periodStart = monthStart, periodEnd = monthEnd;
 
         // ========== SIDEBAR HTML ==========
-        const periodQs = 'period=' + period + (req.query.date ? '&date=' + req.query.date : '') + (period === 'custom' && req.query.from ? '&from=' + req.query.from + '&to=' + req.query.to : '');
+        const periodQs = 'date=' + toISOLocal(anchorDate);
         let sidebarHTML = '';
         if (canSeeAll) {
             sidebarHTML += '<a href="/stats?' + periodQs + '" class="nav-item ' + (!selectedPerson ? 'active' : '') + '"><span class="nav-ico">&#128202;</span><span>TEAM OVERVIEW</span></a>';
@@ -1460,36 +1438,100 @@ app.get('/stats', async (req, res) => {
 
         // ========== MAIN CONTENT ==========
         let mainHTML = '';
+
+        function shiftTypeTag(s) {
+            const cls = classifyShift(s);
+            let typeColor = '#555', typeLabel = 'OTHER';
+            if (cls.isRIP) { typeColor = '#ef5350'; typeLabel = 'RIP'; }
+            else if (cls.isVacation) { typeColor = '#9e9e9e'; typeLabel = 'VAC'; }
+            else if (cls.shiftType === 'morning') { typeColor = '#ffa726'; typeLabel = 'MORNING'; }
+            else if (cls.shiftType === 'afternoon') { typeColor = '#42a5f5'; typeLabel = 'AFTERNOON'; }
+            else if (cls.shiftType === 'night') { typeColor = '#7c4dff'; typeLabel = 'NIGHT'; }
+            return { typeColor, typeLabel };
+        }
+
+        function buildShiftList(shifts) {
+            if (!shifts || shifts.length === 0) {
+                return '<div style="padding:26px;text-align:center;color:#4a5060;font-size:0.82rem;font-family:Oswald;letter-spacing:1px;">NO SHIFTS</div>';
+            }
+            let h = '';
+            shifts.forEach(s => {
+                const d = new Date(s.Date + 'T12:00:00');
+                const day = d.toLocaleDateString('en-GB', { weekday: 'short' });
+                const date = d.getDate() + '.' + (d.getMonth() + 1) + '.';
+                const { typeColor, typeLabel } = shiftTypeTag(s);
+                const prod = (s.Product || s.Trading || '').replace(/`/g, "'");
+                h += '<div class="shift-item"><div class="shift-date"><div class="sd-day">' + day + '</div><div class="sd-num">' + date + '</div></div><div class="shift-body"><div class="shift-prod">' + prod + '</div><div class="shift-time">' + s.Start + ' &rarr; ' + s.End + '</div></div><div class="shift-type" style="background:' + typeColor + '22;color:' + typeColor + ';border:1px solid ' + typeColor + '44;">' + typeLabel + '</div></div>';
+            });
+            return h;
+        }
+
+        function personKPIs(p) {
+            if (!p) return '';
+            const pct = p.targetPeriod > 0 ? Math.round((p.totalHours / p.targetPeriod) * 100) : 0;
+            let h = '<div class="kpi-grid">';
+            h += '<div class="kpi-card kpi-hours"><div class="kpi-ico">&#9201;</div><div class="kpi-val">' + p.totalHours.toFixed(1) + '<span class="kpi-unit">h</span></div><div class="kpi-lbl">Total Hours</div><div class="kpi-sub">Target ' + p.targetPeriod.toFixed(0) + 'h &middot; ' + pct + '%</div></div>';
+            h += '<div class="kpi-card kpi-morning"><div class="kpi-ico">&#9728;</div><div class="kpi-val">' + p.morningCount + '</div><div class="kpi-lbl">Morning</div><div class="kpi-sub">07:00 &ndash; 16:00</div></div>';
+            h += '<div class="kpi-card kpi-afternoon"><div class="kpi-ico">&#127773;</div><div class="kpi-val">' + p.afternoonCount + '</div><div class="kpi-lbl">Afternoon</div><div class="kpi-sub">15:00 &ndash; 00:00</div></div>';
+            h += '<div class="kpi-card kpi-night"><div class="kpi-ico">&#127769;</div><div class="kpi-val">' + p.nightCount + '</div><div class="kpi-lbl">Night</div><div class="kpi-sub">23:00 &ndash; 08:00</div></div>';
+            h += '<div class="kpi-card kpi-rip"><div class="kpi-ico">&#9888;</div><div class="kpi-val">' + p.ripCount + '</div><div class="kpi-lbl">RIP</div><div class="kpi-sub">' + p.vacationCount + ' vacation</div></div>';
+            h += '</div>';
+            return h;
+        }
+
+        function sectionHead(eyebrow, title) {
+            return '<div class="section-head"><div class="sh-eyebrow">' + eyebrow + '</div><div class="sh-title">' + title + '</div></div>';
+        }
+
         if (selectedPerson && statsMap[selectedPerson]) {
             // === PERSON DETAIL VIEW ===
-            const p = statsMap[selectedPerson];
-            const pct = p.targetPeriod > 0 ? Math.round((p.totalHours / p.targetPeriod) * 100) : 0;
-            const progressColor = pct >= 100 ? '#4caf50' : pct >= 80 ? '#fbc02d' : '#f44336';
+            const pMonth = monthMap[selectedPerson];
+            const pWeek = weekMap[selectedPerson];
+            const pDay = dayMap[selectedPerson];
 
-            // Per-day hours for line chart
-            const dailyHours = {};
-            for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
-                dailyHours[toISOLocal(d)] = 0;
-            }
-            const personShiftsList = [];
+            // Collect shifts per range for this person
+            const dayShifts = [], weekShifts = [], monthShifts = [];
             allShifts.forEach(s => {
                 if (s.Name !== selectedPerson) return;
                 const d = new Date(s.Date);
-                if (d < periodStart || d > periodEnd) return;
-                personShiftsList.push(s);
-                if (s.Product === 'RIP' || s.Product === 'Vacation') return;
-                const key = s.Date;
-                if (dailyHours[key] !== undefined) dailyHours[key] += calculateDuration(s.Start, s.End);
+                if (d >= dayStart && d <= dayEnd) dayShifts.push(s);
+                if (d >= weekStart && d <= weekEnd) weekShifts.push(s);
+                if (d >= monthStart && d <= monthEnd) monthShifts.push(s);
             });
+            const sortFn = (a,b) => b.Date.localeCompare(a.Date) || a.Start.localeCompare(b.Start);
+            dayShifts.sort(sortFn); weekShifts.sort(sortFn); monthShifts.sort(sortFn);
 
-            // Build SVG line chart
+            const monthPct = pMonth.targetPeriod > 0 ? Math.round((pMonth.totalHours / pMonth.targetPeriod) * 100) : 0;
+            const progressColor = monthPct >= 100 ? '#4caf50' : monthPct >= 80 ? '#fbc02d' : '#f44336';
+
+            // Hero
+            mainHTML += '<div class="hero"><div class="hero-avatar" style="background:' + pMonth.personColor + '">' + pMonth.name.charAt(0).toUpperCase() + '</div><div class="hero-info"><div class="hero-eyebrow">' + pMonth.group.toUpperCase() + '</div><div class="hero-name">' + pMonth.name + '</div><div class="hero-meta">' + pMonth.totalShifts + ' shifts &middot; ' + pMonth.totalHours.toFixed(1) + 'h in ' + monthLabel + '</div></div><div class="hero-progress"><div class="hp-circle" style="background:conic-gradient(' + progressColor + ' ' + (monthPct * 3.6) + 'deg, #1a1c28 0deg);"><div class="hp-inner"><div class="hp-val">' + monthPct + '%</div><div class="hp-lbl">OF MONTH</div></div></div></div></div>';
+
+            // === DAY SECTION ===
+            mainHTML += sectionHead('DAY', dayLabel);
+            mainHTML += personKPIs(pDay);
+            mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">SHIFTS THIS DAY</div><div class="panel-sub">' + dayShifts.length + ' shift' + (dayShifts.length !== 1 ? 's' : '') + '</div></div><div class="shifts-list">' + buildShiftList(dayShifts) + '</div></div>';
+
+            // === WEEK SECTION ===
+            mainHTML += sectionHead('WEEK', weekLabel);
+            mainHTML += personKPIs(pWeek);
+            mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">SHIFTS THIS WEEK</div><div class="panel-sub">' + weekShifts.length + ' shifts</div></div><div class="shifts-list">' + buildShiftList(weekShifts) + '</div></div>';
+
+            // === MONTH SECTION (chart + donut + list) ===
+            const dailyHours = {};
+            for (let dd = new Date(monthStart); dd <= monthEnd; dd.setDate(dd.getDate() + 1)) {
+                dailyHours[toISOLocal(dd)] = 0;
+            }
+            monthShifts.forEach(s => {
+                if (s.Product === 'RIP' || s.Product === 'Vacation') return;
+                if (dailyHours[s.Date] !== undefined) dailyHours[s.Date] += calculateDuration(s.Start, s.End);
+            });
             const daysArr = Object.keys(dailyHours).sort();
             const maxDayH = Math.max(8, ...Object.values(dailyHours));
             const chartW = 800, chartH = 220, padL = 40, padR = 20, padT = 20, padB = 40;
             const plotW = chartW - padL - padR;
             const plotH = chartH - padT - padB;
-            let linePts = '';
-            let areaPts = 'M ' + padL + ',' + (padT + plotH);
+            let linePts = '', areaPts = 'M ' + padL + ',' + (padT + plotH);
             daysArr.forEach((day, i) => {
                 const x = padL + (i / Math.max(1, daysArr.length - 1)) * plotW;
                 const y = padT + plotH - (dailyHours[day] / maxDayH) * plotH;
@@ -1497,17 +1539,13 @@ app.get('/stats', async (req, res) => {
                 areaPts += ' L ' + x.toFixed(1) + ',' + y.toFixed(1);
             });
             areaPts += ' L ' + (padL + plotW) + ',' + (padT + plotH) + ' Z';
-
-            // Y-axis grid lines
             let gridHTML = '';
             for (let i = 0; i <= 4; i++) {
                 const y = padT + (i / 4) * plotH;
                 const val = Math.round(maxDayH * (1 - i / 4));
                 gridHTML += '<line x1="' + padL + '" y1="' + y + '" x2="' + (padL + plotW) + '" y2="' + y + '" stroke="#1e2030" stroke-dasharray="2,4"/>';
-                gridHTML += '<text x="' + (padL - 8) + '" y="' + (y + 4) + '" text-anchor="end" fill="#3a4050" font-size="10" font-family="Montserrat">' + val + 'h</text>';
+                gridHTML += '<text x="' + (padL - 8) + '" y="' + (y + 4) + '" text-anchor="end" fill="#3a4050" font-size="10" font-family="Inter">' + val + 'h</text>';
             }
-
-            // X-axis labels (sample every ~N days)
             let xLabelsHTML = '';
             const step = Math.max(1, Math.floor(daysArr.length / 7));
             daysArr.forEach((day, i) => {
@@ -1515,21 +1553,20 @@ app.get('/stats', async (req, res) => {
                 const x = padL + (i / Math.max(1, daysArr.length - 1)) * plotW;
                 const d = new Date(day + 'T12:00:00');
                 const lbl = d.getDate() + '.' + (d.getMonth() + 1) + '.';
-                xLabelsHTML += '<text x="' + x + '" y="' + (chartH - 12) + '" text-anchor="middle" fill="#5b7fa6" font-size="10" font-family="Montserrat" font-weight="600">' + lbl + '</text>';
+                xLabelsHTML += '<text x="' + x + '" y="' + (chartH - 12) + '" text-anchor="middle" fill="#5b7fa6" font-size="10" font-family="Inter" font-weight="600">' + lbl + '</text>';
             });
 
-            // Build donut chart (morning/afternoon/night/RIP)
             const donutR = 70, donutCx = 100, donutCy = 100;
-            const donutTotal = p.morningCount + p.afternoonCount + p.nightCount + p.ripCount;
+            const donutTotal = pMonth.morningCount + pMonth.afternoonCount + pMonth.nightCount + pMonth.ripCount;
             const donutCirc = 2 * Math.PI * donutR;
             let donutSegments = '';
             if (donutTotal > 0) {
                 let offset = 0;
                 const segs = [
-                    { val: p.morningCount, color: '#ffa726' },
-                    { val: p.afternoonCount, color: '#42a5f5' },
-                    { val: p.nightCount, color: '#7c4dff' },
-                    { val: p.ripCount, color: '#ef5350' }
+                    { val: pMonth.morningCount, color: '#ffa726' },
+                    { val: pMonth.afternoonCount, color: '#42a5f5' },
+                    { val: pMonth.nightCount, color: '#7c4dff' },
+                    { val: pMonth.ripCount, color: '#ef5350' }
                 ];
                 segs.forEach(seg => {
                     if (seg.val === 0) return;
@@ -1541,85 +1578,63 @@ app.get('/stats', async (req, res) => {
                 donutSegments = '<circle cx="' + donutCx + '" cy="' + donutCy + '" r="' + donutR + '" fill="none" stroke="#1a1c28" stroke-width="22"/>';
             }
 
-            // Recent shifts list (last 10)
-            const recentShifts = personShiftsList.sort((a,b) => b.Date.localeCompare(a.Date)).slice(0, 10);
-            let recentHTML = '';
-            if (recentShifts.length === 0) {
-                recentHTML = '<div style="padding:30px;text-align:center;color:#3a4050;font-size:0.85rem;">No shifts in this period</div>';
-            } else {
-                recentShifts.forEach(s => {
-                    const d = new Date(s.Date + 'T12:00:00');
-                    const day = d.toLocaleDateString('en-GB', { weekday: 'short' });
-                    const date = d.getDate() + '.' + (d.getMonth() + 1) + '.';
-                    const cls = classifyShift(s);
-                    let typeColor = '#555', typeLabel = '';
-                    if (cls.isRIP) { typeColor = '#ef5350'; typeLabel = 'RIP'; }
-                    else if (cls.isVacation) { typeColor = '#9e9e9e'; typeLabel = 'VAC'; }
-                    else if (cls.shiftType === 'morning') { typeColor = '#ffa726'; typeLabel = 'MORNING'; }
-                    else if (cls.shiftType === 'afternoon') { typeColor = '#42a5f5'; typeLabel = 'AFTERNOON'; }
-                    else if (cls.shiftType === 'night') { typeColor = '#7c4dff'; typeLabel = 'NIGHT'; }
-                    else { typeColor = '#555'; typeLabel = 'OTHER'; }
-                    const prod = (s.Product || s.Trading || '').replace(/`/g, "'");
-                    recentHTML += '<div class="shift-item"><div class="shift-date"><div class="sd-day">' + day + '</div><div class="sd-num">' + date + '</div></div><div class="shift-body"><div class="shift-prod">' + prod + '</div><div class="shift-time">' + s.Start + ' &rarr; ' + s.End + '</div></div><div class="shift-type" style="background:' + typeColor + '22;color:' + typeColor + ';border:1px solid ' + typeColor + '44;">' + typeLabel + '</div></div>';
-                });
-            }
-
-            const avgDaily = daysArr.length > 0 ? (p.totalHours / daysArr.length).toFixed(1) : '0';
-
-            mainHTML += '<div class="hero"><div class="hero-avatar" style="background:' + p.personColor + '">' + p.name.charAt(0).toUpperCase() + '</div><div class="hero-info"><div class="hero-eyebrow">' + p.group.toUpperCase() + '</div><div class="hero-name">' + p.name + '</div><div class="hero-meta">' + p.totalShifts + ' shifts &middot; ' + p.totalHours.toFixed(1) + 'h total &middot; ' + avgDaily + 'h/day avg</div></div><div class="hero-progress"><div class="hp-circle" style="background:conic-gradient(' + progressColor + ' ' + (pct * 3.6) + 'deg, #1a1c28 0deg);"><div class="hp-inner"><div class="hp-val">' + pct + '%</div><div class="hp-lbl">OF TARGET</div></div></div></div></div>';
-
-            mainHTML += '<div class="kpi-grid">';
-            mainHTML += '<div class="kpi-card kpi-hours"><div class="kpi-ico">&#9201;</div><div class="kpi-val">' + p.totalHours.toFixed(1) + '<span class="kpi-unit">h</span></div><div class="kpi-lbl">Total Hours</div><div class="kpi-sub">Target ' + p.targetPeriod.toFixed(0) + 'h</div></div>';
-            mainHTML += '<div class="kpi-card kpi-morning"><div class="kpi-ico">&#9728;</div><div class="kpi-val">' + p.morningCount + '</div><div class="kpi-lbl">Morning</div><div class="kpi-sub">07:00 &ndash; 16:00</div></div>';
-            mainHTML += '<div class="kpi-card kpi-afternoon"><div class="kpi-ico">&#127773;</div><div class="kpi-val">' + p.afternoonCount + '</div><div class="kpi-lbl">Afternoon</div><div class="kpi-sub">15:00 &ndash; 00:00</div></div>';
-            mainHTML += '<div class="kpi-card kpi-night"><div class="kpi-ico">&#127769;</div><div class="kpi-val">' + p.nightCount + '</div><div class="kpi-lbl">Night</div><div class="kpi-sub">23:00 &ndash; 08:00</div></div>';
-            mainHTML += '<div class="kpi-card kpi-rip"><div class="kpi-ico">&#9888;</div><div class="kpi-val">' + p.ripCount + '</div><div class="kpi-lbl">RIP</div><div class="kpi-sub">' + p.vacationCount + ' vacation</div></div>';
-            mainHTML += '</div>';
-
+            mainHTML += sectionHead('MONTH', monthLabel);
+            mainHTML += personKPIs(pMonth);
             mainHTML += '<div class="two-col">';
-            mainHTML += '<div class="panel panel-wide"><div class="panel-header"><div class="panel-title">HOURS TREND</div><div class="panel-sub">Daily hours across the period</div></div><div class="chart-wrap"><svg viewBox="0 0 ' + chartW + ' ' + chartH + '" style="width:100%;height:auto;"><defs><linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#60a5fa" stop-opacity="0.38"/><stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/></linearGradient></defs>' + gridHTML + '<path d="' + areaPts + '" fill="url(#areaGrad)"/><path d="' + linePts + '" stroke="url(#lineGrad)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' + xLabelsHTML + '</svg></div></div>';
-
-            mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">SHIFT MIX</div><div class="panel-sub">' + donutTotal + ' shifts total</div></div><div class="donut-wrap"><svg viewBox="0 0 200 200" style="width:180px;height:180px;">' + donutSegments + '<text x="100" y="96" text-anchor="middle" fill="#c8d0e0" font-size="28" font-weight="700" font-family="Oswald">' + donutTotal + '</text><text x="100" y="116" text-anchor="middle" fill="#4a5060" font-size="10" letter-spacing="2" font-family="Oswald">SHIFTS</text></svg><div class="donut-legend"><div class="dl-item"><span class="dl-dot" style="background:#ffa726"></span>Morning<span class="dl-val">' + p.morningCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#42a5f5"></span>Afternoon<span class="dl-val">' + p.afternoonCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#7c4dff"></span>Night<span class="dl-val">' + p.nightCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#ef5350"></span>RIP<span class="dl-val">' + p.ripCount + '</span></div></div></div></div>';
+            mainHTML += '<div class="panel panel-wide"><div class="panel-header"><div class="panel-title">HOURS TREND</div><div class="panel-sub">Daily hours across ' + monthLabel + '</div></div><div class="chart-wrap"><svg viewBox="0 0 ' + chartW + ' ' + chartH + '" style="width:100%;height:auto;"><defs><linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#60a5fa" stop-opacity="0.38"/><stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/></linearGradient></defs>' + gridHTML + '<path d="' + areaPts + '" fill="url(#areaGrad)"/><path d="' + linePts + '" stroke="url(#lineGrad)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' + xLabelsHTML + '</svg></div></div>';
+            mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">SHIFT MIX</div><div class="panel-sub">' + donutTotal + ' shifts total</div></div><div class="donut-wrap"><svg viewBox="0 0 200 200" style="width:180px;height:180px;">' + donutSegments + '<text x="100" y="96" text-anchor="middle" fill="#c8d0e0" font-size="28" font-weight="700" font-family="Oswald">' + donutTotal + '</text><text x="100" y="116" text-anchor="middle" fill="#4a5060" font-size="10" letter-spacing="2" font-family="Oswald">SHIFTS</text></svg><div class="donut-legend"><div class="dl-item"><span class="dl-dot" style="background:#ffa726"></span>Morning<span class="dl-val">' + pMonth.morningCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#42a5f5"></span>Afternoon<span class="dl-val">' + pMonth.afternoonCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#7c4dff"></span>Night<span class="dl-val">' + pMonth.nightCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#ef5350"></span>RIP<span class="dl-val">' + pMonth.ripCount + '</span></div></div></div></div>';
             mainHTML += '</div>';
-
-            mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">RECENT SHIFTS</div><div class="panel-sub">Last ' + recentShifts.length + ' shifts in this period</div></div><div class="shifts-list">' + recentHTML + '</div></div>';
+            mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">ALL SHIFTS THIS MONTH</div><div class="panel-sub">' + monthShifts.length + ' shifts</div></div><div class="shifts-list">' + buildShiftList(monthShifts) + '</div></div>';
 
         } else {
-            // === TEAM OVERVIEW ===
-            const sumHours = Math.round(statsArr.reduce((a,b) => a + b.totalHours, 0) * 10) / 10;
-            const sumRIP = statsArr.reduce((a,b) => a + b.ripCount, 0);
-            const sumMorning = statsArr.reduce((a,b) => a + b.morningCount, 0);
-            const sumAfternoon = statsArr.reduce((a,b) => a + b.afternoonCount, 0);
-            const sumNight = statsArr.reduce((a,b) => a + b.nightCount, 0);
-            const activePeople = statsArr.filter(s => s.totalShifts > 0).length;
-            const maxH = Math.max(1, ...statsArr.map(s => s.totalHours));
+            // === TEAM OVERVIEW — three stacked sections ===
 
-            mainHTML += '<div class="hero"><div class="hero-avatar" style="background:linear-gradient(135deg,#60a5fa,#3b82f6)">&#128202;</div><div class="hero-info"><div class="hero-eyebrow">STATISTICS OVERVIEW</div><div class="hero-name">Team Overview</div><div class="hero-meta">' + activePeople + ' active people &middot; ' + sumHours + 'h total &middot; ' + periodLabel + '</div></div></div>';
+            function renderTeamSection(eyebrow, title, rangeMap) {
+                const arr = Object.values(rangeMap);
+                const sumHours = Math.round(arr.reduce((a,b) => a + b.totalHours, 0) * 10) / 10;
+                const sumRIP = arr.reduce((a,b) => a + b.ripCount, 0);
+                const sumMorning = arr.reduce((a,b) => a + b.morningCount, 0);
+                const sumAfternoon = arr.reduce((a,b) => a + b.afternoonCount, 0);
+                const sumNight = arr.reduce((a,b) => a + b.nightCount, 0);
+                const activePeople = arr.filter(s => s.totalShifts > 0).length;
+                const maxH = Math.max(1, ...arr.map(s => s.totalHours));
 
-            mainHTML += '<div class="kpi-grid">';
-            mainHTML += '<div class="kpi-card kpi-hours"><div class="kpi-ico">&#9201;</div><div class="kpi-val">' + sumHours + '<span class="kpi-unit">h</span></div><div class="kpi-lbl">Total Hours</div><div class="kpi-sub">' + activePeople + ' people</div></div>';
-            mainHTML += '<div class="kpi-card kpi-morning"><div class="kpi-ico">&#9728;</div><div class="kpi-val">' + sumMorning + '</div><div class="kpi-lbl">Morning</div><div class="kpi-sub">Shifts</div></div>';
-            mainHTML += '<div class="kpi-card kpi-afternoon"><div class="kpi-ico">&#127773;</div><div class="kpi-val">' + sumAfternoon + '</div><div class="kpi-lbl">Afternoon</div><div class="kpi-sub">Shifts</div></div>';
-            mainHTML += '<div class="kpi-card kpi-night"><div class="kpi-ico">&#127769;</div><div class="kpi-val">' + sumNight + '</div><div class="kpi-lbl">Night</div><div class="kpi-sub">Shifts</div></div>';
-            mainHTML += '<div class="kpi-card kpi-rip"><div class="kpi-ico">&#9888;</div><div class="kpi-val">' + sumRIP + '</div><div class="kpi-lbl">RIP</div><div class="kpi-sub">Shifts</div></div>';
-            mainHTML += '</div>';
+                let s = sectionHead(eyebrow, title);
+                s += '<div class="kpi-grid">';
+                s += '<div class="kpi-card kpi-hours"><div class="kpi-ico">&#9201;</div><div class="kpi-val">' + sumHours + '<span class="kpi-unit">h</span></div><div class="kpi-lbl">Total Hours</div><div class="kpi-sub">' + activePeople + ' people</div></div>';
+                s += '<div class="kpi-card kpi-morning"><div class="kpi-ico">&#9728;</div><div class="kpi-val">' + sumMorning + '</div><div class="kpi-lbl">Morning</div><div class="kpi-sub">Shifts</div></div>';
+                s += '<div class="kpi-card kpi-afternoon"><div class="kpi-ico">&#127773;</div><div class="kpi-val">' + sumAfternoon + '</div><div class="kpi-lbl">Afternoon</div><div class="kpi-sub">Shifts</div></div>';
+                s += '<div class="kpi-card kpi-night"><div class="kpi-ico">&#127769;</div><div class="kpi-val">' + sumNight + '</div><div class="kpi-lbl">Night</div><div class="kpi-sub">Shifts</div></div>';
+                s += '<div class="kpi-card kpi-rip"><div class="kpi-ico">&#9888;</div><div class="kpi-val">' + sumRIP + '</div><div class="kpi-lbl">RIP</div><div class="kpi-sub">Shifts</div></div>';
+                s += '</div>';
 
-            // Per-group breakdown panels
-            peopleHierarchy.forEach(group => {
-                const gMembers = statsArr.filter(s => s.group === group.label);
-                if (gMembers.length === 0) return;
-                gMembers.sort((a,b) => b.totalHours - a.totalHours);
-                const gTotal = gMembers.reduce((a,b) => a + b.totalHours, 0);
+                peopleHierarchy.forEach(group => {
+                    const gMembers = arr.filter(x => x.group === group.label);
+                    if (gMembers.length === 0) return;
+                    gMembers.sort((a,b) => b.totalHours - a.totalHours);
+                    const gTotal = gMembers.reduce((a,b) => a + b.totalHours, 0);
 
-                let rowsHTML = '';
-                gMembers.forEach(s => {
-                    const barPct = maxH > 0 ? (s.totalHours / maxH) * 100 : 0;
-                    const targetPct = s.targetPeriod > 0 ? Math.round((s.totalHours / s.targetPeriod) * 100) : 0;
-                    rowsHTML += '<a href="/stats?person=' + encodeURIComponent(s.name) + '&' + periodQs + '" class="team-row"><span class="tr-avatar" style="background:' + s.personColor + '">' + s.name.charAt(0).toUpperCase() + '</span><span class="tr-name">' + s.name + '</span><div class="tr-bar-wrap"><div class="tr-bar" style="width:' + barPct.toFixed(1) + '%;background:linear-gradient(90deg,' + s.personColor + ',' + s.personColor + '99);"></div></div><span class="tr-hours">' + s.totalHours.toFixed(1) + 'h</span><span class="tr-target">' + (s.targetPeriod > 0 ? targetPct + '%' : '-') + '</span><span class="tr-counts"><span style="color:#ef5350">' + (s.ripCount||0) + '</span>&middot;<span style="color:#ffa726">' + (s.morningCount||0) + '</span>&middot;<span style="color:#42a5f5">' + (s.afternoonCount||0) + '</span>&middot;<span style="color:#7c4dff">' + (s.nightCount||0) + '</span></span></a>';
+                    let rowsHTML = '';
+                    gMembers.forEach(x => {
+                        const barPct = maxH > 0 ? (x.totalHours / maxH) * 100 : 0;
+                        const targetPct = x.targetPeriod > 0 ? Math.round((x.totalHours / x.targetPeriod) * 100) : 0;
+                        rowsHTML += '<a href="/stats?person=' + encodeURIComponent(x.name) + '&' + periodQs + '" class="team-row"><span class="tr-avatar" style="background:' + x.personColor + '">' + x.name.charAt(0).toUpperCase() + '</span><span class="tr-name">' + x.name + '</span><div class="tr-bar-wrap"><div class="tr-bar" style="width:' + barPct.toFixed(1) + '%;background:linear-gradient(90deg,' + x.personColor + ',' + x.personColor + '99);"></div></div><span class="tr-hours">' + x.totalHours.toFixed(1) + 'h</span><span class="tr-target">' + (x.targetPeriod > 0 ? targetPct + '%' : '-') + '</span><span class="tr-counts"><span style="color:#ef5350">' + (x.ripCount||0) + '</span>&middot;<span style="color:#ffa726">' + (x.morningCount||0) + '</span>&middot;<span style="color:#42a5f5">' + (x.afternoonCount||0) + '</span>&middot;<span style="color:#7c4dff">' + (x.nightCount||0) + '</span></span></a>';
+                    });
+                    s += '<div class="panel"><div class="panel-header"><div class="panel-title" style="color:' + group.color + '">' + group.label.toUpperCase() + '</div><div class="panel-sub">' + gMembers.length + ' people &middot; ' + gTotal.toFixed(1) + 'h total</div></div><div class="team-list">' + rowsHTML + '</div></div>';
                 });
 
-                mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title" style="color:' + group.color + '">' + group.label.toUpperCase() + '</div><div class="panel-sub">' + gMembers.length + ' people &middot; ' + gTotal.toFixed(1) + 'h total</div></div><div class="team-list">' + rowsHTML + '</div></div>';
-            });
+                return s;
+            }
+
+            // Hero
+            const hArr = Object.values(monthMap);
+            const hSumHours = Math.round(hArr.reduce((a,b) => a + b.totalHours, 0) * 10) / 10;
+            const hActive = hArr.filter(s => s.totalShifts > 0).length;
+            mainHTML += '<div class="hero"><div class="hero-avatar" style="background:linear-gradient(135deg,#60a5fa,#3b82f6)">&#128202;</div><div class="hero-info"><div class="hero-eyebrow">TEAM OVERVIEW</div><div class="hero-name">' + dayLabel + '</div><div class="hero-meta">' + hActive + ' active people &middot; ' + hSumHours + 'h in ' + monthLabel + '</div></div></div>';
+
+            mainHTML += renderTeamSection('DAY', dayLabel, dayMap);
+            mainHTML += renderTeamSection('WEEK', weekLabel, weekMap);
+            mainHTML += renderTeamSection('MONTH', monthLabel, monthMap);
         }
 
         res.send(`<!DOCTYPE html>
@@ -1729,6 +1744,12 @@ a{text-decoration:none;color:inherit;}
 .hero-name{font-family:'Oswald';font-size:1.9rem;font-weight:700;color:#fff;letter-spacing:0.5px;line-height:1.1;}
 .hero-meta{font-size:0.82rem;color:#8892a4;margin-top:6px;font-weight:500;}
 .hero-progress{position:relative;z-index:1;}
+
+/* Section header (DAY/WEEK/MONTH) */
+.section-head{display:flex;align-items:baseline;gap:14px;margin:28px 0 14px;padding:0 4px;flex-wrap:wrap;}
+.section-head:first-of-type{margin-top:18px;}
+.sh-eyebrow{font-family:'Oswald';font-weight:700;font-size:0.72rem;letter-spacing:3px;color:#60a5fa;padding:4px 10px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);border-radius:6px;}
+.sh-title{font-family:'Oswald';font-size:1.15rem;font-weight:700;color:#e8ecf4;letter-spacing:1px;}
 .hp-circle{width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:6px;}
 .hp-inner{width:100%;height:100%;background:rgba(6,10,22,0.7);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);}
 .hp-val{font-family:'Oswald';font-size:1.3rem;font-weight:700;color:#fff;}
@@ -1868,12 +1889,9 @@ a{text-decoration:none;color:inherit;}
                 </div>
             </div>
             <div class="topbar-right">
-                <button class="tb-btn ${period==='month'?'active':''}" onclick="switchPeriod('month')">MONTH</button>
-                <button class="tb-btn ${period==='week'?'active':''}" onclick="switchPeriod('week')">WEEK</button>
-                <button class="tb-btn ${period==='custom'?'active':''}" onclick="switchPeriod('custom')">CUSTOM</button>
-                <a href="/stats?${selectedPerson ? 'person=' + encodeURIComponent(selectedPerson) + '&' : ''}period=${period}&date=${prevDate}" class="tb-nav-arrow">&larr;</a>
-                <span class="tb-period-lbl">${periodLabel}</span>
-                <a href="/stats?${selectedPerson ? 'person=' + encodeURIComponent(selectedPerson) + '&' : ''}period=${period}&date=${nextDate}" class="tb-nav-arrow">&rarr;</a>
+                <a href="/stats?${selectedPerson ? 'person=' + encodeURIComponent(selectedPerson) + '&' : ''}date=${prevDate}" class="tb-nav-arrow" title="Previous day">&larr;</a>
+                <span class="tb-period-lbl">${dayLabel}</span>
+                <a href="/stats?${selectedPerson ? 'person=' + encodeURIComponent(selectedPerson) + '&' : ''}date=${nextDate}" class="tb-nav-arrow" title="Next day">&rarr;</a>
             </div>
         </div>
         <div class="content">
@@ -1883,33 +1901,25 @@ a{text-decoration:none;color:inherit;}
 </div>
 
 <script>
-var _statsPeriod=${JSON.stringify(period)};
-var _statsAnchor=${JSON.stringify(anchorDate.toISOString().slice(0,10))};
-var _statsStart=${JSON.stringify(periodStart.toISOString().slice(0,10))};
-var _statsEnd=${JSON.stringify(periodEnd.toISOString().slice(0,10))};
+var _statsAnchor=${JSON.stringify(toISOLocal(anchorDate))};
+var _statsWeekStart=${JSON.stringify(toISOLocal(weekStart))};
+var _statsWeekEnd=${JSON.stringify(toISOLocal(weekEnd))};
 var _statsPerson=${JSON.stringify(selectedPerson || '')};
-var _calYear=new Date(_statsAnchor).getFullYear();
-var _calMonth=new Date(_statsAnchor).getMonth();
+var _calYear=new Date(_statsAnchor+'T12:00:00').getFullYear();
+var _calMonth=new Date(_statsAnchor+'T12:00:00').getMonth();
 
 function _toISO(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
-function _pendingFrom(){ return sessionStorage.getItem('stats_pending_from')||''; }
-function _setPendingFrom(v){ if(v) sessionStorage.setItem('stats_pending_from',v); else sessionStorage.removeItem('stats_pending_from'); }
 
 function buildMiniCal(){
     var el=document.getElementById('miniCal');
     if(!el)return;
     var mNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
     var today=new Date(); today.setHours(0,0,0,0);
-    var start=new Date(_statsStart+'T00:00:00');
-    var end=new Date(_statsEnd+'T00:00:00');
-    var pend=_pendingFrom();
-    var pendDate=pend?new Date(pend+'T00:00:00'):null;
-    var hint='';
-    if(_statsPeriod==='month') hint='CLICK DAY &rarr; PICK MONTH';
-    else if(_statsPeriod==='week') hint='CLICK DAY &rarr; PICK WEEK';
-    else hint = pend ? 'PICK END DATE' : 'PICK START DATE';
+    var anchor=new Date(_statsAnchor+'T00:00:00');
+    var wStart=new Date(_statsWeekStart+'T00:00:00');
+    var wEnd=new Date(_statsWeekEnd+'T00:00:00');
     var h='<div class="sb-cal-nav"><button type="button" onclick="navCal(-1)">&#9664;</button><span>'+mNames[_calMonth]+' '+_calYear+'</span><button type="button" onclick="navCal(1)">&#9654;</button></div>';
-    h+='<div class="sb-cal-hint">'+hint+'</div>';
+    h+='<div class="sb-cal-hint">CLICK A DAY TO PICK</div>';
     h+='<div class="sb-cal-grid">';
     ['M','T','W','T','F','S','S'].forEach(function(d){h+='<div class="sb-cal-dow">'+d+'</div>';});
     var first=new Date(_calYear,_calMonth,1).getDay()||7;
@@ -1920,16 +1930,11 @@ function buildMiniCal(){
         var iso=_toISO(_calYear,_calMonth,d);
         var cls='sb-cal-d';
         if(cd.getTime()===today.getTime()) cls+=' today';
-        if(_statsPeriod!=='custom' && cd>=start && cd<=end) cls+=' in-range';
-        if(_statsPeriod==='custom' && pendDate && cd.getTime()===pendDate.getTime()) cls+=' sel';
-        else if(_statsPeriod!=='custom' && iso===_statsAnchor) cls+=' sel';
+        if(cd>=wStart && cd<=wEnd) cls+=' in-range';
+        if(cd.getTime()===anchor.getTime()) cls+=' sel';
         h+='<div class="'+cls+'" onclick="pickCalDate(\\''+iso+'\\')">'+d+'</div>';
     }
-    if(_statsPeriod==='custom' && pend){
-        h+='</div><button class="sb-cal-cancel" type="button" onclick="cancelCustom()">&times; CANCEL</button>';
-    } else {
-        h+='</div>';
-    }
+    h+='</div>';
     el.innerHTML=h;
 }
 function navCal(d){
@@ -1938,40 +1943,13 @@ function navCal(d){
     if(_calMonth<0){_calMonth=11;_calYear--;}
     buildMiniCal();
 }
-function cancelCustom(){ _setPendingFrom(''); buildMiniCal(); }
 function pickCalDate(iso){
     var u=new URL(location);
-    if(_statsPeriod==='custom'){
-        var pend=_pendingFrom();
-        if(!pend){
-            _setPendingFrom(iso);
-            buildMiniCal();
-            return;
-        }
-        var from=pend, to=iso;
-        if(new Date(to)<new Date(from)){ var t=from; from=to; to=t; }
-        _setPendingFrom('');
-        u.searchParams.set('period','custom');
-        u.searchParams.set('from',from);
-        u.searchParams.set('to',to);
-        u.searchParams.delete('date');
-        location.href=u;
-        return;
-    }
     u.searchParams.set('date',iso);
-    u.searchParams.delete('from'); u.searchParams.delete('to');
+    u.searchParams.delete('from'); u.searchParams.delete('to'); u.searchParams.delete('period');
     location.href=u;
 }
 buildMiniCal();
-
-function switchPeriod(p){
-    sessionStorage.removeItem('stats_pending_from');
-    var u=new URL(location);
-    u.searchParams.set('period',p);
-    u.searchParams.delete('from');u.searchParams.delete('to');
-    if(p==='custom'){ u.searchParams.delete('date'); }
-    location.href=u;
-}
 function toggleNavGroup(gid){
     var el=document.getElementById('grp_'+gid);
     var arr=document.getElementById('arr_'+gid);
