@@ -1577,7 +1577,7 @@ app.get('/stats', async (req, res) => {
             mainHTML += '</div>';
 
             mainHTML += '<div class="two-col">';
-            mainHTML += '<div class="panel panel-wide"><div class="panel-header"><div class="panel-title">HOURS TREND</div><div class="panel-sub">Daily hours across the period</div></div><div class="chart-wrap"><svg viewBox="0 0 ' + chartW + ' ' + chartH + '" style="width:100%;height:auto;"><defs><linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#fbc02d"/><stop offset="100%" stop-color="#f57f17"/></linearGradient><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fbc02d" stop-opacity="0.35"/><stop offset="100%" stop-color="#fbc02d" stop-opacity="0"/></linearGradient></defs>' + gridHTML + '<path d="' + areaPts + '" fill="url(#areaGrad)"/><path d="' + linePts + '" stroke="url(#lineGrad)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' + xLabelsHTML + '</svg></div></div>';
+            mainHTML += '<div class="panel panel-wide"><div class="panel-header"><div class="panel-title">HOURS TREND</div><div class="panel-sub">Daily hours across the period</div></div><div class="chart-wrap"><svg viewBox="0 0 ' + chartW + ' ' + chartH + '" style="width:100%;height:auto;"><defs><linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#60a5fa" stop-opacity="0.38"/><stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/></linearGradient></defs>' + gridHTML + '<path d="' + areaPts + '" fill="url(#areaGrad)"/><path d="' + linePts + '" stroke="url(#lineGrad)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' + xLabelsHTML + '</svg></div></div>';
 
             mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">SHIFT MIX</div><div class="panel-sub">' + donutTotal + ' shifts total</div></div><div class="donut-wrap"><svg viewBox="0 0 200 200" style="width:180px;height:180px;">' + donutSegments + '<text x="100" y="96" text-anchor="middle" fill="#c8d0e0" font-size="28" font-weight="700" font-family="Oswald">' + donutTotal + '</text><text x="100" y="116" text-anchor="middle" fill="#4a5060" font-size="10" letter-spacing="2" font-family="Oswald">SHIFTS</text></svg><div class="donut-legend"><div class="dl-item"><span class="dl-dot" style="background:#ffa726"></span>Morning<span class="dl-val">' + p.morningCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#42a5f5"></span>Afternoon<span class="dl-val">' + p.afternoonCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#7c4dff"></span>Night<span class="dl-val">' + p.nightCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#ef5350"></span>RIP<span class="dl-val">' + p.ripCount + '</span></div></div></div></div>';
             mainHTML += '</div>';
@@ -1594,7 +1594,7 @@ app.get('/stats', async (req, res) => {
             const activePeople = statsArr.filter(s => s.totalShifts > 0).length;
             const maxH = Math.max(1, ...statsArr.map(s => s.totalHours));
 
-            mainHTML += '<div class="hero"><div class="hero-avatar" style="background:linear-gradient(135deg,#fbc02d,#f57f17)">&#128202;</div><div class="hero-info"><div class="hero-eyebrow">STATISTICS OVERVIEW</div><div class="hero-name">Team Overview</div><div class="hero-meta">' + activePeople + ' active people &middot; ' + sumHours + 'h total &middot; ' + periodLabel + '</div></div></div>';
+            mainHTML += '<div class="hero"><div class="hero-avatar" style="background:linear-gradient(135deg,#60a5fa,#3b82f6)">&#128202;</div><div class="hero-info"><div class="hero-eyebrow">STATISTICS OVERVIEW</div><div class="hero-name">Team Overview</div><div class="hero-meta">' + activePeople + ' active people &middot; ' + sumHours + 'h total &middot; ' + periodLabel + '</div></div></div>';
 
             mainHTML += '<div class="kpi-grid">';
             mainHTML += '<div class="kpi-card kpi-hours"><div class="kpi-ico">&#9201;</div><div class="kpi-val">' + sumHours + '<span class="kpi-unit">h</span></div><div class="kpi-lbl">Total Hours</div><div class="kpi-sub">' + activePeople + ' people</div></div>';
@@ -1637,8 +1637,8 @@ a{text-decoration:none;color:inherit;}
 /* Layout shell */
 .shell{display:flex;min-height:100vh;}
 .sidebar{width:280px;background:#0d0e14;border-right:1px solid #15171f;display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;overflow-y:auto;z-index:10;}
-.main{margin-left:280px;flex:1;min-width:0;background:radial-gradient(ellipse 900px 500px at 15% -5%, rgba(251,192,45,0.10) 0%, transparent 55%), radial-gradient(ellipse 700px 400px at 95% 10%, rgba(245,127,23,0.08) 0%, transparent 55%), radial-gradient(ellipse 600px 400px at 50% 100%, rgba(251,192,45,0.05) 0%, transparent 60%), #0a0b10;position:relative;}
-.main::before{content:'';position:fixed;top:0;left:280px;right:0;bottom:0;background-image:linear-gradient(rgba(251,192,45,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(251,192,45,0.025) 1px, transparent 1px);background-size:48px 48px;pointer-events:none;mask-image:radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 75%);-webkit-mask-image:radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 75%);z-index:0;}
+.main{margin-left:280px;flex:1;min-width:0;background:radial-gradient(ellipse 1100px 600px at 20% -10%, rgba(96,165,250,0.14) 0%, transparent 55%), radial-gradient(ellipse 900px 500px at 95% 5%, rgba(59,130,246,0.10) 0%, transparent 55%), radial-gradient(ellipse 800px 500px at 50% 110%, rgba(139,92,246,0.07) 0%, transparent 60%), linear-gradient(180deg, #0b1220 0%, #0a0f1c 40%, #090d17 100%);position:relative;}
+.main::before{content:'';position:fixed;top:0;left:280px;right:0;bottom:0;background-image:linear-gradient(rgba(96,165,250,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(96,165,250,0.035) 1px, transparent 1px);background-size:48px 48px;pointer-events:none;mask-image:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, transparent 75%);-webkit-mask-image:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, transparent 75%);z-index:0;}
 .main > *{position:relative;z-index:1;}
 
 /* Sidebar branding */
@@ -1650,14 +1650,14 @@ a{text-decoration:none;color:inherit;}
 /* Search */
 .sb-search{padding:14px 16px 10px;}
 .sb-search input{width:100%;padding:9px 12px;background:#15171f;border:1px solid #1e2030;border-radius:8px;color:#c8d0e0;font-size:0.8rem;font-family:'Inter';outline:none;transition:0.15s;}
-.sb-search input:focus{border-color:rgba(251,192,45,0.45);background:#15171f;}
+.sb-search input:focus{border-color:rgba(96,165,250,0.5);background:#15171f;}
 .sb-search input::placeholder{color:#3a4050;}
 
 /* Nav */
 .sb-nav{padding:6px 10px 20px;flex:1;}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:#5b7fa6;font-size:0.78rem;font-weight:600;letter-spacing:1px;font-family:'Oswald';transition:0.15s;margin-bottom:4px;}
 .nav-item:hover{background:#15171f;color:#c8d0e0;}
-.nav-item.active{background:linear-gradient(90deg,rgba(251,192,45,0.18),rgba(245,127,23,0.08));color:#fbc02d;box-shadow:inset 2px 0 0 #fbc02d;}
+.nav-item.active{background:linear-gradient(90deg,rgba(96,165,250,0.2),rgba(59,130,246,0.08));color:#60a5fa;box-shadow:inset 2px 0 0 #60a5fa;}
 .nav-ico{font-size:1rem;}
 
 .nav-group{margin-top:8px;}
@@ -1671,27 +1671,27 @@ a{text-decoration:none;color:inherit;}
 
 .person-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:0.78rem;color:#8892a4;transition:0.15s;}
 .person-item:hover{background:#15171f;color:#c8d0e0;}
-.person-item.active{background:linear-gradient(90deg,rgba(251,192,45,0.14),rgba(245,127,23,0.06));color:#fff;box-shadow:inset 2px 0 0 #fbc02d;}
+.person-item.active{background:linear-gradient(90deg,rgba(96,165,250,0.16),rgba(59,130,246,0.06));color:#fff;box-shadow:inset 2px 0 0 #60a5fa;}
 .pi-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#0a0b10;font-size:0.78rem;flex-shrink:0;}
 .pi-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
 .pi-hrs{font-size:0.65rem;color:#4a5060;font-weight:600;font-family:'Oswald';letter-spacing:0.5px;}
-.person-item.active .pi-hrs{color:#fbc02d;}
+.person-item.active .pi-hrs{color:#60a5fa;}
 
 /* Main topbar */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid #15171f;background:rgba(13,14,20,0.5);backdrop-filter:blur(10px);position:sticky;top:0;z-index:5;gap:14px;flex-wrap:wrap;}
 .topbar-left{display:flex;align-items:center;gap:14px;min-width:0;flex:1;}
 .tb-back{padding:7px 12px;background:#13151e;border:1px solid #1e2030;border-radius:8px;color:#5b7fa6;font-size:0.72rem;font-weight:700;font-family:'Oswald';letter-spacing:1px;transition:0.15s;}
-.tb-back:hover{border-color:rgba(251,192,45,0.45);color:#fbc02d;}
+.tb-back:hover{border-color:rgba(96,165,250,0.5);color:#60a5fa;}
 .tb-crumbs{display:flex;align-items:center;gap:8px;font-size:0.72rem;color:#3a4050;font-family:'Oswald';letter-spacing:1.5px;}
 .tb-crumbs .sep{color:#2a2d3a;}
 .tb-crumbs .current{color:#c8d0e0;}
 .topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .tb-btn{padding:6px 12px;background:#13151e;border:1px solid #1e2030;border-radius:6px;color:#5b7fa6;cursor:pointer;font-size:0.7rem;font-weight:700;font-family:'Oswald';letter-spacing:1px;transition:0.15s;}
-.tb-btn:hover{border-color:rgba(251,192,45,0.45);color:#fbc02d;}
-.tb-btn.active{background:linear-gradient(135deg,rgba(251,192,45,0.18),rgba(245,127,23,0.12));color:#fbc02d;border-color:rgba(251,192,45,0.45);}
+.tb-btn:hover{border-color:rgba(96,165,250,0.5);color:#60a5fa;}
+.tb-btn.active{background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(59,130,246,0.12));color:#60a5fa;border-color:rgba(96,165,250,0.5);}
 .tb-nav-arrow{width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:#13151e;border:1px solid #1e2030;border-radius:6px;color:#5b7fa6;font-size:0.85rem;font-weight:700;transition:0.15s;}
-.tb-nav-arrow:hover{border-color:rgba(251,192,45,0.45);color:#fbc02d;}
-.tb-month{padding:6px 12px;background:#13151e;border:1px solid #1e2030;border-radius:6px;color:#fbc02d;font-size:0.78rem;font-weight:700;font-family:'Oswald';letter-spacing:1px;cursor:pointer;min-width:150px;text-align:center;outline:none;}
+.tb-nav-arrow:hover{border-color:rgba(96,165,250,0.5);color:#60a5fa;}
+.tb-month{padding:6px 12px;background:#13151e;border:1px solid #1e2030;border-radius:6px;color:#60a5fa;font-size:0.78rem;font-weight:700;font-family:'Oswald';letter-spacing:1px;cursor:pointer;min-width:150px;text-align:center;outline:none;}
 .tb-month option{background:#13151e;color:#c8d0e0;}
 .tb-period-lbl{padding:6px 12px;background:#13151e;border:1px solid #1e2030;border-radius:6px;color:#8892a4;font-size:0.78rem;font-weight:600;min-width:150px;text-align:center;}
 
@@ -1700,8 +1700,8 @@ a{text-decoration:none;color:inherit;}
 
 /* Hero block */
 .hero{display:flex;align-items:center;gap:20px;padding:24px 28px;background:linear-gradient(135deg,rgba(13,14,20,0.8),rgba(19,21,30,0.8));border:1px solid #1e2030;border-radius:16px;margin-bottom:22px;position:relative;overflow:hidden;}
-.hero::before{content:'';position:absolute;top:-50%;right:-10%;width:420px;height:420px;background:radial-gradient(circle,rgba(251,192,45,0.12) 0%,transparent 70%);pointer-events:none;}
-.hero::after{content:'';position:absolute;bottom:-40%;left:-5%;width:260px;height:260px;background:radial-gradient(circle,rgba(245,127,23,0.08) 0%,transparent 70%);pointer-events:none;}
+.hero::before{content:'';position:absolute;top:-50%;right:-10%;width:420px;height:420px;background:radial-gradient(circle,rgba(96,165,250,0.16) 0%,transparent 70%);pointer-events:none;}
+.hero::after{content:'';position:absolute;bottom:-40%;left:-5%;width:260px;height:260px;background:radial-gradient(circle,rgba(139,92,246,0.10) 0%,transparent 70%);pointer-events:none;}
 .hero-avatar{width:60px;height:60px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:800;font-size:1.7rem;color:#0a0b10;flex-shrink:0;position:relative;z-index:1;}
 .hero-info{flex:1;min-width:0;position:relative;z-index:1;}
 .hero-eyebrow{font-size:0.65rem;color:#5b7fa6;font-weight:700;letter-spacing:2px;font-family:'Oswald';margin-bottom:4px;}
@@ -1716,7 +1716,7 @@ a{text-decoration:none;color:inherit;}
 /* KPI grid */
 .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px;}
 .kpi-card{background:#13151e;border:1px solid #1e2030;border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:0.2s;}
-.kpi-card:hover{transform:translateY(-2px);border-color:rgba(251,192,45,0.3);box-shadow:0 8px 24px rgba(251,192,45,0.08);}
+.kpi-card:hover{transform:translateY(-2px);border-color:rgba(96,165,250,0.35);box-shadow:0 8px 24px rgba(59,130,246,0.12);}
 .kpi-card::before{content:'';position:absolute;top:-30%;right:-20%;width:140px;height:140px;border-radius:50%;opacity:0.12;pointer-events:none;}
 .kpi-hours::before{background:#4caf50;}
 .kpi-morning::before{background:#ffa726;}
@@ -1755,7 +1755,7 @@ a{text-decoration:none;color:inherit;}
 /* Team list (overview) */
 .team-list{padding:8px 14px;}
 .team-row{display:grid;grid-template-columns:32px 1fr 2fr auto auto auto;align-items:center;gap:12px;padding:10px 8px;border-radius:8px;transition:0.15s;color:#c8d0e0;}
-.team-row:hover{background:rgba(251,192,45,0.07);}
+.team-row:hover{background:rgba(96,165,250,0.08);}
 .tr-avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#0a0b10;font-size:0.85rem;}
 .tr-name{font-weight:600;font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tr-bar-wrap{height:8px;background:#1a1c28;border-radius:4px;overflow:hidden;min-width:80px;}
