@@ -1567,7 +1567,7 @@ app.get('/stats', async (req, res) => {
             });
 
             const donutR = 70, donutCx = 100, donutCy = 100;
-            const donutTotal = pMonth.morningCount + pMonth.afternoonCount + pMonth.nightCount + pMonth.ripCount;
+            const donutTotal = pMonth.morningCount + pMonth.afternoonCount + pMonth.nightCount + pMonth.ripCount + pMonth.vacationCount;
             const donutCirc = 2 * Math.PI * donutR;
             let donutSegments = '';
             if (donutTotal > 0) {
@@ -1576,7 +1576,8 @@ app.get('/stats', async (req, res) => {
                     { val: pMonth.morningCount, color: '#ffa726' },
                     { val: pMonth.afternoonCount, color: '#42a5f5' },
                     { val: pMonth.nightCount, color: '#7c4dff' },
-                    { val: pMonth.ripCount, color: '#ef5350' }
+                    { val: pMonth.ripCount, color: '#ef5350' },
+                    { val: pMonth.vacationCount, color: '#26c6da' }
                 ];
                 segs.forEach(seg => {
                     if (seg.val === 0) return;
@@ -1592,7 +1593,7 @@ app.get('/stats', async (req, res) => {
             mainHTML += personKPIs(pMonth);
             mainHTML += '<div class="two-col">';
             mainHTML += '<div class="panel panel-wide"><div class="panel-header"><div class="panel-title">HOURS TREND</div><div class="panel-sub">Daily hours across ' + monthLabel + '</div></div><div class="chart-wrap"><svg viewBox="0 0 ' + chartW + ' ' + chartH + '" style="width:100%;height:auto;"><defs><linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#60a5fa" stop-opacity="0.38"/><stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/></linearGradient></defs>' + gridHTML + '<path d="' + areaPts + '" fill="url(#areaGrad)"/><path d="' + linePts + '" stroke="url(#lineGrad)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' + xLabelsHTML + '</svg></div></div>';
-            mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">SHIFT MIX</div><div class="panel-sub">' + donutTotal + ' shifts total</div></div><div class="donut-wrap"><svg viewBox="0 0 200 200" style="width:180px;height:180px;">' + donutSegments + '<text x="100" y="96" text-anchor="middle" fill="#c8d0e0" font-size="28" font-weight="700" font-family="Oswald">' + donutTotal + '</text><text x="100" y="116" text-anchor="middle" fill="#4a5060" font-size="10" letter-spacing="2" font-family="Oswald">SHIFTS</text></svg><div class="donut-legend"><div class="dl-item"><span class="dl-dot" style="background:#ffa726"></span>Morning<span class="dl-val">' + pMonth.morningCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#42a5f5"></span>Afternoon<span class="dl-val">' + pMonth.afternoonCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#7c4dff"></span>Night<span class="dl-val">' + pMonth.nightCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#ef5350"></span>RIP<span class="dl-val">' + pMonth.ripCount + '</span></div></div></div></div>';
+            mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">SHIFT MIX</div><div class="panel-sub">' + donutTotal + ' shifts total</div></div><div class="donut-wrap"><svg viewBox="0 0 200 200" style="width:180px;height:180px;">' + donutSegments + '<text x="100" y="96" text-anchor="middle" fill="#c8d0e0" font-size="28" font-weight="700" font-family="Oswald">' + donutTotal + '</text><text x="100" y="116" text-anchor="middle" fill="#4a5060" font-size="10" letter-spacing="2" font-family="Oswald">SHIFTS</text></svg><div class="donut-legend"><div class="dl-item"><span class="dl-dot" style="background:#ffa726"></span>Morning<span class="dl-val">' + pMonth.morningCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#42a5f5"></span>Afternoon<span class="dl-val">' + pMonth.afternoonCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#7c4dff"></span>Night<span class="dl-val">' + pMonth.nightCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#ef5350"></span>RIP<span class="dl-val">' + pMonth.ripCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#26c6da"></span>Vacation<span class="dl-val">' + pMonth.vacationCount + '</span></div></div></div></div>';
             mainHTML += '</div>';
             mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">ALL SHIFTS THIS MONTH</div><div class="panel-sub">' + monthShifts.length + ' shifts</div></div><div class="shifts-list">' + buildShiftList(monthShifts) + '</div></div>';
 
@@ -1630,7 +1631,7 @@ app.get('/stats', async (req, res) => {
                     gMembers.forEach(x => {
                         const barPct = maxH > 0 ? (x.totalHours / maxH) * 100 : 0;
                         const targetPct = x.targetPeriod > 0 ? Math.round((x.totalHours / x.targetPeriod) * 100) : 0;
-                        rowsHTML += '<a href="/stats?person=' + encodeURIComponent(x.name) + '&' + periodQs + '" class="team-row"><span class="tr-avatar" style="background:' + x.personColor + '">' + x.name.charAt(0).toUpperCase() + '</span><span class="tr-name">' + x.name + '</span><div class="tr-bar-wrap"><div class="tr-bar" style="width:' + barPct.toFixed(1) + '%;background:linear-gradient(90deg,' + x.personColor + ',' + x.personColor + '99);"></div></div><span class="tr-hours">' + x.totalHours.toFixed(1) + 'h</span><span class="tr-target">' + (x.targetPeriod > 0 ? targetPct + '%' : '-') + '</span><span class="tr-counts"><span style="color:#ef5350">' + (x.ripCount||0) + '</span>&middot;<span style="color:#ffa726">' + (x.morningCount||0) + '</span>&middot;<span style="color:#42a5f5">' + (x.afternoonCount||0) + '</span>&middot;<span style="color:#7c4dff">' + (x.nightCount||0) + '</span></span></a>';
+                        rowsHTML += '<a href="/stats?person=' + encodeURIComponent(x.name) + '&' + periodQs + '" class="team-row"><span class="tr-avatar" style="background:' + x.personColor + '">' + x.name.charAt(0).toUpperCase() + '</span><span class="tr-name">' + x.name + '</span><div class="tr-bar-wrap"><div class="tr-bar" style="width:' + barPct.toFixed(1) + '%;background:linear-gradient(90deg,' + x.personColor + ',' + x.personColor + '99);"></div></div><span class="tr-hours">' + x.totalHours.toFixed(1) + 'h</span><span class="tr-target">' + (x.targetPeriod > 0 ? targetPct + '%' : '-') + '</span><span class="tr-counts"><span style="color:#ef5350" title="RIP">' + (x.ripCount||0) + '</span>&middot;<span style="color:#ffa726" title="Morning">' + (x.morningCount||0) + '</span>&middot;<span style="color:#42a5f5" title="Afternoon">' + (x.afternoonCount||0) + '</span>&middot;<span style="color:#7c4dff" title="Night">' + (x.nightCount||0) + '</span>&middot;<span style="color:#26c6da" title="Vacation">' + (x.vacationCount||0) + '</span></span></a>';
                     });
                     s += '<div class="panel"><div class="panel-header"><div class="panel-title" style="color:' + group.color + '">' + group.label.toUpperCase() + '</div><div class="panel-sub">' + gMembers.length + ' people &middot; ' + gTotal.toFixed(1) + 'h total</div></div><div class="team-list">' + rowsHTML + '</div></div>';
                 });
@@ -1818,7 +1819,7 @@ a{text-decoration:none;color:inherit;}
 .tr-bar{height:100%;border-radius:4px;transition:width 0.5s;}
 .tr-hours{font-family:'Oswald';font-weight:700;font-size:0.85rem;color:#fff;min-width:55px;text-align:right;}
 .tr-target{font-size:0.7rem;color:#4a5060;font-weight:600;min-width:40px;text-align:right;}
-.tr-counts{font-size:0.72rem;color:#5b7fa6;font-weight:600;letter-spacing:0.5px;min-width:90px;text-align:right;}
+.tr-counts{font-size:0.72rem;color:#5b7fa6;font-weight:600;letter-spacing:0.5px;min-width:110px;text-align:right;}
 
 /* Shifts list */
 .shifts-list{padding:8px 20px 16px;}
