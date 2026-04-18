@@ -1483,7 +1483,8 @@ app.get('/stats', async (req, res) => {
             h += '<div class="kpi-card kpi-morning"><div class="kpi-ico">&#9728;</div><div class="kpi-val">' + p.morningCount + '</div><div class="kpi-lbl">Morning</div><div class="kpi-sub">07:00 &ndash; 16:00</div></div>';
             h += '<div class="kpi-card kpi-afternoon"><div class="kpi-ico">&#127773;</div><div class="kpi-val">' + p.afternoonCount + '</div><div class="kpi-lbl">Afternoon</div><div class="kpi-sub">15:00 &ndash; 00:00</div></div>';
             h += '<div class="kpi-card kpi-night"><div class="kpi-ico">&#127769;</div><div class="kpi-val">' + p.nightCount + '</div><div class="kpi-lbl">Night</div><div class="kpi-sub">23:00 &ndash; 08:00</div></div>';
-            h += '<div class="kpi-card kpi-rip"><div class="kpi-ico">&#9888;</div><div class="kpi-val">' + p.ripCount + '</div><div class="kpi-lbl">RIP</div><div class="kpi-sub">' + p.vacationCount + ' vacation</div></div>';
+            h += '<div class="kpi-card kpi-rip"><div class="kpi-ico">&#9888;</div><div class="kpi-val">' + p.ripCount + '</div><div class="kpi-lbl">RIP</div><div class="kpi-sub">Shifts</div></div>';
+            h += '<div class="kpi-card kpi-vacation"><div class="kpi-ico">&#127796;</div><div class="kpi-val">' + p.vacationCount + '</div><div class="kpi-lbl">Vacation</div><div class="kpi-sub">Shifts</div></div>';
             h += '</div>';
             return h;
         }
@@ -1602,6 +1603,7 @@ app.get('/stats', async (req, res) => {
                 const arr = Object.values(rangeMap);
                 const sumHours = Math.round(arr.reduce((a,b) => a + b.totalHours, 0) * 10) / 10;
                 const sumRIP = arr.reduce((a,b) => a + b.ripCount, 0);
+                const sumVacation = arr.reduce((a,b) => a + b.vacationCount, 0);
                 const sumMorning = arr.reduce((a,b) => a + b.morningCount, 0);
                 const sumAfternoon = arr.reduce((a,b) => a + b.afternoonCount, 0);
                 const sumNight = arr.reduce((a,b) => a + b.nightCount, 0);
@@ -1615,6 +1617,7 @@ app.get('/stats', async (req, res) => {
                 s += '<div class="kpi-card kpi-afternoon"><div class="kpi-ico">&#127773;</div><div class="kpi-val">' + sumAfternoon + '</div><div class="kpi-lbl">Afternoon</div><div class="kpi-sub">Shifts</div></div>';
                 s += '<div class="kpi-card kpi-night"><div class="kpi-ico">&#127769;</div><div class="kpi-val">' + sumNight + '</div><div class="kpi-lbl">Night</div><div class="kpi-sub">Shifts</div></div>';
                 s += '<div class="kpi-card kpi-rip"><div class="kpi-ico">&#9888;</div><div class="kpi-val">' + sumRIP + '</div><div class="kpi-lbl">RIP</div><div class="kpi-sub">Shifts</div></div>';
+                s += '<div class="kpi-card kpi-vacation"><div class="kpi-ico">&#127796;</div><div class="kpi-val">' + sumVacation + '</div><div class="kpi-lbl">Vacation</div><div class="kpi-sub">Shifts</div></div>';
                 s += '</div>';
 
                 peopleHierarchy.forEach(group => {
@@ -1765,7 +1768,7 @@ a{text-decoration:none;color:inherit;}
 .hp-lbl{font-size:0.55rem;color:#4a5060;letter-spacing:1.5px;font-weight:700;font-family:'Oswald';margin-top:2px;}
 
 /* KPI grid */
-.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:22px;}
 .kpi-card{background:linear-gradient(160deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015));backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;position:relative;overflow:hidden;transition:0.25s;box-shadow:0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);}
 .kpi-card:hover{transform:translateY(-2px);border-color:rgba(96,165,250,0.35);box-shadow:0 8px 24px rgba(59,130,246,0.12);}
 .kpi-card::before{content:'';position:absolute;top:-30%;right:-20%;width:140px;height:140px;border-radius:50%;opacity:0.12;pointer-events:none;}
@@ -1774,6 +1777,7 @@ a{text-decoration:none;color:inherit;}
 .kpi-afternoon::before{background:#42a5f5;}
 .kpi-night::before{background:#7c4dff;}
 .kpi-rip::before{background:#ef5350;}
+.kpi-vacation::before{background:#26c6da;}
 .kpi-ico{font-size:1.2rem;margin-bottom:10px;opacity:0.8;}
 .kpi-val{font-family:'Oswald';font-size:2.1rem;font-weight:700;color:#fff;line-height:1;letter-spacing:0.5px;}
 .kpi-unit{font-size:1rem;color:#5b7fa6;margin-left:2px;}
@@ -1784,6 +1788,7 @@ a{text-decoration:none;color:inherit;}
 .kpi-afternoon .kpi-val{color:#42a5f5;}
 .kpi-night .kpi-val{color:#7c4dff;}
 .kpi-rip .kpi-val{color:#ef5350;}
+.kpi-vacation .kpi-val{color:#26c6da;}
 
 /* Panel */
 .panel{background:linear-gradient(160deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012));backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);border:1px solid rgba(255,255,255,0.075);border-radius:16px;margin-bottom:18px;overflow:hidden;box-shadow:0 10px 36px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);}
