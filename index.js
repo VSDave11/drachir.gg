@@ -195,20 +195,37 @@ async function loadSlackData() {
     } catch(e) { console.error('Error loading Slack data:', e.message); }
 }
 
-async function notifyShiftChange(actionBy, targetName, changeType, details) {
+// Lima members (CET -6h) — get dual-timezone suffix in messages
+const LIMA_MEMBERS = new Set(["Andres","Christian C.","David Z.","Flabio T.","Francesco","Franco M.","Gustavo P.","Hadi B.","James H.","Jose C.","Martin M. M.","Santiago B.","William M."]);
+
+function shiftLimaTime(hhmm) {
+    if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return hhmm;
+    const [h, m] = hhmm.split(':').map(Number);
+    const lh = ((h - 6) % 24 + 24) % 24;
+    return String(lh).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+function withLimaSuffix(name, details, start, end) {
+    if (!LIMA_MEMBERS.has(name) || !start || !end) return details;
+    return details + ' — Lima: ' + shiftLimaTime(start) + '-' + shiftLimaTime(end);
+}
+
+async function notifyShiftChange(actionBy, targetName, verb, details, start, end) {
     if (!SLACK_BOT_TOKEN) return;
     if (!_slackDataLoaded) await loadSlackData();
     const promises = [];
     // 1. DM to person who made the change
     const actionBySlack = _slackIdMap[actionBy];
     if (actionBySlack) {
-        promises.push(sendSlackDM(actionBySlack, ':pencil2: You ' + changeType + ': ' + details));
+        const msg = withLimaSuffix(actionBy, details, start, end);
+        promises.push(sendSlackDM(actionBySlack, ':pencil2: You ' + verb + ' a shift: ' + msg));
     }
     // 2. DM to person whose shift was changed (if different)
     if (targetName && targetName !== actionBy) {
         const targetSlack = _slackIdMap[targetName];
         if (targetSlack) {
-            promises.push(sendSlackDM(targetSlack, ':bell: ' + actionBy + ' ' + changeType + ' your shift: ' + details));
+            const msg = withLimaSuffix(targetName, details, start, end);
+            promises.push(sendSlackDM(targetSlack, ':bell: ' + actionBy + ' ' + verb + ' your shift: ' + msg));
         }
     }
     // 3. DM to all subscribers watching targetName
@@ -217,7 +234,8 @@ async function notifyShiftChange(actionBy, targetName, changeType, details) {
         for (const sub of subs) {
             const subSlack = _slackIdMap[sub.subscriber];
             if (subSlack) {
-                promises.push(sendSlackDM(subSlack, ':eyes: ' + actionBy + ' ' + changeType + ' shift for ' + targetName + ': ' + details));
+                const msg = withLimaSuffix(sub.subscriber, details, start, end);
+                promises.push(sendSlackDM(subSlack, ':eyes: ' + actionBy + ' ' + verb + ' ' + targetName + "'s shift: " + msg));
             }
         }
     }
@@ -1004,8 +1022,8 @@ app.post('/add-shift', async (req, res) => {
             if (auditSheet) await auditSheet.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location||'', Action: 'ADD_SHIFT|' + req.body.name + '|' + req.body.product + '|' + req.body.date });
         } catch(e) {}
         invalidateCache();
-        sendSlackMessage(':heavy_plus_sign: *Shift added* by ' + req.user.jmeno + ': ' + req.body.name + ' - ' + req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + ')');
-        notifyShiftChange(req.user.jmeno, req.body.name, 'added shift', req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + ')');
+        sendSlackMessage(':heavy_plus_sign: *Shift added* by ' + req.user.jmeno + ': ' + req.body.name + ' - ' + req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + (LIMA_MEMBERS.has(req.body.name) ? ' — Lima: ' + shiftLimaTime(req.body.start) + '-' + shiftLimaTime(req.body.end) : '') + ')');
+        notifyShiftChange(req.user.jmeno, req.body.name, 'added', req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + ')', req.body.start, req.body.end);
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
 });
@@ -1100,8 +1118,8 @@ app.post('/update-shift', async (req, res) => {
         } catch(e) {}
 
         invalidateCache();
-        sendSlackMessage(':pencil2: *Shift edited* by ' + req.user.jmeno + ': ' + (name || originalName) + ' - ' + (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + ')');
-        notifyShiftChange(req.user.jmeno, name || originalName, 'edited shift', (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + ')');
+        sendSlackMessage(':pencil2: *Shift edited* by ' + req.user.jmeno + ': ' + (name || originalName) + ' - ' + (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + (LIMA_MEMBERS.has(name || originalName) ? ' — Lima: ' + shiftLimaTime(start) + '-' + shiftLimaTime(end) : '') + ')');
+        notifyShiftChange(req.user.jmeno, name || originalName, 'edited', (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + ')', start, end);
         res.json({ success: true, found: true });
     } catch(e) { res.status(500).send(e.message); }
 });
@@ -1154,7 +1172,7 @@ app.post('/delete-shift', async (req, res) => {
         } catch(e) {}
 
         sendSlackMessage(':x: *Shift deleted* by ' + req.user.jmeno + ': ' + name + ' from ' + sheetTitle);
-        notifyShiftChange(req.user.jmeno, name, 'deleted shift', name + ' from ' + sheetTitle);
+        notifyShiftChange(req.user.jmeno, name, 'deleted', name + ' from ' + sheetTitle);
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
 });
@@ -1195,8 +1213,8 @@ app.post('/exchange-shift', async (req, res) => {
         } catch(e) {}
         // Slack notifikace
         sendSlackMessage(':arrows_counterclockwise: *Shift exchange* by ' + req.user.jmeno + ': ' + name1 + ' <-> ' + name2);
-        notifyShiftChange(req.user.jmeno, name1, 'exchanged shifts', name1 + ' ↔ ' + name2 + ' on ' + (date1 || ''));
-        notifyShiftChange(req.user.jmeno, name2, 'exchanged shifts', name1 + ' ↔ ' + name2 + ' on ' + (date2 || ''));
+        notifyShiftChange(req.user.jmeno, name1, 'exchanged', name1 + ' ↔ ' + name2 + ' on ' + (date1 || ''));
+        notifyShiftChange(req.user.jmeno, name2, 'exchanged', name1 + ' ↔ ' + name2 + ' on ' + (date2 || ''));
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
 });
