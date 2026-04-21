@@ -2325,11 +2325,12 @@ app.get('/dashboard', async (req, res) => {
             // Helper funkce pro pill
             function buildPersonPill(s, name, dStr, dayIdx, left, width, personColor, prodColor, pillPart) {
                 const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
-                const crew = getCrewmates(s);
+                const isOff = (s.Product === 'Vacation' || s.Product === 'RIP');
+                const crew = isOff ? [] : getCrewmates(s);
                 // Shared note: find best note from all shifts in this group
                 const groupShifts = allShifts.filter(x => x.Date === s.Date && x.Product === s.Product && x.Start === s.Start && x.End === s.End);
                 const sharedNote = groupShifts.map(x => x.Note).filter(n => n && n !== 'Crew' && !n.endsWith('[Crew]'))[0] || s.Note || '';
-                const pillH = crew.length > 0 ? (34 + crew.length * 14) : 34;
+                const pillH = isOff ? 26 : (crew.length > 0 ? (34 + crew.length * 14) : 34);
                 let crewHTML = '';
                 if (crew.length > 0) {
                     crewHTML = '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:1px;">';
@@ -2430,18 +2431,20 @@ app.get('/dashboard', async (req, res) => {
 
                     // Helper pro pill produktoveho radku
                     function buildProdPill(s, pName, dStr, dayIdx, left, width, personColor, prodColor, pillPart) {
-                        const crew = getCrewmates(s);
-                        const allOnShift = [s.Name, ...crew];
+                        const isOff = (pName === 'Vacation' || pName === 'RIP');
+                        const crew = isOff ? [] : getCrewmates(s);
+                        const allOnShift = isOff ? [s.Name] : [s.Name, ...crew];
                         // Collect best note from all shifts in this group
                         const groupShifts = allShifts.filter(x => x.Date === s.Date && x.Product === s.Product && x.Start === s.Start && x.End === s.End);
                         const groupNote = groupShifts.map(x => x.Note).filter(n => n && n !== 'Crew' && !n.endsWith('[Crew]'))[0] || s.Note || '';
+                        const allNamesForTitle = groupShifts.map(x => x.Name).filter((v,i,a)=>a.indexOf(v)===i);
                         // Use gradient with product color only (multiple people = product-focused pill)
-                        const pillBg = crew.length > 0
+                        const pillBg = (!isOff && crew.length > 0)
                             ? 'linear-gradient(135deg,' + prodColor + ' 0%,' + prodColor + 'cc 100%)'
                             : 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
-                        const pillH = 34 + (allOnShift.length > 1 ? allOnShift.length * 14 : 0);
+                        const pillH = isOff ? 26 : (34 + (allOnShift.length > 1 ? allOnShift.length * 14 : 0));
                         let namesHTML = '';
-                        if (allOnShift.length > 1) {
+                        if (!isOff && allOnShift.length > 1) {
                             namesHTML = '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:1px;">';
                             allOnShift.forEach(n => {
                                 const nc = personColors[n] || '#888';
@@ -2455,9 +2458,11 @@ app.get('/dashboard', async (req, res) => {
                              + '<div style="display:flex;align-items:center;white-space:nowrap;">'
                              + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
                              + '<span style="margin:0 5px;opacity:0.5;">|</span>'
-                             + (allOnShift.length > 1
-                                 ? '<span style="font-weight:700;">' + allOnShift.length + ' traders</span><span style="margin:0 5px;opacity:0.5;">-</span>'
-                                 : '<span style="font-weight:700;">' + s.Name + '</span><span style="margin:0 5px;opacity:0.5;">-</span>')
+                             + (isOff && allNamesForTitle.length > 1
+                                 ? '<span style="font-weight:700;">' + allNamesForTitle.length + ' people</span><span style="margin:0 5px;opacity:0.5;">-</span>'
+                                 : (allOnShift.length > 1
+                                     ? '<span style="font-weight:700;">' + allOnShift.length + ' traders</span><span style="margin:0 5px;opacity:0.5;">-</span>'
+                                     : '<span style="font-weight:700;">' + s.Name + '</span><span style="margin:0 5px;opacity:0.5;">-</span>'))
                              + '<span style="font-size:0.78rem;opacity:0.9;">' + pName + '</span>'
                              + '</div>'
                              + namesHTML
