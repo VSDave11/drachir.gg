@@ -621,6 +621,66 @@ async function loadAllShifts(forceSync) {
     return allShifts;
 }
 
+// --- CAPABILITIES (kdo muze delat jaky produkt) ---
+let _capsCache = null;
+let _capsCacheTime = 0;
+const CAPS_TTL = 5 * 60 * 1000;
+
+async function loadCapabilities() {
+    if (_capsCache && (Date.now() - _capsCacheTime < CAPS_TTL)) return _capsCache;
+    await doc.loadInfo();
+    const sheet = doc.sheetsByTitle['Capabilities'];
+    if (!sheet) throw new Error('Sheet "Capabilities" nenalezen');
+    await sheet.loadCells('A1:Z200');
+
+    const products = [];
+    for (let c = 1; c < 26; c++) {
+        const h = sheet.getCell(0, c);
+        const name = (h.value || h.formattedValue || '').toString().trim();
+        if (!name) break;
+        products.push({ col: c, name });
+    }
+
+    const byPerson = {};
+    const byProduct = {};
+    products.forEach(p => byProduct[p.name] = []);
+
+    for (let r = 1; r < 200; r++) {
+        const nameCell = sheet.getCell(r, 0);
+        const name = (nameCell.value || nameCell.formattedValue || '').toString().trim();
+        if (!name) continue;
+        const canDo = [];
+        products.forEach(p => {
+            const cell = sheet.getCell(r, p.col);
+            const v = (cell.value == null ? '' : cell.value.toString().trim());
+            if (v === '1' || v.toLowerCase() === 'true' || v.toLowerCase() === 'x') {
+                canDo.push(p.name);
+                byProduct[p.name].push(name);
+            }
+        });
+        byPerson[name] = canDo;
+    }
+
+    // obohat o group + weeklyTarget z peopleHierarchy
+    const personMeta = {};
+    peopleHierarchy.forEach(g => {
+        g.members.forEach(m => {
+            personMeta[m] = { group: g.label, weeklyTarget: g.target, color: g.color };
+        });
+    });
+
+    const result = {
+        products: products.map(p => p.name),
+        byPerson,
+        byProduct,
+        personMeta,
+        generatedAt: new Date().toISOString()
+    };
+    _capsCache = result;
+    _capsCacheTime = Date.now();
+    return result;
+}
+
 // --- POMOCNÉ FUNKCE ---
 
 function toISOLocal(date) {
@@ -1113,6 +1173,25 @@ app.get('/api/schedule-sheets', async (req, res) => {
             });
         res.json(sheets);
     } catch(e) { res.json([]); }
+});
+
+// Capabilities debug endpoint (admin-only) — vraci parsovany Capabilities sheet
+app.get('/api/capabilities', async (req, res) => {
+    if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    try {
+        const caps = await loadCapabilities();
+        const summary = {};
+        caps.products.forEach(p => summary[p] = caps.byProduct[p].length);
+        res.json({
+            products: caps.products,
+            peoplePerProduct: summary,
+            totalPeople: Object.keys(caps.byPerson).length,
+            byProduct: caps.byProduct,
+            byPerson: caps.byPerson,
+            personMeta: caps.personMeta,
+            generatedAt: caps.generatedAt
+        });
+    } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // BambooHR manual sync trigger (admin-only)
