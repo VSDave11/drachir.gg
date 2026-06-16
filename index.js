@@ -6264,6 +6264,5 @@ module.exports = {
     getProductMeta,
     getCoverageProfile,
     productMapping,
-    productCoverage,
-    peopleHierarchy
+    productCoverage
 };
