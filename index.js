@@ -1563,21 +1563,7 @@ app.get('/export-csv', async (req, res) => {
         for (const title of scheduleSheets) {
             const sheet = doc.sheetsByTitle[title];
             await sheet.loadCells('A1:BG500');
-            const productMapping = [
-                { name: "Valhalla Cup A", startCol: 2, trading: "FIFA", slots: [{o:0,s:'22:55',e:'06:44'},{o:1,s:'06:55',e:'14:48'},{o:2,s:'14:55',e:'22:47'}] },
-                { name: "Valhalla Cup B", startCol: 6, trading: "FIFA", slots: [{o:0,s:'22:57',e:'06:46'},{o:1,s:'06:57',e:'14:50'},{o:2,s:'14:57',e:'22:49'}] },
-                { name: "Valhalla Cup C", startCol: 10, trading: "FIFA", slots: [{o:0,s:'00:04',e:'08:04'},{o:1,s:'08:04',e:'16:04'},{o:2,s:'16:04',e:'00:04'}] },
-                { name: "Valkyrie Cup A", startCol: 14, trading: "FIFA", slots: [{o:0,s:'22:40',e:'06:22'},{o:1,s:'06:40',e:'14:32'},{o:2,s:'14:40',e:'22:32'}] },
-                { name: "Valkyrie Cup B", startCol: 18, trading: "FIFA", slots: [{o:0,s:'22:42',e:'06:24'},{o:1,s:'06:42',e:'14:34'},{o:2,s:'14:42',e:'22:34'}] },
-                { name: "Valhalla League", startCol: 22, trading: "NBA", slots: [{o:0,s:'23:40',e:'07:44'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'23:40'}] },
-                { name: "Yodha League", startCol: 26, trading: "Cricket", slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
-                { name: "CS 2 Duels", startCol: 30, trading: "Duels", slots: [{o:0,s:'00:00',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:00'}] },
-                { name: "Dota 2 Duels", startCol: 34, trading: "Duels", slots: [{o:0,s:'00:01',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:01'}] },
-                { name: "Madden", startCol: 38, trading: "eTouchdown", slots: [{o:0,s:'23:10',e:'07:10'},{o:1,s:'07:10',e:'15:10'},{o:2,s:'15:10',e:'23:10'}] },
-                { name: "Table Tennis", startCol: 42, trading: "Table Tennis", slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
-                { name: "World of Tanks", startCol: 46, trading: "Tanks", slots: [{o:0,s:'23:30',e:'07:30'},{o:1,s:'07:30',e:'15:30'},{o:2,s:'15:30',e:'23:30'}] },
-                { name: "eHockey", startCol: 50, trading: "Hockey", slots: [{o:0,s:'00:00',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:00'}] }
-            ];
+            // productMapping: pouzij modulovou konstantu definovanou nahore (zadna lokalni kopie)
             for (let r = 0; r < Math.min(sheet.rowCount, 500); r++) {
                 const dateCell = sheet.getCell(r, 0);
                 const rawDate = dateCell.formattedValue || dateCell.value;
