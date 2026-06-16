@@ -1667,6 +1667,60 @@ app.get('/api/shift-history', async (req, res) => {
     } catch(e) { res.json({ created: null, edits: [] }); }
 });
 
+// Admin: prohlížečka audit logu
+app.get('/admin/audit-log', async (req, res) => {
+    if (!req.user || req.user.role !== 'Admin') return res.status(403).send('Admin only');
+    const qPerson = (req.query.person || '').toLowerCase().trim();
+    const qAction = (req.query.action || '').trim();
+    const days    = Math.max(1, Math.min(3650, parseInt(req.query.days) || 90));
+    const page    = Math.max(1, parseInt(req.query.page) || 1);
+    const PER     = 200;
+    const since   = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    try {
+        await doc.loadInfo();
+        const sheet = doc.sheetsByTitle['AuditLog'];
+        const all = sheet ? await sheet.getRows() : [];
+        let items = all.map(r => ({
+            ts:     r.get('Timestamp') || '',
+            jmeno:  r.get('Jmeno') || '',
+            action: r.get('Action') || (r.get('Event') || ''),
+            detail: r.get('Detail') || ''
+        }));
+        items = items.filter(it => { const d = new Date(it.ts); return isNaN(d) ? true : d >= since; });
+        if (qPerson) items = items.filter(it => it.jmeno.toLowerCase().includes(qPerson));
+        if (qAction) items = items.filter(it => (it.action || '').toUpperCase().startsWith(qAction.toUpperCase()));
+        items.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+        const total = items.length;
+        const pages = Math.max(1, Math.ceil(total / PER));
+        const slice = items.slice((page - 1) * PER, page * PER);
+
+        const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const rowsHtml = slice.map(it =>
+            '<tr><td>' + esc(it.ts) + '</td><td>' + esc(it.jmeno) + '</td><td>' + esc(it.action) + '</td><td>' + esc(it.detail) + '</td></tr>'
+        ).join('');
+
+        res.send('<!doctype html><html><head><meta charset="utf-8"><title>Audit log</title>'
+            + '<style>body{font-family:system-ui,sans-serif;background:#111;color:#eee;padding:20px;}'
+            + 'table{border-collapse:collapse;width:100%;font-size:0.85rem;}th,td{border:1px solid #333;padding:6px 10px;text-align:left;}'
+            + 'th{background:#1c1c1c;position:sticky;top:0;}tr:nth-child(even){background:#181818;}'
+            + 'a{color:#6cf;}form{margin-bottom:16px;}input,select{padding:6px;margin-right:8px;background:#1c1c1c;color:#eee;border:1px solid #333;border-radius:4px;}</style>'
+            + '</head><body>'
+            + '<h2>Audit log <span style="font-size:0.8rem;color:#888;">(' + total + ' zaznamu, poslednich ' + days + ' dni)</span></h2>'
+            + '<p><a href="/dashboard">&larr; zpet na dashboard</a></p>'
+            + '<form method="GET" action="/admin/audit-log">'
+            + 'Osoba: <input name="person" value="' + esc(qPerson) + '" placeholder="jmeno">'
+            + 'Akce: <input name="action" value="' + esc(qAction) + '" placeholder="ADD_SHIFT, LOGIN...">'
+            + 'Dni zpet: <input name="days" type="number" value="' + days + '" style="width:80px">'
+            + '<button type="submit">Filtrovat</button></form>'
+            + '<table><thead><tr><th>Cas</th><th>Kdo</th><th>Akce</th><th>Detail</th></tr></thead><tbody>'
+            + rowsHtml + '</tbody></table>'
+            + '<p style="margin-top:12px;">Stranka ' + page + '/' + pages + ' '
+            + (page > 1 ? '<a href="?person=' + encodeURIComponent(qPerson) + '&action=' + encodeURIComponent(qAction) + '&days=' + days + '&page=' + (page-1) + '">&larr; novejsi</a> ' : '')
+            + (page < pages ? '<a href="?person=' + encodeURIComponent(qPerson) + '&action=' + encodeURIComponent(qAction) + '&days=' + days + '&page=' + (page+1) + '">starsi &rarr;</a>' : '')
+            + '</p></body></html>');
+    } catch (e) { res.status(500).send('Error: ' + e.message); }
+});
+
 // API - seznam dostupnych Schedule listu
 app.get('/api/schedule-sheets', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json([]);
@@ -3935,6 +3989,7 @@ app.get('/dashboard', async (req, res) => {
         ${req.user && req.user.role === 'Admin' ? `
         <button onclick="openAIGenModal()" style="background:rgba(91,127,166,0.08);color:#7ba3cc;border:1px solid rgba(91,127,166,0.3);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(91,127,166,0.18)'" onmouseout="this.style.background='rgba(91,127,166,0.08)'">&#129302; AI GENERATE</button>
         <button onclick="openSyncModal()" style="background:rgba(251,192,45,0.08);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.15)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'" id="syncBtn">SYNC WITH SCHEDULE</button>
+        <a href="/admin/audit-log" style="display:block;box-sizing:border-box;text-align:center;text-decoration:none;background:rgba(120,144,156,0.08);color:#90a4ae;border:1px solid rgba(120,144,156,0.3);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(120,144,156,0.18)'" onmouseout="this.style.background='rgba(120,144,156,0.08)'">&#128203; AUDIT LOG</a>
         <button onclick="openDeleteMonth()" style="background:rgba(255,68,68,0.06);color:#ff6b6b;border:1px solid rgba(255,68,68,0.2);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:16px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background='rgba(255,68,68,0.15)'" onmouseout="this.style.background='rgba(255,68,68,0.06)'">DELETE ALL SHIFTS THIS MONTH</button>
         ` : ''}
 
