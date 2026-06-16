@@ -3,6 +3,7 @@ const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 const session = require('express-session');
 const crypto = require('crypto');
+const { hashPassword, verifyPassword } = require('./lib/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1251,19 +1252,32 @@ app.post('/login', async (req, res) => {
         }
 
         let foundUser = null;
+        let foundRow = -1, foundLegacy = false;
         for (let r = 1; r < sheet.rowCount && r < 200; r++) {
             const email = colEmail >= 0 ? sheet.getCell(r, colEmail).value?.toString().toLowerCase().trim() : '';
             const heslo = colHeslo >= 0 ? sheet.getCell(r, colHeslo).value?.toString().trim() : '';
-            if (email === emailInput && heslo === passwordInput) {
-                foundUser = {
-                    jmeno:    colJmeno    >= 0 ? sheet.getCell(r, colJmeno).value?.toString().trim()    : '',
-                    email:    email,
-                    role:     colRole     >= 0 ? sheet.getCell(r, colRole).value?.toString().trim()     : 'User',
-                    location: colLocation >= 0 ? sheet.getCell(r, colLocation).value?.toString().trim() : '',
-                    slack_id: colSlackId  >= 0 ? sheet.getCell(r, colSlackId).value?.toString().trim()  : ''
-                };
+            if (email === emailInput) {
+                const v = verifyPassword(passwordInput, heslo);
+                if (v.ok) {
+                    foundRow = r; foundLegacy = v.legacy;
+                    foundUser = {
+                        jmeno:    colJmeno    >= 0 ? sheet.getCell(r, colJmeno).value?.toString().trim()    : '',
+                        email:    email,
+                        role:     colRole     >= 0 ? sheet.getCell(r, colRole).value?.toString().trim()     : 'User',
+                        location: colLocation >= 0 ? sheet.getCell(r, colLocation).value?.toString().trim() : '',
+                        slack_id: colSlackId  >= 0 ? sheet.getCell(r, colSlackId).value?.toString().trim()  : ''
+                    };
+                }
                 break;
             }
+        }
+
+        // Líná migrace: legacy plaintext heslo přepiš na scrypt hash
+        if (foundUser && foundLegacy && foundRow >= 0 && colHeslo >= 0) {
+            try {
+                sheet.getCell(foundRow, colHeslo).value = hashPassword(passwordInput);
+                await sheet.saveUpdatedCells();
+            } catch (e) { console.error('Hash upgrade chyba:', e.message); }
         }
 
         if (foundUser) {
@@ -1462,7 +1476,8 @@ app.post('/change-password', async (req, res) => {
             const email = colEmail >= 0 ? sheet.getCell(r, colEmail).value?.toString().toLowerCase().trim() : '';
             const heslo = colHeslo >= 0 ? sheet.getCell(r, colHeslo).value?.toString().trim() : '';
             if (email === userEmail) {
-                if (heslo !== currentPassword.trim()) return res.redirect('/change-password?error=wrong');
+                const v = verifyPassword(currentPassword.trim(), heslo);
+                if (!v.ok) return res.redirect('/change-password?error=wrong');
                 userRow = r;
                 break;
             }
@@ -1470,8 +1485,8 @@ app.post('/change-password', async (req, res) => {
 
         if (userRow < 0) return res.redirect('/change-password?error=wrong');
 
-        // Zapis nove heslo
-        sheet.getCell(userRow, colHeslo).value = newPassword.trim();
+        // Zapis nove heslo (hashovane)
+        sheet.getCell(userRow, colHeslo).value = hashPassword(newPassword.trim());
         await sheet.saveUpdatedCells();
 
         // AuditLog
