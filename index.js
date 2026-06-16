@@ -18,6 +18,14 @@ app.use(session({
     cookie: { secure: false, httpOnly: true, sameSite: 'lax' }
 }));
 
+// CSRF: zajisti token v session
+app.use((req, res, next) => {
+    if (req.session && !req.session.csrf) {
+        req.session.csrf = crypto.randomBytes(32).toString('hex');
+    }
+    next();
+});
+
 // Remember me helpers — HMAC-signed token
 function makeRememberToken(user) {
     const data = Buffer.from(JSON.stringify(user)).toString('base64');
@@ -55,6 +63,18 @@ app.use((req, res, next) => {
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// CSRF: ověř token na všech stav-měnících requestech
+const CSRF_EXEMPT = new Set(['/login']); // login probíhá bez existující session
+app.use((req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    if (CSRF_EXEMPT.has(req.path)) return next();
+    const sent = req.headers['x-csrf-token'] || (req.body && req.body._csrf);
+    if (!req.session || !req.session.csrf || sent !== req.session.csrf) {
+        return res.status(403).send('CSRF token invalid');
+    }
+    next();
+});
 app.use(express.static('public'));
 
 let googleKeys;
@@ -1341,6 +1361,7 @@ app.get('/change-password', (req, res) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Change Password — DRACHIR.GG</title>
+    <meta name="csrf-token" content="${req.session.csrf}">
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600;700&family=Russo+One&display=swap" rel="stylesheet">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;}
@@ -1408,6 +1429,7 @@ app.get('/change-password', (req, res) => {
         ${success ? '<div class="alert alert-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Password changed successfully!</div>' : ''}
 
         <form action="/change-password" method="POST" id="pwdForm">
+            <input type="hidden" name="_csrf" value="${req.session.csrf}">
             <div class="field">
                 <label>Current Password</label>
                 <div class="input-wrap">
@@ -3602,6 +3624,22 @@ app.get('/dashboard', async (req, res) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0d0e14">
+    <meta name="csrf-token" content="${req.session.csrf}">
+    <script>
+    (function(){
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      var _csrf = meta ? meta.content : '';
+      var _origFetch = window.fetch;
+      window.fetch = function(url, opts){
+        opts = opts || {};
+        var method = (opts.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+          opts.headers = Object.assign({}, opts.headers || {}, { 'X-CSRF-Token': _csrf });
+        }
+        return _origFetch(url, opts);
+      };
+    })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="/manifest.json">
