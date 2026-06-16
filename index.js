@@ -438,7 +438,7 @@ const personColors = {
     "Petr H.":                "#303f9f",
     "Petr R.":                "#283593",
     "Przemyslaw K.":          "#0d47a1",
-    "Sebastian W.":           "#1a237e",
+    "Sebastián W.":           "#1a237e",
     "Stanislav U.":           "#64b5f6",
     "Tadeáš F.":              "#4fc3f7",
     "Tomáš M.":               "#81d4fa",
@@ -481,22 +481,22 @@ const peopleHierarchy = [
     { label: "Quality Assurance",       color: "#03a9f4", target: 16, members: ["Ondřej Merxbauer"] },
     { label: "Master Scheduler",        color: "#e91e63", target: 24, members: ["David Kuchař"] },
     { label: "Team Leaders",            color: "#4caf50", target: 20, members: ["Lukáš Novotný", "Filip Sklenička", "Jindřich Lacina", "David Trocino", "David Lamač", "Tomáš Komenda", "Dominik Chvátal", "Marcelo Goto"] },
-    { label: "Title Experts",           color: "#9c27b0", target: 24, members: ["Adam Zach", "Andrej Rybalka", "Ivan Čitári", "Jan Bouška", "Jan Kubelka", "Kevin Rojas", "Ladislav Bánský", "Richard Mojš", "Robert Šobíšek", "Vojtěch Malár", "Benjamin Drzymalla"] },
-    { label: "Traders - Europe",        color: "#8bc34a", target: 40, members: ["Denis M.", "Jakub K.", "Jan K.", "Jiří K.", "Lukáš T.", "Marek M.", "Martin J.", "Martin N.", "Matěj K.", "Matyáš P.", "Michal F.", "Michal P.", "Michal W.", "Patrik Ř.", "Petr H.", "Petr R.", "Przemyslaw K.", "Sebastian W.", "Stanislav U.", "Tadeáš F.", "Tomáš M.", "Viet"] },
-    { label: "Traders - Lima",          color: "#ff5722", target: 40, members: ["Adrian M.", "Andres", "Christian C.", "David Z.", "Flabio T.", "Francesco", "Franco M.", "Gustavo P.", "Hadi B.", "James H.", "Jose C.", "Martin M. M.", "Santiago B.", "William M."] }
+    { label: "Title Experts",           color: "#9c27b0", target: 24, members: ["Adam Zach", "Andrej Rybalka", "Ivan Čitári", "Jan Bouška", "Jan Kubelka", "Matěj Kos", "Ladislav Bánský", "Richard Mojš", "Robert Šobíšek", "Vojtěch Malár", "Benjamin Drzymalla", "Patrik Říčka", "Martin Jílek"] },
+    { label: "Traders - Europe",        color: "#8bc34a", target: 40, members: ["Denis M.", "Ivan", "Jakub K.", "Jan K.", "Jiří K.", "Lukáš T.", "Marek M.", "Martin N.", "Matyáš P.", "Michal F.", "Michal P.", "Michal W.", "Petr H.", "Petr R.", "Przemyslaw K.", "Sebastián W.", "Stanislav U.", "Tadeáš F.", "Tomáš M.", "Viet"] },
+    { label: "Traders - Lima",          color: "#ff5722", target: 40, members: ["Adrian M.", "Andres", "Christian C.", "David Z.", "Flabio T.", "Francesco", "Franco M.", "Gustavo P.", "Hadi B.", "James H.", "Jose C.", "Martin M. M.", "Santiago B.", "William M.", "Kevin R."] }
 ];
 
 const productMapping = [
-    { name: "Valhalla Cup A",  startCol: 2,  trading: "FIFA",       slots: [{o:0,s:'23:16',e:'07:12'},{o:1,s:'07:12',e:'15:28'},{o:2,s:'15:28',e:'23:16'}] },
-    { name: "Valhalla Cup B",  startCol: 6,  trading: "FIFA",       slots: [{o:0,s:'23:18',e:'07:14'},{o:1,s:'07:14',e:'15:30'},{o:2,s:'15:30',e:'23:18'}] },
+    { name: "Valhalla Cup A",  startCol: 2,  trading: "FIFA",       slots: [{o:0,s:'22:55',e:'06:44'},{o:1,s:'06:55',e:'14:48'},{o:2,s:'14:55',e:'22:47'}] },
+    { name: "Valhalla Cup B",  startCol: 6,  trading: "FIFA",       slots: [{o:0,s:'22:57',e:'06:46'},{o:1,s:'06:57',e:'14:50'},{o:2,s:'14:57',e:'22:49'}] },
     { name: "Valhalla Cup C",  startCol: 10, trading: "FIFA",       slots: [{o:0,s:'00:04',e:'08:04'},{o:1,s:'08:04',e:'16:04'},{o:2,s:'16:04',e:'00:04'}] },
-    { name: "Valkyrie Cup A",  startCol: 14, trading: "FIFA",       slots: [{o:0,s:'23:22',e:'07:38'},{o:1,s:'07:38',e:'15:34'},{o:2,s:'15:34',e:'23:22'}] },
-    { name: "Valkyrie Cup B",  startCol: 18, trading: "FIFA",       slots: [{o:0,s:'23:24',e:'07:40'},{o:1,s:'07:40',e:'15:36'},{o:2,s:'15:36',e:'23:24'}] },
-    { name: "Valhalla League", startCol: 22, trading: "NBA",        slots: [{o:0,s:'23:44',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'23:44'}] },
+    { name: "Valkyrie Cup A",  startCol: 14, trading: "FIFA",       slots: [{o:0,s:'22:40',e:'06:22'},{o:1,s:'06:40',e:'14:32'},{o:2,s:'14:40',e:'22:32'}] },
+    { name: "Valkyrie Cup B",  startCol: 18, trading: "FIFA",       slots: [{o:0,s:'22:42',e:'06:24'},{o:1,s:'06:42',e:'14:34'},{o:2,s:'14:42',e:'22:34'}] },
+    { name: "Valhalla League", startCol: 22, trading: "NBA",        slots: [{o:0,s:'23:40',e:'07:44'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'23:40'}] },
     { name: "Yodha League",    startCol: 26, trading: "Cricket",    slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
     { name: "CS 2 Duels",      startCol: 30, trading: "Duels",      slots: [{o:0,s:'00:00',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:00'}] },
     { name: "Dota 2 Duels",    startCol: 34, trading: "Duels",      slots: [{o:0,s:'00:01',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:01'}] },
-    { name: "Madden",          startCol: 38, trading: "eTouchdown", slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
+    { name: "Madden",          startCol: 38, trading: "eTouchdown", slots: [{o:0,s:'23:10',e:'07:10'},{o:1,s:'07:10',e:'15:10'},{o:2,s:'15:10',e:'23:10'}] },
     { name: "Table Tennis",    startCol: 42, trading: "Table Tennis", slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
     { name: "World of Tanks",  startCol: 46, trading: "Tanks",        slots: [{o:0,s:'23:30',e:'07:30'},{o:1,s:'07:30',e:'15:30'},{o:2,s:'15:30',e:'23:30'}] },
     { name: "eHockey",         startCol: 50, trading: "Hockey",       slots: [{o:0,s:'00:00',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:00'}] }
@@ -513,6 +513,29 @@ function convertSheetTime(val) {
     const s = val.toString().trim();
     if (/^\d{1,2}:\d{2}$/.test(s)) return s;
     return s;
+}
+
+// Aliasy pro lidi s ruznymi zapisy v Sheets vs peopleHierarchy.
+// Klic = jak je zapsano v Sheets / BambooHR; hodnota = kanonicky tvar v peopleHierarchy.
+const PERSON_ALIASES = {
+    'Sebastian W.': 'Sebastián W.',
+    'Robert Š.': 'Robert Šobíšek',
+    'Ladislav B.': 'Ladislav Bánský',
+    'Przemek': 'Przemyslaw K.',
+    'Patrik Ř.': 'Patrik Říčka',
+    'Martin J.': 'Martin Jílek',
+    'Matěj K.': 'Matěj Kos',
+    'Kevin Rojas': 'Kevin R.'
+};
+
+// Rozdeli kombinovany zaznam typu "A + B" na pole jmen a aplikuje aliasy.
+// Vraci pole kanonickych jmen (typicky 1, ale 2+ kdyz buncka obsahuje "+").
+function normalizePersonName(raw) {
+    if (!raw) return [];
+    return String(raw).split(/\s*\+\s*/).map(part => {
+        const t = part.trim();
+        return PERSON_ALIASES[t] || t;
+    }).filter(n => n.length > 0);
 }
 
 async function loadAllShifts(forceSync) {
@@ -565,13 +588,15 @@ async function loadAllShifts(forceSync) {
                                 shiftDate = d.toISOString().slice(0, 10);
                             }
                             val.split(',').forEach(n => {
-                                const name = n.trim();
-                                if (name) { sheetShiftCount++; allShifts.push({
-                                    Date: shiftDate, Name: name,
-                                    Trading: pm.trading, Product: pm.name,
-                                    Start: slot.s, End: slot.e, Note: "",
-                                    _sheet: sheetTitle, _row: r, _col: col
-                                }); }
+                                const rawName = n.trim();
+                                normalizePersonName(rawName).forEach(name => {
+                                    if (name) { sheetShiftCount++; allShifts.push({
+                                        Date: shiftDate, Name: name,
+                                        Trading: pm.trading, Product: pm.name,
+                                        Start: slot.s, End: slot.e, Note: "",
+                                        _sheet: sheetTitle, _row: r, _col: col
+                                    }); }
+                                });
                             });
                         }
                     });
@@ -583,14 +608,16 @@ async function loadAllShifts(forceSync) {
                     const offVal = offCell.value ? offCell.value.toString().trim() : '';
                     if (offVal === '' || offVal === '-') continue;
                     offVal.split(',').forEach(n => {
-                        const name = n.trim();
-                        if (!name) return;
-                        allShifts.push({
-                            Date: dateVal, Name: name,
-                            Trading: 'HR', Product: 'Vacation',
-                            Start: '00:00', End: '23:59',
-                            Note: 'Schedule sheet off-column',
-                            _sheet: sheetTitle, _row: r, _col: offCol
+                        const rawName = n.trim();
+                        normalizePersonName(rawName).forEach(name => {
+                            if (!name) return;
+                            allShifts.push({
+                                Date: dateVal, Name: name,
+                                Trading: 'HR', Product: 'Vacation',
+                                Start: '00:00', End: '23:59',
+                                Note: 'Schedule sheet off-column',
+                                _sheet: sheetTitle, _row: r, _col: offCol
+                            });
                         });
                     });
                 }
@@ -620,12 +647,15 @@ async function loadAllShifts(forceSync) {
             for (let r = 1; r < Math.min(manualSheet.rowCount, 500); r++) {
                 const rawD = mColDate >= 0 ? manualSheet.getCell(r, mColDate).value : null;
                 const d = convertCzechDate(rawD) || (rawD ? rawD.toString().trim() : null);
-                const n = mColName >= 0 ? manualSheet.getCell(r, mColName).value?.toString().trim() : null;
-                console.log('ManualShifts row', r, '-> rawD:', rawD, 'converted:', d, 'name:', n);
-                if (!d || !n || n === '') continue;
+                const nRaw = mColName >= 0 ? manualSheet.getCell(r, mColName).value?.toString().trim() : null;
+                console.log('ManualShifts row', r, '-> rawD:', rawD, 'converted:', d, 'name:', nRaw);
+                if (!d || !nRaw || nRaw === '') continue;
+                const normalizedNames = normalizePersonName(nRaw);
+                if (normalizedNames.length === 0) continue;
+                normalizedNames.forEach(nname => {
                 allShifts.push({
                     Date:    d,
-                    Name:    n,
+                    Name:    nname,
                     Trading: mColTrading >= 0 ? manualSheet.getCell(r, mColTrading).value?.toString() || 'Other' : 'Other',
                     Product: mColProduct >= 0 ? manualSheet.getCell(r, mColProduct).value?.toString() || '' : '',
                     Start:   mColStart >= 0 ? convertSheetTime(manualSheet.getCell(r, mColStart).value) || '00:00' : '00:00',
@@ -636,13 +666,28 @@ async function loadAllShifts(forceSync) {
                     _col:   mColName >= 0 ? mColName : 1,
                     _manual: true
                 });
+                });
             }
         }
     } catch(e) { console.log('ManualShifts:', e.message); }
 
-    setCache(allShifts);
-    console.log('Nacteno z Sheets a ulozeno do cache: ' + allShifts.length + ' smen');
-    return allShifts;
+    // Deduplikace - klic = Date|Name|Product|Start|End
+    // (typicke pripady: BambooHR vacation + Schedule off-column zapsani stejneho dne)
+    const beforeDedupe = allShifts.length;
+    const seen = new Set();
+    const deduped = [];
+    for (const s of allShifts) {
+        const key = (s.Date || '') + '|' + (s.Name || '') + '|' + (s.Product || '') + '|' + (s.Start || '') + '|' + (s.End || '');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(s);
+    }
+    if (beforeDedupe !== deduped.length) {
+        console.log('[DEDUPE] Odstraneno ' + (beforeDedupe - deduped.length) + ' duplikatu (' + beforeDedupe + ' -> ' + deduped.length + ')');
+    }
+    setCache(deduped);
+    console.log('Nacteno z Sheets a ulozeno do cache: ' + deduped.length + ' smen');
+    return deduped;
 }
 
 // --- CAPABILITIES (kdo muze delat jaky produkt) ---
@@ -776,11 +821,13 @@ function buildGeneratorPrompt({ monthLabel, product, capabilities, existingShift
     }));
 
     // existing shifts relevant to this month — EXCLUDE the product we are regenerating
-    // (only vacations/RIP and shifts on OTHER products count as constraints)
+    // and INCLUDE only shifts of eligible people (others are irrelevant for this product)
     const monthPrefix = parsed.year + '-' + String(parsed.month).padStart(2,'0');
+    const eligibleSet = new Set(capabilities.byProduct[product] || []);
     const relevantExisting = existingShifts
         .filter(s => s.Date && s.Date.startsWith(monthPrefix))
-        .filter(s => s.Product !== product) // <-- klic: regenerujeme TENTO produkt
+        .filter(s => s.Product !== product) // regenerujeme TENTO produkt
+        .filter(s => eligibleSet.has(s.Name)) // OPTIMALIZACE: jen smeny lidi eligible pro tento produkt
         .map(s => ({
             date: s.Date,
             person: s.Name,
@@ -809,7 +856,9 @@ COVERAGE PROFILE — read carefully:
 - The product specifies which slotIndex values are ACTIVE (e.g. [1] = only morning, [0,1,2] = full 24/7, [1,2] = morning+afternoon = 16/7).
 - The product also specifies which days are covered: 'all' (every day), 'weekdays' (Mon–Fri only), 'weekends' (Sat+Sun only).
 - ONLY emit shifts for date/slot combinations that match the coverage. Do not emit shifts for inactive slots or out-of-coverage days.
-- If capacity is insufficient (allowPartialCoverage = true in payload), it is acceptable to leave some active slots empty rather than violate a hard constraint or push someone over their target.
+- HARD CONSTRAINTS ARE ABSOLUTE — NEVER violate them, regardless of any other setting. If filling a slot would create ANY hard violation, LEAVE THE SLOT EMPTY. Never trade hard correctness for coverage.
+- allowPartialCoverage in payload only affects how you communicate empty slots: when true, empty slots are normal and OK; when false, empty slots are still REQUIRED if needed for hard compliance, but treat them as exceptional and explicitly note WHY in the notes field (e.g. "left 2026-07-15 night empty — only Marek M. eligible but he has morning that day").
+- It is ALWAYS better to leave a slot unfilled than to assign someone with a hard conflict. The human scheduler can fix gaps later.
 
 IMPORTANT — about existingShifts:
 - existingShifts represents COMMITMENTS THAT ALREADY EXIST: vacations (RIP/Vacation) and shifts on OTHER products for the same people in the same month.
@@ -824,10 +873,36 @@ H3. The person must NOT have an existing Vacation or RIP shift on that date.
 H4. A person must NOT work both morning (slot 1) and night (slot 0) on the same calendar date — across existingShifts AND your own output.
 H5. A person must NOT work more than 7 consecutive calendar days. Combine existingShifts + your new shifts when counting.
 H6. If a person already has a shift on another product on the same date, do NOT schedule them on this product the same date.
+H7. A person must NOT work Night (slot 0) on date X AND Morning (slot 1) on date X+1.
+  CRITICAL TIMING: Night slot has 'date = X' but the actual shift runs from evening of day X (e.g. 22:55) THROUGH the night INTO morning of day X+1 (e.g. ends 06:44 on day X+1). Then morning slot on day X+1 starts at 06:55. The handover gap is only 11 minutes.
+  WHEN ASSIGNING ANY MORNING slot on date Y, ALWAYS first check: does this person have a night (slot 0) on date Y-1 (previous day) in either existingShifts or your own output? If yes — pick someone else.
+H8. A person must NOT work Afternoon (slot 2) AND Night (slot 0) on the same calendar date X — these slots have only ~5-15 minutes between them due to shift handover.
+H9. Members of groups "Team Leaders", "Title Experts", "Quality Assurance", and "Master Scheduler" MUST NEVER be assigned Night shifts (slotIndex 0). Their group label is available in the eligiblePeople list. Only Traders (Europe/Lima) and "Head of Trading - eSims" can be assigned night shifts.
+
+ASSIGNMENT METHODOLOGY (follow this process for EACH slot you fill):
+1. Process dates chronologically (earliest first), within each date process slots in order: night (0), morning (1), afternoon (2).
+2. For the current date + slot, list ALL eligiblePeople as initial candidates.
+3. For EACH candidate, RULE OUT if any of:
+   a. Has Vacation or RIP on that date (existingShifts) — H3.
+   b. Already has ANY shift on the same date (existingShifts OR your own output) — H4/H6/H8.
+   c. If assigning MORNING (slot 1) on day Y: has a Night (slot 0) on day Y-1 in existingShifts OR your own output — H7 (only 11 min between them!).
+   d. If assigning NIGHT (slot 0) on day X: has an Afternoon (slot 2) on day X same person — H8.
+   e. Would reach >7 consecutive days — H5.
+   f. Member of TL/TE/QA/Scheduler being assigned a night (slot 0) — H9 NEVER allowed.
+4. From the surviving candidates, prefer the one whose current hour count is FURTHEST below their weekly target (= even distribution).
+5. If NO candidate survives, LEAVE THE SLOT EMPTY and note it in the notes field. Hard constraints are absolute — never violate them just to fill a slot.
+
+SELF-CHECK BEFORE SUBMITTING:
+For every person who appears in your output, mentally list their shifts in chronological order across this month (existing + your new). For each consecutive pair, confirm:
+- Not morning(X) + night(X) same date → H4
+- Not afternoon(X) + night(X) same date → H8
+- Not night(X) + morning(X+1) consecutive days → H7
+- Not 8+ days in a row → H5
+If you find ANY violation, FIX IT by reassigning before submitting.
 
 SOFT CONSTRAINTS (minimise, but acceptable in limited amount):
 S1. Each person should land within ±8 hours of their weekly target over the month (pro-rated).
-S2. Avoid afternoon→next-morning transitions (min 12h rest between consecutive shifts).
+S2. Avoid afternoon→next-morning transitions (min 7h rest between consecutive shifts).
 S3. Weekend shifts distributed fairly — no single person should work more than 70% of weekend slots this month.
 S4. Lima and Europe groups should share weekend slots roughly equally.
 
@@ -887,6 +962,16 @@ function validateGeneratedSchedule(generated, { product, capabilities, existingS
 
     const shifts = Array.isArray(generated.shifts) ? generated.shifts : [];
 
+    // FILTER: existingShifts na current product odebrat. Regenerujeme TENTO produkt,
+    // takze stara data v ManualShifts/Schedule by se ZAMUMLALA s novym vystupem od Claude.
+    // Vacations zustavaji (plati napric vsemi produkty).
+    const filteredExisting = existingShifts.filter(ex => {
+        if (ex.Product === 'Vacation' || ex.Product === 'RIP') return true;
+        return ex.Product !== product;
+    });
+    existingShifts = filteredExisting;
+
+
     // H1: coverage — only required for ACTIVE slot/day combos
     const seen = {};
     dates.forEach(d => seen[d.date] = { 0: null, 1: null, 2: null });
@@ -929,6 +1014,16 @@ function validateGeneratedSchedule(generated, { product, capabilities, existingS
     shifts.forEach((s, idx) => {
         if (!eligible.has(s.person)) {
             errors.push({ code: 'NOT_ELIGIBLE', msg: s.person + ' cannot work ' + product + ' (shift #' + idx + ')' });
+        }
+    });
+
+    // H9: no nights for TL/TE/QA/Scheduler
+    const noNightGroups = new Set(['Team Leaders', 'Title Experts', 'Quality Assurance', 'Master Scheduler']);
+    shifts.forEach((s, idx) => {
+        if (s.slotIndex !== 0) return;
+        const meta = capabilities.personMeta[s.person];
+        if (meta && noNightGroups.has(meta.group)) {
+            errors.push({ code: 'NO_NIGHTS_FOR_GROUP', msg: s.person + ' (' + meta.group + ') was assigned night on ' + s.date + ' — H9 forbids nights for this group' });
         }
     });
 
@@ -979,6 +1074,26 @@ function validateGeneratedSchedule(generated, { product, capabilities, existingS
         if (set.has('morning') && set.has('night')) {
             const [name, date] = key.split('|');
             errors.push({ code: 'MORNING_NIGHT_SAME_DAY', msg: name + ' has both morning and night on ' + date });
+        }
+        // H8: afternoon + night same day (~5-15 min handover gap)
+        if (set.has('afternoon') && set.has('night')) {
+            const [name, date] = key.split('|');
+            errors.push({ code: 'AFTERNOON_NIGHT_SAME_DAY', msg: name + ' has both afternoon and night on ' + date + ' (handover gap is only ~5-15 min)' });
+        }
+    });
+
+    // H7: night on day X + morning on day X+1 (~10-15 min handover gap)
+    Object.keys(personDateSlots).forEach(key => {
+        const set = personDateSlots[key];
+        if (!set.has('night')) return;
+        const [name, date] = key.split('|');
+        const next = new Date(date + 'T12:00:00Z');
+        next.setUTCDate(next.getUTCDate() + 1);
+        const nextDateStr = next.toISOString().slice(0, 10);
+        const nextKey = name + '|' + nextDateStr;
+        const nextSet = personDateSlots[nextKey];
+        if (nextSet && nextSet.has('morning')) {
+            errors.push({ code: 'NIGHT_THEN_MORNING_NEXT_DAY', msg: name + ' has night on ' + date + ' followed by morning on ' + nextDateStr + ' (handover gap is only ~10-15 min)' });
         }
     });
 
@@ -1407,16 +1522,16 @@ app.get('/export-csv', async (req, res) => {
             const sheet = doc.sheetsByTitle[title];
             await sheet.loadCells('A1:BG500');
             const productMapping = [
-                { name: "Valhalla Cup A", startCol: 2, trading: "FIFA", slots: [{o:0,s:'23:16',e:'07:12'},{o:1,s:'07:12',e:'15:28'},{o:2,s:'15:28',e:'23:16'}] },
-                { name: "Valhalla Cup B", startCol: 6, trading: "FIFA", slots: [{o:0,s:'23:18',e:'07:14'},{o:1,s:'07:14',e:'15:30'},{o:2,s:'15:30',e:'23:18'}] },
+                { name: "Valhalla Cup A", startCol: 2, trading: "FIFA", slots: [{o:0,s:'22:55',e:'06:44'},{o:1,s:'06:55',e:'14:48'},{o:2,s:'14:55',e:'22:47'}] },
+                { name: "Valhalla Cup B", startCol: 6, trading: "FIFA", slots: [{o:0,s:'22:57',e:'06:46'},{o:1,s:'06:57',e:'14:50'},{o:2,s:'14:57',e:'22:49'}] },
                 { name: "Valhalla Cup C", startCol: 10, trading: "FIFA", slots: [{o:0,s:'00:04',e:'08:04'},{o:1,s:'08:04',e:'16:04'},{o:2,s:'16:04',e:'00:04'}] },
-                { name: "Valkyrie Cup A", startCol: 14, trading: "FIFA", slots: [{o:0,s:'23:22',e:'07:38'},{o:1,s:'07:38',e:'15:34'},{o:2,s:'15:34',e:'23:22'}] },
-                { name: "Valkyrie Cup B", startCol: 18, trading: "FIFA", slots: [{o:0,s:'23:24',e:'07:40'},{o:1,s:'07:40',e:'15:36'},{o:2,s:'15:36',e:'23:24'}] },
-                { name: "Valhalla League", startCol: 22, trading: "NBA", slots: [{o:0,s:'23:44',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'23:44'}] },
+                { name: "Valkyrie Cup A", startCol: 14, trading: "FIFA", slots: [{o:0,s:'22:40',e:'06:22'},{o:1,s:'06:40',e:'14:32'},{o:2,s:'14:40',e:'22:32'}] },
+                { name: "Valkyrie Cup B", startCol: 18, trading: "FIFA", slots: [{o:0,s:'22:42',e:'06:24'},{o:1,s:'06:42',e:'14:34'},{o:2,s:'14:42',e:'22:34'}] },
+                { name: "Valhalla League", startCol: 22, trading: "NBA", slots: [{o:0,s:'23:40',e:'07:44'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'23:40'}] },
                 { name: "Yodha League", startCol: 26, trading: "Cricket", slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
                 { name: "CS 2 Duels", startCol: 30, trading: "Duels", slots: [{o:0,s:'00:00',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:00'}] },
                 { name: "Dota 2 Duels", startCol: 34, trading: "Duels", slots: [{o:0,s:'00:01',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:01'}] },
-                { name: "Madden", startCol: 38, trading: "eTouchdown", slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
+                { name: "Madden", startCol: 38, trading: "eTouchdown", slots: [{o:0,s:'23:10',e:'07:10'},{o:1,s:'07:10',e:'15:10'},{o:2,s:'15:10',e:'23:10'}] },
                 { name: "Table Tennis", startCol: 42, trading: "Table Tennis", slots: [{o:0,s:'23:00',e:'07:00'},{o:1,s:'07:00',e:'15:00'},{o:2,s:'15:00',e:'23:00'}] },
                 { name: "World of Tanks", startCol: 46, trading: "Tanks", slots: [{o:0,s:'23:30',e:'07:30'},{o:1,s:'07:30',e:'15:30'},{o:2,s:'15:30',e:'23:30'}] },
                 { name: "eHockey", startCol: 50, trading: "Hockey", slots: [{o:0,s:'00:00',e:'08:00'},{o:1,s:'08:00',e:'16:00'},{o:2,s:'16:00',e:'00:00'}] }
@@ -1667,10 +1782,60 @@ app.post('/api/generate-schedule', async (req, res) => {
                 contentTypes: (claudeResp.content || []).map(c => c.type)
             });
         }
-        const generated = toolBlock.input;
+        let generated = toolBlock.input;
 
-        const validation = validateGeneratedSchedule(generated, { product, capabilities: caps, existingShifts: combinedExisting, monthLabel, allowPartialCoverage: apc });
-        const usage = claudeResp.usage || {};
+        let validation = validateGeneratedSchedule(generated, { product, capabilities: caps, existingShifts: combinedExisting, monthLabel, allowPartialCoverage: apc });
+        const usage = { input_tokens: claudeResp.usage?.input_tokens || 0, output_tokens: claudeResp.usage?.output_tokens || 0 };
+        const initialErrorCount = validation.errors.length;
+        let repairAttempted = false;
+        let repairUsage = null;
+
+        // REPAIR LOOP: pokud sou hard violations, zavolat Claude podruhe s opravnym promptem
+        if (validation.errors.length > 0) {
+            repairAttempted = true;
+            const errorList = validation.errors.map(e => '- ' + e.msg).join('\n');
+            const prevShiftsJSON = JSON.stringify(generated.shifts, null, 2);
+            const repairUserMessage =
+                'Your previously generated schedule contains ' + validation.errors.length + ' HARD constraint violations. ' +
+                'Regenerate the FULL schedule fixing ALL listed violations. Leave slots empty if needed (allowPartialCoverage is acceptable).\n\n' +
+                'YOUR PREVIOUS OUTPUT:\n' + prevShiftsJSON + '\n\n' +
+                'VIOLATIONS FROM VALIDATOR:\n' + errorList + '\n\n' +
+                'CRITICAL REMINDERS:\n' +
+                '- Night (slot 0) on date X runs from ~22:XX of day X THROUGH the night TO ~06:XX of day X+1. Morning (slot 1) on day X+1 starts ~06:55. The gap is only ~11 minutes. SAME PERSON CANNOT have night(X) AND morning(X+1).\n' +
+                '- Afternoon (slot 2) ends ~22:XX. Night (slot 0) starts ~22:XX SAME date. SAME PERSON CANNOT have both on same date.\n' +
+                '- Morning (slot 1) ends ~14:XX. Cannot pair with night(slot 0) same date — 8h gap but H4 forbids it.\n' +
+                '- TL/TE/QA/Scheduler never get nights (H9).\n' +
+                '- Cross-product H6: same person same date forbidden across products.\n\n' +
+                'Use the submit_schedule tool. Fix EVERY listed violation. Keep all the valid assignments from your previous output.';
+
+            try {
+                const tRepair = Date.now();
+                const repairResp = await callClaude({
+                    system: prompt.system,
+                    userMessage: repairUserMessage,
+                    model,
+                    maxTokens: 32000,
+                    tools: [submitTool],
+                    toolChoice: { type: 'tool', name: 'submit_schedule' }
+                });
+                const repairElapsed = Date.now() - tRepair;
+                const repairTool = (repairResp.content || []).find(c => c.type === 'tool_use' && c.name === 'submit_schedule');
+                if (repairTool) {
+                    const repairedGenerated = repairTool.input;
+                    const repairedValidation = validateGeneratedSchedule(repairedGenerated, { product, capabilities: caps, existingShifts: combinedExisting, monthLabel, allowPartialCoverage: apc });
+                    // Pouze pouz repair vysledek pokud opravdu zmensil pocet errors
+                    if (repairedValidation.errors.length < validation.errors.length) {
+                        generated = repairedGenerated;
+                        validation = repairedValidation;
+                    }
+                    repairUsage = { input_tokens: repairResp.usage?.input_tokens || 0, output_tokens: repairResp.usage?.output_tokens || 0, elapsedMs: repairElapsed };
+                    usage.input_tokens += repairUsage.input_tokens;
+                    usage.output_tokens += repairUsage.output_tokens;
+                }
+            } catch (repairErr) {
+                console.error('[REPAIR] error:', repairErr.message);
+            }
+        }
 
         // Enriched format ready to be passed back as accumulatedShifts for the next product
         const pm = getProductMeta(product);
@@ -1692,6 +1857,9 @@ app.post('/api/generate-schedule', async (req, res) => {
             modelUsed: claudeResp.model,
             elapsedMs: elapsed,
             usage,
+            repairAttempted,
+            repairUsage,
+            initialErrorCount,
             shiftCount: Array.isArray(generated.shifts) ? generated.shifts.length : 0,
             generatorNotes: generated.notes || '',
             validation,
@@ -3713,6 +3881,7 @@ app.get('/dashboard', async (req, res) => {
         <button class="add-btn" onclick="openAddModal()">+ ADD NEW </button>
         ${(['David Winkler','Ondřej Merxbauer'].includes(req.user.jmeno) || req.user.role === 'Admin' || ['Lukáš Novotný', 'Filip Sklenička', 'Jindřich Lacina', 'David Trocino', 'David Lamač', 'Tomáš Komenda', 'Dominik Chvátal', 'Marcelo Goto'].includes(req.user.jmeno)) ? '<button onclick="openExportModal()" style="background:rgba(76,175,80,0.1);color:#66bb6a;border:1px solid rgba(76,175,80,0.3);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background=\'rgba(76,175,80,0.2)\'" onmouseout="this.style.background=\'rgba(76,175,80,0.1)\'">&#128190; EXPORT CSV</button>' : ''}
         ${req.user && req.user.role === 'Admin' ? `
+        <button onclick="openAIGenModal()" style="background:rgba(91,127,166,0.08);color:#7ba3cc;border:1px solid rgba(91,127,166,0.3);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(91,127,166,0.18)'" onmouseout="this.style.background='rgba(91,127,166,0.08)'">&#129302; AI GENERATE</button>
         <button onclick="openSyncModal()" style="background:rgba(251,192,45,0.08);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.15)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'" id="syncBtn">SYNC WITH SCHEDULE</button>
         <button onclick="openDeleteMonth()" style="background:rgba(255,68,68,0.06);color:#ff6b6b;border:1px solid rgba(255,68,68,0.2);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:16px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background='rgba(255,68,68,0.15)'" onmouseout="this.style.background='rgba(255,68,68,0.06)'">DELETE ALL SHIFTS THIS MONTH</button>
         ` : ''}
@@ -3978,6 +4147,58 @@ app.get('/dashboard', async (req, res) => {
     </div>
 </div>
 
+<!-- AI Generator modal -->
+<div id="aiGenModal" style="display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);">
+    <div style="background:#1a1a1a;margin:5% auto;border-radius:12px;width:680px;max-width:96vw;max-height:88vh;color:#eee;box-shadow:0 24px 64px rgba(0,0,0,0.7);border:1px solid #333;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="padding:20px 24px 14px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+            <span style="font-family:'Oswald';font-size:1.1rem;color:#7ba3cc;letter-spacing:1px;">&#129302; AI SCHEDULE GENERATOR</span>
+            <button onclick="closeAIGenModal()" style="background:none;border:none;color:#666;font-size:1.3rem;cursor:pointer;">&#10005;</button>
+        </div>
+        <div style="padding:20px 24px;overflow-y:auto;flex:1;">
+
+            <div id="aiGenStep1">
+                <label style="font-size:0.72rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Month</label>
+                <select id="aiGenMonth" style="width:100%;padding:10px;background:#111;border:1px solid #333;color:#fff;border-radius:6px;font-size:0.9rem;margin-bottom:14px;"><option value="">Loading sheets...</option></select>
+
+                <label style="font-size:0.72rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Product</label>
+                <select id="aiGenProduct" style="width:100%;padding:10px;background:#111;border:1px solid #333;color:#fff;border-radius:6px;font-size:0.9rem;margin-bottom:14px;"></select>
+
+                <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;color:#aaa;cursor:pointer;margin-bottom:18px;"><input type="checkbox" id="aiGenApc" style="width:16px;height:16px;cursor:pointer;accent-color:#7ba3cc;">Allow partial coverage</label>
+
+                <div style="background:rgba(91,127,166,0.06);border-left:3px solid #7ba3cc;padding:10px 14px;border-radius:4px;margin-bottom:18px;font-size:0.78rem;color:#aaa;line-height:1.5;">Claude vygeneruje plan podle peopleHierarchy, productCoverage a Capabilities. Vystup projde validatorem H1-H8. Cena ~$0.30/produkt, doba 30-90s.</div>
+
+                <div style="display:flex;gap:10px;">
+                    <button onclick="aiGenRun()" id="aiGenRunBtn" style="flex:1;padding:12px;background:#7ba3cc;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';font-size:1rem;cursor:pointer;letter-spacing:1px;">&#9889; GENERATE</button>
+                    <button onclick="aiGenBatch()" id="aiGenBatchBtn" style="flex:1;padding:12px;background:#ff9800;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';font-size:1rem;cursor:pointer;letter-spacing:1px;">&#127895; GENERATE ALL</button>
+                    <button onclick="closeAIGenModal()" style="padding:12px 20px;background:#222;color:#888;border:none;border-radius:6px;cursor:pointer;">Cancel</button>
+                </div>
+            </div>
+
+            <div id="aiGenStep2" style="display:none;text-align:center;padding:40px 20px;">
+                <div style="display:inline-block;width:50px;height:50px;border:4px solid #333;border-top-color:#7ba3cc;border-radius:50%;animation:aiGenSpin 0.9s linear infinite;margin-bottom:18px;"></div>
+                <div style="color:#7ba3cc;font-family:'Oswald';font-size:1.1rem;letter-spacing:1px;">GENERATING SCHEDULE...</div>
+                <div id="aiGenProgress" style="color:#666;margin-top:8px;font-size:0.85rem;">Calling Claude API, this takes 30-90 seconds...</div>
+            </div>
+
+            <div id="aiGenStep3" style="display:none;">
+                <div id="aiGenSummary" style="margin-bottom:16px;"></div>
+                <div id="aiGenValidation" style="margin-bottom:14px;"></div>
+                <div id="aiGenNotes" style="margin-bottom:14px;"></div>
+                <details style="margin-bottom:14px;"><summary style="cursor:pointer;color:#7ba3cc;font-size:0.82rem;padding:6px 0;">Show shifts preview</summary><div id="aiGenShiftsPreview" style="max-height:220px;overflow-y:auto;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:10px;margin-top:6px;font-size:0.78rem;font-family:monospace;"></div></details>
+                <div id="aiGenCommitResult" style="margin-bottom:14px;"></div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button onclick="aiGenCommit(false)" id="aiGenCommitBtn" style="flex:1;min-width:140px;padding:12px;background:#4caf50;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';font-size:0.95rem;cursor:pointer;letter-spacing:1px;">&#9989; COMMIT TO SHEET</button>
+                    <button onclick="aiGenCommit(true)" id="aiGenOverwriteBtn" style="flex:1;min-width:140px;padding:12px;background:#ff9800;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';font-size:0.95rem;cursor:pointer;letter-spacing:1px;">&#9888; COMMIT + OVERWRITE</button>
+                    <button onclick="aiGenReset()" style="padding:12px 20px;background:#222;color:#888;border:none;border-radius:6px;cursor:pointer;">New Run</button>
+                    <button onclick="closeAIGenModal()" style="padding:12px 20px;background:#222;color:#888;border:none;border-radius:6px;cursor:pointer;">Close</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<style>@keyframes aiGenSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>
+
 <!-- CSV Export modal -->
 <div id="exportModal" style="display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(3px);">
     <div style="background:#1a1a1a;margin:5% auto;border-radius:12px;width:460px;max-width:96vw;color:#eee;box-shadow:0 24px 64px rgba(0,0,0,0.7);border:1px solid #333;overflow:hidden;">
@@ -4086,6 +4307,7 @@ app.get('/dashboard', async (req, res) => {
     const tColors = {}; ${tradingColorsJS}
     ${productColorsClientJS}
     const _crewMap = ${JSON.stringify(crewMap)};
+    window._productList = ${JSON.stringify(productMapping.map(p => p.name))};
 
     // SHOW ALL
     function showAllRows(el) {
@@ -5335,6 +5557,217 @@ app.get('/dashboard', async (req, res) => {
         window.location.href = window.location.pathname + '?' + p.toString();
     }
 
+    // =============================================
+    // AI SCHEDULE GENERATOR
+    // =============================================
+    function openAIGenModal() {
+        document.getElementById('aiGenModal').style.display = 'block';
+        aiGenReset();
+        const monthSel = document.getElementById('aiGenMonth');
+        monthSel.innerHTML = '<option value="">Loading...</option>';
+        fetch('/api/schedule-sheets').then(r => r.json()).then(sheets => {
+            if (!sheets || !sheets.length) { monthSel.innerHTML = '<option value="">No sheets found</option>'; return; }
+            const months = sheets.map(s => s.replace(/^Schedule - /, ''));
+            monthSel.innerHTML = months.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+        }).catch(() => { monthSel.innerHTML = '<option value="">Error loading sheets</option>'; });
+        const prodSel = document.getElementById('aiGenProduct');
+        const products = window._productList || [];
+        prodSel.innerHTML = products.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+    }
+
+    function closeAIGenModal() {
+        document.getElementById('aiGenModal').style.display = 'none';
+    }
+
+    function aiGenReset() {
+        document.getElementById('aiGenStep1').style.display = 'block';
+        document.getElementById('aiGenStep2').style.display = 'none';
+        document.getElementById('aiGenStep3').style.display = 'none';
+        document.getElementById('aiGenCommitResult').innerHTML = '';
+        window._aiGenLastResult = null;
+    }
+
+    async function aiGenRun() {
+        const month = document.getElementById('aiGenMonth').value;
+        const product = document.getElementById('aiGenProduct').value;
+        const apc = document.getElementById('aiGenApc').checked;
+        if (!month || !product) { alert('Vyber month + product'); return; }
+        document.getElementById('aiGenStep1').style.display = 'none';
+        document.getElementById('aiGenStep2').style.display = 'block';
+        const prog = document.getElementById('aiGenProgress');
+        const t0 = Date.now();
+        const tick = setInterval(() => {
+            prog.textContent = 'Calling Claude API for ' + product + ' / ' + month + '... (' + Math.round((Date.now() - t0) / 1000) + 's)';
+        }, 1000);
+        try {
+            const resp = await fetch('/api/generate-schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ month, product, allowPartialCoverage: apc })
+            });
+            const data = await resp.json();
+            clearInterval(tick);
+            if (!resp.ok) {
+                document.getElementById('aiGenStep2').style.display = 'none';
+                document.getElementById('aiGenStep1').style.display = 'block';
+                alert('API error: ' + (data.error || resp.status));
+                return;
+            }
+            window._aiGenLastResult = data;
+            renderAIGenResult(data);
+        } catch (err) {
+            clearInterval(tick);
+            document.getElementById('aiGenStep2').style.display = 'none';
+            document.getElementById('aiGenStep1').style.display = 'block';
+            alert('Network error: ' + err.message);
+        }
+    }
+
+    function renderAIGenResult(data) {
+        document.getElementById('aiGenStep2').style.display = 'none';
+        document.getElementById('aiGenStep3').style.display = 'block';
+        const errs = (data.validation && data.validation.errors) || [];
+        const warns = (data.validation && data.validation.warnings) || [];
+        const cost = data.usage ? ((data.usage.input_tokens * 15 + (data.usage.output_tokens || 0) * 75) / 1000000).toFixed(3) : '?';
+        const repairBadge = data.repairAttempted ? '<span style="background:rgba(255,152,0,0.15);color:#ffb74d;border:1px solid rgba(255,152,0,0.3);padding:1px 8px;border-radius:10px;font-size:0.65rem;font-weight:700;margin-left:8px;">REPAIRED (init ' + data.initialErrorCount + ' errs)</span>' : '';
+        document.getElementById('aiGenSummary').innerHTML =
+            '<div style="background:#0e1621;border:1px solid #1e2d3d;border-radius:8px;padding:12px 14px;">'
+            + '<div style="display:flex;justify-content:space-between;margin-bottom:8px;align-items:center;"><span style="color:#7ba3cc;font-weight:700;">' + data.product + ' / ' + data.monthLabel + repairBadge + '</span><span style="color:#888;font-size:0.8rem;">' + (data.elapsedMs/1000).toFixed(1) + 's</span></div>'
+            + '<div style="color:#aaa;font-size:0.82rem;line-height:1.7;">'
+            + 'Shifts: <b style="color:#eee;">' + data.shiftCount + '</b>  |  '
+            + 'Tokens: ' + (data.usage && data.usage.input_tokens || '?') + ' in / ' + (data.usage && data.usage.output_tokens || '?') + ' out  |  '
+            + 'Cost: ~$' + cost + '</div></div>';
+        document.getElementById('aiGenValidation').innerHTML =
+            '<div style="padding:10px 14px;border-radius:6px;' + (errs.length === 0 ? 'background:rgba(76,175,80,0.1);border-left:3px solid #4caf50;color:#a5d6a7;' : 'background:rgba(244,67,54,0.1);border-left:3px solid #f44336;color:#ef9a9a;') + '">'
+            + (errs.length === 0 ? '&#9989; Validation: OK — ' + warns.length + ' warnings'
+                : '&#10060; Validation: ' + errs.length + ' hard errors, ' + warns.length + ' warnings<div style="margin-top:6px;font-size:0.78rem;font-family:monospace;color:#fff;">'
+                  + errs.slice(0, 5).map(e => '• ' + e.msg).join('<br>') + (errs.length > 5 ? '<br>... +' + (errs.length - 5) + ' more' : '') + '</div>')
+            + '</div>';
+        if (data.generatorNotes) {
+            document.getElementById('aiGenNotes').innerHTML =
+                '<div style="background:rgba(91,127,166,0.06);border-left:3px solid #7ba3cc;padding:10px 14px;border-radius:4px;font-size:0.82rem;color:#aaa;line-height:1.5;"><b style="color:#7ba3cc;">Claude notes:</b> ' + data.generatorNotes + '</div>';
+        }
+        const shifts = data.shifts || [];
+        const sorted = shifts.slice().sort((a, b) => (a.date || '').localeCompare(b.date) || a.slotIndex - b.slotIndex);
+        const kinds = ['night', 'morning', 'afternoon'];
+        document.getElementById('aiGenShiftsPreview').innerHTML =
+            sorted.slice(0, 30).map(s => s.date + ' ' + kinds[s.slotIndex].padEnd(10) + ' ' + s.person).join('<br>')
+            + (sorted.length > 30 ? '<br>... +' + (sorted.length - 30) + ' more' : '');
+    }
+
+    async function aiGenCommit(overwrite) {
+        const data = window._aiGenLastResult;
+        if (!data) { alert('No result to commit'); return; }
+        const errs = (data.validation && data.validation.errors) || [];
+        if (errs.length > 0) {
+            if (!confirm('Validator detected ' + errs.length + ' hard errors. Commit anyway?')) return;
+        }
+        const commitBtn = document.getElementById('aiGenCommitBtn');
+        const ovBtn = document.getElementById('aiGenOverwriteBtn');
+        commitBtn.disabled = true; ovBtn.disabled = true;
+        commitBtn.textContent = 'Writing...'; ovBtn.style.opacity = '0.5';
+        try {
+            const resp = await fetch('/api/commit-to-schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ month: data.monthLabel, product: data.product, shifts: data.shifts, overwrite: overwrite })
+            });
+            const result = await resp.json();
+            const resultBox = document.getElementById('aiGenCommitResult');
+            if (!resp.ok) {
+                resultBox.innerHTML = '<div style="background:rgba(244,67,54,0.1);border-left:3px solid #f44336;padding:10px 14px;border-radius:6px;color:#ef9a9a;">&#10060; Error: ' + (result.error || resp.status) + '</div>';
+            } else if (result.ok === false) {
+                resultBox.innerHTML = '<div style="background:rgba(255,152,0,0.1);border-left:3px solid #ff9800;padding:10px 14px;border-radius:6px;color:#ffcc80;">&#9888; ' + result.conflicts + ' conflicts blocked write. Click COMMIT + OVERWRITE to force.<div style="margin-top:6px;font-size:0.75rem;font-family:monospace;color:#fff;">' + (result.conflictDetails || []).slice(0, 5).map(c => '• ' + c.sheetDate + ' slot ' + c.slotIndex + ' (' + c.person + ') vs current "' + c.currentValue + '"').join('<br>') + '</div></div>';
+            } else {
+                resultBox.innerHTML = '<div style="background:rgba(76,175,80,0.1);border-left:3px solid #4caf50;padding:10px 14px;border-radius:6px;color:#a5d6a7;">&#9989; Committed ' + result.written + ' cells to "' + result.sheetTitle + '". Skipped: ' + result.skipped + '.<div style="margin-top:6px;font-size:0.78rem;color:#888;">WRITE: ' + result.actions.WRITE + ', OVERWRITE: ' + result.actions.OVERWRITE + ', SAME: ' + result.actions.SAME + '</div></div><div style="margin-top:8px;font-size:0.8rem;color:#7ba3cc;">Dashboard refresh in 2s...</div>';
+                setTimeout(() => {
+                    const p = new URLSearchParams(window.location.search);
+                    p.set('sync', '1');
+                    window.location.href = window.location.pathname + '?' + p.toString();
+                }, 2000);
+            }
+        } catch (err) {
+            document.getElementById('aiGenCommitResult').innerHTML = '<div style="background:rgba(244,67,54,0.1);color:#ef9a9a;padding:10px 14px;border-radius:6px;">Network error: ' + err.message + '</div>';
+        } finally {
+            commitBtn.disabled = false; ovBtn.disabled = false;
+            commitBtn.innerHTML = '&#9989; COMMIT TO SHEET'; ovBtn.style.opacity = '1';
+        }
+    }
+
+    // BATCH GENERATOR: projde vsechny produkty postupne s auto-commit
+    async function aiGenBatch() {
+        const month = document.getElementById('aiGenMonth').value;
+        const apc = document.getElementById('aiGenApc').checked;
+        if (!month) { alert('Vyber month'); return; }
+        const products = window._productList || [];
+        if (!products.length) { alert('Zadny produkty'); return; }
+
+        if (!confirm('Vygenerovat schedule pro VSECH ' + products.length + ' produktu? Cena cca $5-8, doba ~' + Math.round(products.length * 1.2) + ' min. Auto-commit do sheetu po kazdem produktu (s overwrite).')) return;
+
+        document.getElementById('aiGenStep1').style.display = 'none';
+        document.getElementById('aiGenStep2').style.display = 'block';
+        document.getElementById('aiGenProgress').innerHTML = '<div id="aiGenBatchLog" style="text-align:left;max-height:400px;overflow-y:auto;background:#0e1621;padding:10px;border-radius:6px;font-family:monospace;font-size:0.78rem;color:#aaa;"></div>';
+
+        function log(msg, color) {
+            const logEl = document.getElementById('aiGenBatchLog');
+            logEl.innerHTML += '<div style="color:' + (color || '#aaa') + ';">' + msg + '</div>';
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        const t0 = Date.now();
+        let totalCost = 0, totalShifts = 0, totalErrors = 0, totalCommitted = 0;
+        const accumulated = [];
+
+        for (let i = 0; i < products.length; i++) {
+            const product = products[i];
+            log('[' + (i+1) + '/' + products.length + '] Generating ' + product + '...', '#7ba3cc');
+            try {
+                const genResp = await fetch('/api/generate-schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month, product, allowPartialCoverage: apc, accumulatedShifts: accumulated })
+                });
+                const genData = await genResp.json();
+                if (!genResp.ok) { log('  ERR API: ' + (genData.error || genResp.status), '#ef9a9a'); continue; }
+                const errs = (genData.validation && genData.validation.errors || []).length;
+                const warns = (genData.validation && genData.validation.warnings || []).length;
+                const cost = genData.usage ? ((genData.usage.input_tokens * 15 + (genData.usage.output_tokens || 0) * 75) / 1000000) : 0;
+                totalCost += cost; totalShifts += genData.shiftCount || 0; totalErrors += errs;
+                log('  OK ' + (genData.shiftCount || 0) + ' shifts, ' + errs + ' errors, ' + warns + ' warns, $' + cost.toFixed(2) + (genData.repairAttempted ? ' (repaired)' : ''), errs === 0 ? '#a5d6a7' : '#ffcc80');
+                if (genData.enrichedShifts) accumulated.push.apply(accumulated, genData.enrichedShifts);
+
+                log('  Committing...', '#888');
+                const commitResp = await fetch('/api/commit-to-schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month, product, shifts: genData.shifts, overwrite: true })
+                });
+                const commitData = await commitResp.json();
+                if (!commitResp.ok || commitData.ok === false) {
+                    log('  Commit warn: ' + (commitData.error || JSON.stringify(commitData.actions || {})), '#ffb74d');
+                } else {
+                    log('  Committed ' + commitData.written + ' cells (skip ' + commitData.skipped + ')', '#a5d6a7');
+                    totalCommitted += commitData.written;
+                }
+            } catch (err) {
+                log('  ERR ' + err.message, '#ef9a9a');
+            }
+        }
+
+        const elapsedMin = ((Date.now() - t0) / 60000).toFixed(1);
+        log('', '#aaa');
+        log('=== BATCH HOTOVO ===', '#7ba3cc');
+        log('Celkem: ' + products.length + ' produktu, ' + totalCommitted + ' cells committed', '#a5d6a7');
+        log('Errors napric: ' + totalErrors + ' (manualne v Sheet)', totalErrors === 0 ? '#a5d6a7' : '#ffcc80');
+        log('Cena: $' + totalCost.toFixed(2) + ', cas: ' + elapsedMin + ' min', '#aaa');
+        log('Dashboard refresh za 5s...', '#7ba3cc');
+        setTimeout(() => {
+            const p = new URLSearchParams(window.location.search);
+            p.set('sync', '1');
+            window.location.href = window.location.pathname + '?' + p.toString();
+        }, 5000);
+    }
+
     // CSV Export modal
     function openExportModal() {
         document.getElementById('exportModal').style.display = 'block';
@@ -5540,15 +5973,151 @@ app.get('/dashboard', async (req, res) => {
     } catch (e) { res.status(500).send("Dashboard Error: "+e.message); }
 });
 
-app.listen(PORT, () => {
-    console.log('Drachir.gg active');
-    loadSlackData().catch(e => console.error('Initial Slack data load failed:', e.message));
-    if (BAMBOOHR_API_KEY && BAMBOOHR_SUBDOMAIN) {
-        setTimeout(() => {
-            syncBambooVacations(true).then(r => {
-                console.log('[BAMBOO] Startup sync: +' + r.added + ' / -' + r.removed + (r.error ? ' error=' + r.error : ''));
-                invalidateCache();
-            }).catch(e => console.error('[BAMBOO] Startup sync error:', e.message));
-        }, 5000);
+// POST /api/commit-to-schedule
+// Body: { month: "July 2026", product: "Valhalla Cup A", shifts: [{date, slotIndex, person}, ...], overwrite: false }
+// Mirror logiky scripts/commit-to-schedule.js, ale jako endpoint pro UI.
+app.post('/api/commit-to-schedule', async (req, res) => {
+    if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    const { month: monthLabel, product, shifts, overwrite } = req.body || {};
+    if (!monthLabel || !product || !Array.isArray(shifts)) {
+        return res.status(400).json({ error: 'Missing month, product, or shifts array' });
+    }
+
+    function colToLetter(c) {
+        let s = ''; let n = c + 1;
+        while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+        return s;
+    }
+    function isOvernight(slot) {
+        const sh = parseInt(slot.s.split(':')[0]); const eh = parseInt(slot.e.split(':')[0]);
+        return sh >= 20 && eh < 12;
+    }
+    function addDays(iso, n) {
+        const d = new Date(iso + 'T12:00:00Z');
+        d.setUTCDate(d.getUTCDate() + n);
+        return d.toISOString().slice(0, 10);
+    }
+
+    try {
+        await doc.loadInfo();
+        const sheetTitle = 'Schedule - ' + monthLabel;
+        const sheet = doc.sheetsByTitle[sheetTitle];
+        if (!sheet) {
+            const avail = Object.keys(doc.sheetsByTitle).filter(t => t.startsWith('Schedule -'));
+            return res.status(404).json({ error: 'Sheet "' + sheetTitle + '" not found', available: avail });
+        }
+        const pm = productMapping.find(p => p.name === product);
+        if (!pm) return res.status(400).json({ error: 'Unknown product: ' + product });
+
+        const maxRow = Math.min(sheet.rowCount, 500);
+        const lastSlotCol = pm.startCol + Math.max(...pm.slots.map(s => s.o));
+        await sheet.loadCells('A1:' + colToLetter(lastSlotCol) + maxRow);
+
+        const dateToRow = new Map();
+        for (let r = 0; r < maxRow; r++) {
+            const cell = sheet.getCell(r, 0);
+            const iso = convertCzechDate(cell.formattedValue || cell.value);
+            if (iso) dateToRow.set(iso, r);
+        }
+
+        const actions = { WRITE: 0, OVERWRITE: 0, SAME: 0, CONFLICT: 0 };
+        const skipped = [];
+        const planned = [];
+
+        for (const s of shifts) {
+            const slot = pm.slots[s.slotIndex];
+            if (!slot) { skipped.push({ shift: s, reason: 'bad slotIndex' }); continue; }
+            const sheetDate = isOvernight(slot) ? addDays(s.date, 1) : s.date;
+            const row = dateToRow.get(sheetDate);
+            if (row === undefined) { skipped.push({ shift: s, reason: 'sheet date ' + sheetDate + ' not in sheet' }); continue; }
+            const col = pm.startCol + slot.o;
+            const cell = sheet.getCell(row, col);
+            const cur = cell.value;
+            let action;
+            if (cur == null || cur === '' || cur === '-') action = 'WRITE';
+            else if (String(cur).trim() === s.person) action = 'SAME';
+            else if (overwrite) action = 'OVERWRITE';
+            else action = 'CONFLICT';
+            actions[action]++;
+            planned.push({ row, col, sheetDate, slotIndex: s.slotIndex, person: s.person, currentValue: String(cur || ''), action });
+        }
+
+        // Pokud konflikty bez overwrite, neuloz nic a vrat plan
+        const conflictsCount = actions.CONFLICT;
+        if (conflictsCount > 0 && !overwrite) {
+            return res.json({
+                ok: false, dryRun: true, monthLabel, product, sheetTitle,
+                actions, skipped: skipped.length, conflicts: conflictsCount,
+                conflictDetails: planned.filter(p => p.action === 'CONFLICT').slice(0, 20),
+                skippedDetails: skipped.slice(0, 20)
+            });
+        }
+
+        // Commit
+        let written = 0;
+        for (const p of planned) {
+            if (p.action === 'SAME') continue;
+            const cell = sheet.getCell(p.row, p.col);
+            cell.value = p.person;
+            written++;
+        }
+        if (written > 0) await sheet.saveUpdatedCells();
+
+        // Invalidate cache so dashboard refresh pulls new data
+        if (typeof invalidateCache === 'function') invalidateCache();
+
+        // Audit log
+        try {
+            const auditSheet = doc.sheetsByTitle['AuditLog'];
+            if (auditSheet) {
+                await auditSheet.addRow({
+                    Timestamp: new Date().toISOString(),
+                    Jmeno: req.user.jmeno || req.user.email,
+                    Event: 'AI_GENERATE_COMMIT',
+                    Detail: monthLabel + '|' + product + '|written=' + written + '|overwrite=' + !!overwrite
+                });
+            }
+        } catch(_) { /* audit nepovinny */ }
+
+        res.json({
+            ok: true, dryRun: false, monthLabel, product, sheetTitle,
+            written, actions, skipped: skipped.length,
+            skippedDetails: skipped.slice(0, 20)
+        });
+    } catch(e) {
+        res.status(500).json({ error: e.message, stack: e.stack });
     }
 });
+
+// Pouze pokud je tento soubor spousten primo (node index.js), nikoli require()
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log('Drachir.gg active');
+        loadSlackData().catch(e => console.error('Initial Slack data load failed:', e.message));
+        if (BAMBOOHR_API_KEY && BAMBOOHR_SUBDOMAIN) {
+            setTimeout(() => {
+                syncBambooVacations(true).then(r => {
+                    console.log('[BAMBOO] Startup sync: +' + r.added + ' / -' + r.removed + (r.error ? ' error=' + r.error : ''));
+                    invalidateCache();
+                }).catch(e => console.error('[BAMBOO] Startup sync error:', e.message));
+            }, 5000);
+        }
+    });
+}
+
+// Export pro standalone skripty (scripts/preview-prompt.js)
+module.exports = {
+    doc,
+    loadCapabilities,
+    loadAllShifts,
+    buildGeneratorPrompt,
+    validateGeneratedSchedule,
+    callClaude,
+    parseMonthLabel,
+    getMonthDates,
+    getProductMeta,
+    getCoverageProfile,
+    productMapping,
+    productCoverage,
+    peopleHierarchy
+};

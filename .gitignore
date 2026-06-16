@@ -1,2 +1,5 @@
 node_modules
 credentials.json
+outputs/
+_sync_test.txt
+_probe_*
