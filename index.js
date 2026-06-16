@@ -2128,7 +2128,7 @@ app.post('/api/admin/people', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { name, group, color, products } = req.body;
     if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
-    const vErr = validateNoTemplateChars(name, group, color);
+    const vErr = validateNoTemplateChars(name, group, color, ...(Array.isArray(products) ? products : []));
     if (vErr) return res.status(400).json({ error: vErr });
     const existingNames = peopleHierarchy.flatMap(g => g.members);
     const err = validatePersonInput({ name, group, color }, { groups: GROUPS.map(g => g.label), existingNames, mode: 'add' });
@@ -2149,7 +2149,7 @@ app.post('/api/admin/people/update', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { name, group, color, products } = req.body;
     if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
-    const vErr = validateNoTemplateChars(name, group, color);
+    const vErr = validateNoTemplateChars(name, group, color, ...(Array.isArray(products) ? products : []));
     if (vErr) return res.status(400).json({ error: vErr });
     const existingNames = peopleHierarchy.flatMap(g => g.members);
     const err = validatePersonInput({ name, group, color }, { groups: GROUPS.map(g => g.label), existingNames, mode: 'update' });
