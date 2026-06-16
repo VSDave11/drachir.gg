@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { hashPassword, verifyPassword } = require('./lib/auth');
 const { validateNoTemplateChars } = require('./lib/validate');
 const { buildPeopleStructures } = require('./lib/people');
+const { validatePersonInput, computeCapabilityCells } = require('./lib/people-admin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -801,6 +802,69 @@ async function loadCapabilities() {
     _capsCache = result;
     _capsCacheTime = Date.now();
     return result;
+}
+
+// Zajisti, ze list "People" existuje a je naplneny (jinak nasype soucasny seed).
+async function ensurePeopleSheetSeeded() {
+    await doc.loadInfo();
+    let sheet = doc.sheetsByTitle['People'];
+    if (!sheet) sheet = await doc.addSheet({ title: 'People', headerValues: ['Name', 'Group', 'Color'] });
+    const rows = await sheet.getRows();
+    if (rows.length === 0) {
+        const seed = [];
+        peopleHierarchy.forEach(g => g.members.forEach(nm => seed.push({ Name: nm, Group: g.label, Color: personColors[nm] || '#888' })));
+        if (seed.length) await sheet.addRows(seed);
+    }
+    return sheet;
+}
+
+// Zapise/aktualizuje radek osoby v listu "Capabilities" (pozicni matice).
+async function writeCapabilityRow(name, selectedProducts) {
+    await doc.loadInfo();
+    let sheet = doc.sheetsByTitle['Capabilities'];
+    if (!sheet) sheet = await doc.addSheet({ title: 'Capabilities', headerValues: ['Name'].concat(productMapping.map(p => p.name)) });
+    await sheet.loadCells('A1:Z200');
+
+    const headerProducts = [];
+    let lastCol = 0;
+    for (let c = 1; c < 26; c++) {
+        const hn = (sheet.getCell(0, c).value || sheet.getCell(0, c).formattedValue || '').toString().trim();
+        if (!hn) { lastCol = c - 1; break; }
+        headerProducts.push({ col: c, name: hn }); lastCol = c;
+    }
+    (selectedProducts || []).forEach(p => {
+        if (!headerProducts.some(h => h.name === p)) { lastCol += 1; sheet.getCell(0, lastCol).value = p; headerProducts.push({ col: lastCol, name: p }); }
+    });
+
+    let targetRow = -1, firstEmpty = -1;
+    for (let r = 1; r < 200; r++) {
+        const nm = (sheet.getCell(r, 0).value || '').toString().trim();
+        if (nm === name) { targetRow = r; break; }
+        if (!nm && firstEmpty === -1) firstEmpty = r;
+    }
+    if (targetRow === -1) targetRow = (firstEmpty === -1 ? 1 : firstEmpty);
+
+    sheet.getCell(targetRow, 0).value = name;
+    computeCapabilityCells(headerProducts, selectedProducts).forEach(({ col, value }) => {
+        sheet.getCell(targetRow, col).value = value;
+    });
+    await sheet.saveUpdatedCells();
+}
+
+// Vymaze radek osoby z listu "Capabilities" (vycisti bunky, neposouva radky).
+async function removeCapabilityRow(name) {
+    await doc.loadInfo();
+    const sheet = doc.sheetsByTitle['Capabilities'];
+    if (!sheet) return;
+    await sheet.loadCells('A1:Z200');
+    for (let r = 1; r < 200; r++) {
+        const nm = (sheet.getCell(r, 0).value || '').toString().trim();
+        if (nm === name) {
+            for (let c = 0; c < 26; c++) sheet.getCell(r, c).value = '';
+            await sheet.saveUpdatedCells();
+            return;
+        }
+    }
 }
 
 // ========================================================================
