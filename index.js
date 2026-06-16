@@ -2133,6 +2133,7 @@ app.post('/api/admin/people', async (req, res) => {
     const existingNames = peopleHierarchy.flatMap(g => g.members);
     const err = validatePersonInput({ name, group, color }, { groups: GROUPS.map(g => g.label), existingNames, mode: 'add' });
     if (err) return res.status(400).json({ error: err });
+    if (color && !/^#[0-9a-fA-F]{6}$/.test((color || '').trim())) return res.status(400).json({ error: 'Neplatná barva (očekává #rrggbb)' });
     try {
         const sheet = await ensurePeopleSheetSeeded();
         await sheet.addRow({ Name: name.trim(), Group: group, Color: (color || '').trim() || '#888' });
@@ -2153,6 +2154,7 @@ app.post('/api/admin/people/update', async (req, res) => {
     const existingNames = peopleHierarchy.flatMap(g => g.members);
     const err = validatePersonInput({ name, group, color }, { groups: GROUPS.map(g => g.label), existingNames, mode: 'update' });
     if (err) return res.status(400).json({ error: err });
+    if (color && !/^#[0-9a-fA-F]{6}$/.test((color || '').trim())) return res.status(400).json({ error: 'Neplatná barva (očekává #rrggbb)' });
     try {
         const sheet = await ensurePeopleSheetSeeded();
         const rows = await sheet.getRows();
@@ -6303,25 +6305,28 @@ app.get('/dashboard', async (req, res) => {
     document.getElementById('paName').readOnly = false;
     document.getElementById('paColor').value = '#8888aa';
     document.querySelectorAll('.pa-prod').forEach(function(c){ c.checked = false; });
+    var pg = document.getElementById('paGroup'); if (pg) pg.selectedIndex = 0;
     document.getElementById('paSaveBtn').textContent = 'Přidat';
     document.getElementById('paMsg').textContent = '';
   }
   function paSetMsg(t, okFlag){ var m = document.getElementById('paMsg'); m.textContent = t; m.style.color = okFlag ? '#69c56e' : '#ff6b6b'; }
+  function paEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function paLoad(){
     fetch('/api/admin/people').then(function(r){ return r.json(); }).then(function(d){
       if (!d.people) { document.getElementById('paList').textContent = 'Chyba načtení'; return; }
       var html = '';
       d.people.forEach(function(p){
         var prods = (p.products || []).length;
+        var safeColor = /^#[0-9a-fA-F]{6}$/.test(p.color) ? p.color : '#888';
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #1e2030;">'
-          + '<span style="width:12px;height:12px;border-radius:50%;background:' + p.color + ';flex-shrink:0;"></span>'
-          + '<span style="flex:1;">' + p.name + ' <span style="color:#667;">· ' + p.group + ' · ' + prods + ' prod.</span></span>'
+          + '<span style="width:12px;height:12px;border-radius:50%;background:' + safeColor + ';flex-shrink:0;"></span>'
+          + '<span style="flex:1;">' + paEsc(p.name) + ' <span style="color:#667;">· ' + paEsc(p.group) + ' · ' + prods + ' prod.</span></span>'
           + '<button onclick=\'paEdit(' + JSON.stringify(p).replace(/'/g, "&#39;") + ')\' style="background:#2a2d3a;color:#bbb;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Upravit</button>'
-          + '<button onclick="paRemove(' + JSON.stringify(p.name) + ')" style="background:rgba(255,68,68,0.12);color:#ff8a8a;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Odebrat</button>'
+          + '<button onclick=\'paRemove(' + JSON.stringify(p.name).replace(/'/g, "&#39;") + ')\' style="background:rgba(255,68,68,0.12);color:#ff8a8a;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Odebrat</button>'
           + '</div>';
       });
       document.getElementById('paList').innerHTML = html;
-    });
+    }).catch(function(e){ document.getElementById('paList').textContent = 'Chyba: ' + e.message; });
   }
   function paEdit(p){
     _paEditing = p.name;
@@ -6354,7 +6359,8 @@ app.get('/dashboard', async (req, res) => {
     if (!confirm('Odebrat ' + name + '?')) return;
     fetch('/api/admin/people/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
       .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
-      .then(function(res){ if (!res.ok) { paSetMsg('Chyba: ' + (res.j.error || ''), false); return; } paSetMsg('Odebráno', true); paResetForm(); paLoad(); });
+      .then(function(res){ if (!res.ok) { paSetMsg('Chyba: ' + (res.j.error || ''), false); return; } paSetMsg('Odebráno', true); paResetForm(); paLoad(); })
+      .catch(function(e){ paSetMsg('Chyba: ' + e.message, false); });
   }
 </script>
 </body>
