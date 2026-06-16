@@ -3,3 +3,4 @@ credentials.json
 outputs/
 _sync_test.txt
 _probe_*
+finish-backup.bat
