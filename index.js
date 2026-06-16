@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1); // Render reverse proxy
 
-const COOKIE_SECRET = 'drachir-viking-secret-2026';
+const COOKIE_SECRET = process.env.SESSION_SECRET || 'drachir-viking-secret-2026';
 app.use(session({
     secret: COOKIE_SECRET,
     resave: false,
