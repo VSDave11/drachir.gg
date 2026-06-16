@@ -833,7 +833,11 @@ async function writeCapabilityRow(name, selectedProducts) {
         headerProducts.push({ col: c, name: hn }); lastCol = c;
     }
     (selectedProducts || []).forEach(p => {
-        if (!headerProducts.some(h => h.name === p)) { lastCol += 1; sheet.getCell(0, lastCol).value = p; headerProducts.push({ col: lastCol, name: p }); }
+        if (!headerProducts.some(h => h.name === p)) {
+            lastCol += 1;
+            if (lastCol >= 26) throw new Error('Capabilities: prilis mnoho produktovych sloupcu (max 25)');
+            sheet.getCell(0, lastCol).value = p; headerProducts.push({ col: lastCol, name: p });
+        }
     });
 
     let targetRow = -1, firstEmpty = -1;
@@ -842,7 +846,10 @@ async function writeCapabilityRow(name, selectedProducts) {
         if (nm === name) { targetRow = r; break; }
         if (!nm && firstEmpty === -1) firstEmpty = r;
     }
-    if (targetRow === -1) targetRow = (firstEmpty === -1 ? 1 : firstEmpty);
+    if (targetRow === -1) {
+        if (firstEmpty === -1) throw new Error('Capabilities: zadny volny radek (>199 zaznamu)');
+        targetRow = firstEmpty;
+    }
 
     sheet.getCell(targetRow, 0).value = name;
     computeCapabilityCells(headerProducts, selectedProducts).forEach(({ col, value }) => {
