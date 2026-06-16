@@ -517,6 +517,26 @@ const PEOPLE_SEED = SEED_HIERARCHY.flatMap(g =>
 let peopleHierarchy, personColors, limaSet;
 ({ peopleHierarchy, personColors, limaSet } = buildPeopleStructures(PEOPLE_SEED, GROUPS));
 
+// Načte list "People" a prepise live struktury; pri chybe/absenci ponechava seed.
+async function refreshPeopleFromSheet() {
+    try {
+        await doc.loadInfo();
+        const sheet = doc.sheetsByTitle['People'];
+        if (!sheet) { console.warn('[PEOPLE] List "People" nenalezen - pouzivam seed.'); return; }
+        const dataRows = await sheet.getRows();
+        const data = dataRows.map(r => ({ Name: r.get('Name'), Group: r.get('Group'), Color: r.get('Color') }));
+        if (data.length === 0) { console.warn('[PEOPLE] List "People" je prazdny - pouzivam seed.'); return; }
+        const built = buildPeopleStructures(data, GROUPS);
+        peopleHierarchy = built.peopleHierarchy;
+        personColors    = built.personColors;
+        limaSet         = built.limaSet;
+        built.warnings.forEach(w => console.warn('[PEOPLE] ' + w));
+        console.log('[PEOPLE] Nacteno z listu: ' + data.length + ' lidi.');
+    } catch (e) {
+        console.error('[PEOPLE] Chyba nacitani, ponechavam soucasna data:', e.message);
+    }
+}
+
 const productMapping = [
     { name: "Valhalla Cup A",  startCol: 2,  trading: "FIFA",       slots: [{o:0,s:'22:55',e:'06:44'},{o:1,s:'06:55',e:'14:48'},{o:2,s:'14:55',e:'22:47'}] },
     { name: "Valhalla Cup B",  startCol: 6,  trading: "FIFA",       slots: [{o:0,s:'22:57',e:'06:46'},{o:1,s:'06:57',e:'14:50'},{o:2,s:'14:57',e:'22:49'}] },
@@ -6215,6 +6235,8 @@ app.post('/api/commit-to-schedule', async (req, res) => {
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log('Drachir.gg active');
+        refreshPeopleFromSheet().catch(e => console.error('[PEOPLE] Startup load failed, using seed:', e.message));
+        setInterval(() => { refreshPeopleFromSheet().catch(() => {}); }, 5 * 60 * 1000);
         loadSlackData().catch(e => console.error('Initial Slack data load failed:', e.message));
         if (BAMBOOHR_API_KEY && BAMBOOHR_SUBDOMAIN) {
             setTimeout(() => {
@@ -6229,6 +6251,8 @@ if (require.main === module) {
 
 // Export pro standalone skripty (scripts/preview-prompt.js)
 module.exports = {
+    peopleHierarchy,
+    personColors,
     doc,
     loadCapabilities,
     loadAllShifts,
