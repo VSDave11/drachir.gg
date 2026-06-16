@@ -2127,6 +2127,7 @@ app.get('/api/admin/people', async (req, res) => {
 app.post('/api/admin/people', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { name, group, color, products } = req.body;
+    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
     const vErr = validateNoTemplateChars(name, group, color);
     if (vErr) return res.status(400).json({ error: vErr });
     const existingNames = peopleHierarchy.flatMap(g => g.members);
@@ -2146,6 +2147,7 @@ app.post('/api/admin/people', async (req, res) => {
 app.post('/api/admin/people/update', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { name, group, color, products } = req.body;
+    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
     const vErr = validateNoTemplateChars(name, group, color);
     if (vErr) return res.status(400).json({ error: vErr });
     const existingNames = peopleHierarchy.flatMap(g => g.members);
@@ -2170,6 +2172,7 @@ app.post('/api/admin/people/update', async (req, res) => {
 app.post('/api/admin/people/remove', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { name } = req.body;
+    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
     const vErr = validateNoTemplateChars(name);
     if (vErr) return res.status(400).json({ error: vErr });
     try {
