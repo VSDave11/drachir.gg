@@ -655,8 +655,8 @@ async function loadAllShifts(forceSync) {
         const manualSheet = doc.sheetsByTitle['ManualShifts'];
         if (manualSheet) {
             await manualSheet.loadCells('A1:Z500');
-            let mColDate=-1,mColName=-1,mColTrading=-1,mColProduct=-1,mColStart=-1,mColEnd=-1,mColNote=-1;
-            for (let c = 0; c < 10; c++) {
+            let mColDate=-1,mColName=-1,mColTrading=-1,mColProduct=-1,mColStart=-1,mColEnd=-1,mColNote=-1,mColId=-1;
+            for (let c = 0; c < 12; c++) {
                 const v = manualSheet.getCell(0, c).value?.toString().trim().toLowerCase();
                 if (v === 'date')    mColDate    = c;
                 if (v === 'name')    mColName    = c;
@@ -665,6 +665,7 @@ async function loadAllShifts(forceSync) {
                 if (v === 'start')   mColStart   = c;
                 if (v === 'end')     mColEnd     = c;
                 if (v === 'note')    mColNote    = c;
+                if (v === 'id')      mColId      = c;
             }
             for (let r = 1; r < Math.min(manualSheet.rowCount, 500); r++) {
                 const rawD = mColDate >= 0 ? manualSheet.getCell(r, mColDate).value : null;
@@ -686,6 +687,7 @@ async function loadAllShifts(forceSync) {
                     _sheet: 'ManualShifts',
                     _row:   r,
                     _col:   mColName >= 0 ? mColName : 1,
+                    _id:    mColId >= 0 ? (manualSheet.getCell(r, mColId).value?.toString().trim() || null) : null,
                     _manual: true
                 });
                 });
@@ -2033,7 +2035,7 @@ app.post('/add-shift', async (req, res) => {
         // Pokud list ManualShifts neexistuje, vytvor ho
         let sheet = doc.sheetsByTitle['ManualShifts'];
         if (!sheet) {
-            sheet = await doc.addSheet({ title: 'ManualShifts', headerValues: ['Date','Name','Trading','Product','Start','End','Note','AddedBy'] });
+            sheet = await doc.addSheet({ title: 'ManualShifts', headerValues: ['Date','Name','Trading','Product','Start','End','Note','AddedBy','Id'] });
         }
         await sheet.addRow({
             Date:    req.body.date,
@@ -2043,7 +2045,8 @@ app.post('/add-shift', async (req, res) => {
             Start:   req.body.start,
             End:     req.body.end,
             Note:    req.body.note || '',
-            AddedBy: req.user.jmeno
+            AddedBy: req.user.jmeno,
+            Id:      crypto.randomUUID()
         });
         // AuditLog
         try {
@@ -2108,7 +2111,7 @@ app.post('/api/reset-colors', async (req, res) => {
 
 app.post('/update-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
-    const { originalName, originalDate, originalStart, name, date, start, end, product, trading, note } = req.body;
+    const { originalName, originalDate, originalStart, name, date, start, end, product, trading, note, id } = req.body;
     const vErr = validateNoTemplateChars(name, product, trading, note, date);
     if (vErr) return res.status(400).json({ error: vErr });
     try {
@@ -2119,7 +2122,9 @@ app.post('/update-shift', async (req, res) => {
         if (manualSheet) {
             const rows = await manualSheet.getRows();
             // Najdi shodny radek podle originalName + originalDate + originalStart
-            const target = rows.find(r => {
+            let target = null;
+            if (id) target = rows.find(r => (r.get('Id') || '') === id);
+            if (!target) target = rows.find(r => {
                 const rDate = convertCzechDate(r.get('Date') || '');
                 return r.get('Name') === originalName
                     && rDate === originalDate
@@ -2158,7 +2163,7 @@ app.post('/update-shift', async (req, res) => {
 // DELETE SHIFT - pro ManualShifts maze radek ze Sheetu, pro Schedule listy jen z cache
 app.post('/delete-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
-    const { sheetTitle, row, col, name } = req.body;
+    const { sheetTitle, row, col, name, id } = req.body;
     try {
         await doc.loadInfo();
 
@@ -2167,12 +2172,13 @@ app.post('/delete-shift', async (req, res) => {
             const manualSheet = doc.sheetsByTitle['ManualShifts'];
             if (manualSheet) {
                 const rows = await manualSheet.getRows();
-                // Najdi radek podle indexu (row je 1-based index z loadCells)
-                const rowIdx = parseInt(row);
-                // getRows() vraci pole od indexu 0 = prvni datovy radek (za hlavickou)
-                // _row z loadCells je cislo radku v listu (1 = hlavicka, 2 = prvni data)
-                // takze datovy radek = _row - 1 - 1 = _row - 2 (0-based v poli rows)
-                const target = rows.find((_r, i) => (i + 1) === rowIdx);
+                let target = null;
+                if (id) target = rows.find(r => (r.get('Id') || '') === id);
+                if (!target) {
+                    // fallback: stara shoda podle indexu radku (radky bez Id)
+                    const rowIdx = parseInt(row);
+                    target = rows.find((_r, i) => (i + 1) === rowIdx);
+                }
                 if (target) {
                     await target.delete();
                 }
@@ -3202,7 +3208,7 @@ app.get('/dashboard', async (req, res) => {
                 }
                 return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(sharedNote) + '"'
                      + ' style="left:' + left + '%;width:' + width + '%;top:50%;transform:translateY(-50%);height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
-                     + ' onclick="openViewModal(\'' + safe(name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(sharedNote) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                     + ' onclick="openViewModal(\'' + safe(name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(sharedNote) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\')">'
                      + '<div style="display:flex;align-items:center;white-space:nowrap;">'
                      + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
                      + '<span style="margin:0 5px;opacity:0.5;">|</span>'
@@ -3314,7 +3320,7 @@ app.get('/dashboard', async (req, res) => {
                         }
                         return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(s.Name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(pName) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(groupNote) + '"'
                              + ' style="left:' + left + '%;width:' + width + '%;top:50%;transform:translateY(-50%);height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
-                             + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(pName) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                             + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(pName) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\')">'
                              + '<div style="display:flex;align-items:center;white-space:nowrap;">'
                              + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
                              + '<span style="margin:0 5px;opacity:0.5;">|</span>'
@@ -3447,7 +3453,7 @@ app.get('/dashboard', async (req, res) => {
                         const overnightBg2 = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
                         dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-shift-date="' + s.Date + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
                                    + ' style="position:absolute;top:0px;height:' + h2 + 'px;left:4px;right:4px;background:' + overnightBg2 + ';color:#fff;border-radius:0 0 4px 4px;padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';opacity:0.85;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5);"'
-                                   + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + prevDStr2 + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                                   + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + prevDStr2 + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\')">'
                                    + '<span style="font-weight:700;">' + s.Name + '</span>'
                                    + '<span style="margin:0 5px;opacity:0.5;">|</span>'
                                    + '<span class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-product="' + safe(s.Product) + '" style="font-size:0.78rem;opacity:0.9;">' + s.Start + '-' + s.End + ' ' + s.Product + '</span>'
@@ -3469,7 +3475,7 @@ app.get('/dashboard', async (req, res) => {
                     const weekPillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
                     dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-shift-date="' + s.Date + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
                                + ' style="position:absolute;top:' + sTop + 'px;height:' + height + 'px;left:4px;right:4px;background:' + weekPillBg + ';color:#fff;border-radius:' + (isOvernight ? '4px 4px 0 0' : '4px') + ';padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5);"'
-                               + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                               + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\')">'
                                + '<span style="font-weight:700;">' + s.Name + '</span>'
                                + '<span style="margin:0 5px;opacity:0.5;">|</span>'
                                + '<span class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-product="' + safe(s.Product) + '" style="font-size:0.78rem;opacity:0.9;">' + s.Start + '-' + s.End + ' ' + s.Product + '</span>'
@@ -3529,7 +3535,7 @@ app.get('/dashboard', async (req, res) => {
                         h += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '"'
                            + ' style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0f0f0;border-radius:10px;margin-bottom:5px;cursor:pointer;border-left:4px solid ' + prodColor + ';box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:box-shadow 0.15s;"'
                            + ' onmouseover="this.style.boxShadow=\'0 3px 8px rgba(0,0,0,0.12)\'" onmouseout="this.style.boxShadow=\'0 1px 3px rgba(0,0,0,0.06)\'"'
-                           + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                           + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\')">'
                            + '<div style="flex:1;min-width:0;">'
                            + '<div style="font-weight:700;font-size:0.85rem;color:#222;display:flex;align-items:center;gap:6px;">'
                            + '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + prodColor + ';flex-shrink:0;"></span>'
@@ -3595,7 +3601,7 @@ app.get('/dashboard', async (req, res) => {
                         agendaHTML += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '"'
                                     + ' style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#fff;border-radius:7px;margin-bottom:5px;cursor:pointer;border-left:4px solid ' + prodColor + ';box-shadow:0 1px 4px rgba(0,0,0,0.08);transition:box-shadow 0.15s;"'
                                     + ' onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,0.15)\'" onmouseout="this.style.boxShadow=\'0 1px 4px rgba(0,0,0,0.08)\'"'
-                                    + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ')">'
+                                    + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\')">'
                                     + '<div style="width:4px;align-self:stretch;background:' + personColor + ';border-radius:2px;flex-shrink:0;min-height:32px;"></div>'
                                     + '<div style="flex:1;min-width:0;">'
                                     + '<div style="font-weight:700;font-size:0.85rem;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + s.Name + '</div>'
@@ -4476,7 +4482,7 @@ app.get('/dashboard', async (req, res) => {
     function switchView(v){ saveSelection(); localStorage.setItem('ygg_view',v); const p=new URLSearchParams(window.location.search); p.set('view',v); window.location.href='/dashboard?'+p.toString(); }
 
     // BOD 1: MODAL
-    function openViewModal(name,date,start,end,product,note,trading,personColor,prodColor,sheetTitle,row,col){
+    function openViewModal(name,date,start,end,product,note,trading,personColor,prodColor,sheetTitle,row,col,id){
         // Pokud jsme v picking mode, zachytneme tuto smenu pro exchange
         if (_pickingMode && typeof pickShiftForExchange === 'function') {
             pickShiftForExchange(name,date,start,end,product,note,trading,personColor,prodColor,sheetTitle,row,col);
@@ -4537,7 +4543,8 @@ app.get('/dashboard', async (req, res) => {
             product:    product,
             sheetTitle: sheetTitle || '',
             row:        (row !== undefined && row !== null) ? parseInt(row) : -1,
-            col:        (col !== undefined && col !== null) ? parseInt(col) : -1
+            col:        (col !== undefined && col !== null) ? parseInt(col) : -1,
+            id:         (id !== undefined && id !== null) ? id : ''
         };
         // DELETE a EXCHANGE vzdy viditelne v edit modu
         document.getElementById('mDeleteBtn').style.display = 'block';
@@ -4898,7 +4905,8 @@ app.get('/dashboard', async (req, res) => {
             end:     document.getElementById('mEnd').value,
             product: document.getElementById('mProd').value,
             trading: document.getElementById('mTrading').value,
-            note:    document.getElementById('mNote').value
+            note:    document.getElementById('mNote').value,
+            id:      _currentShiftSource ? (_currentShiftSource.id || '') : ''
         };
         // Build array of dates (multi-day support)
         const dateTo = document.getElementById('mDateTo').value;
@@ -5149,7 +5157,8 @@ app.get('/dashboard', async (req, res) => {
                         sheetTitle: _currentShiftSource.sheetTitle,
                         row:        _currentShiftSource.row,
                         col:        _currentShiftSource.col,
-                        name:       _currentShiftSource.name
+                        name:       _currentShiftSource.name,
+                        id:         _currentShiftSource.id || ''
                     })
                 });
                 if (r.ok) { closeModal(); location.reload(); }
