@@ -5,6 +5,7 @@ const session = require('express-session');
 const crypto = require('crypto');
 const { hashPassword, verifyPassword } = require('./lib/auth');
 const { validateNoTemplateChars } = require('./lib/validate');
+const { buildPeopleStructures } = require('./lib/people');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -218,7 +219,7 @@ async function loadSlackData() {
 }
 
 // Lima members (CET -6h) — get dual-timezone suffix in messages
-const LIMA_MEMBERS = new Set(["Adrian M.","Andres","Christian C.","David Z.","Flabio T.","Francesco","Franco M.","Gustavo P.","Hadi B.","James H.","Jose C.","Martin M. M.","Santiago B.","William M."]);
+// LIMA: odvozeno ze skupiny "Traders - Lima" (viz limaSet nize)
 
 function shiftLimaTime(hhmm) {
     if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return hhmm;
@@ -228,7 +229,7 @@ function shiftLimaTime(hhmm) {
 }
 
 function withLimaSuffix(name, details, start, end) {
-    if (!LIMA_MEMBERS.has(name) || !start || !end) return details;
+    if (!limaSet.has(name) || !start || !end) return details;
     return details + ' — Lima: ' + shiftLimaTime(start) + '-' + shiftLimaTime(end);
 }
 
@@ -420,7 +421,7 @@ async function syncBambooVacations(forceIgnoreThrottle) {
 }
 
 // --- BOD 5: INDIVIDUÁLNÍ BARVY KAŽDÉHO ČLOVĚKA ---
-const personColors = {
+const SEED_PERSON_COLORS = {
     "David Winkler":          "#fbc02d",
     "Ondřej Merxbauer":       "#00bcd4",
     "David Kuchař":           "#e91e63",
@@ -498,7 +499,7 @@ const productColors = {
 };
 
 // --- SDÍLENÁ DATA (dashboard + stats) ---
-const peopleHierarchy = [
+const SEED_HIERARCHY = [
     { label: "Head of Trading - eSims", color: "#fbc02d", target: 0,  members: ["David Winkler"] },
     { label: "Quality Assurance",       color: "#03a9f4", target: 16, members: ["Ondřej Merxbauer"] },
     { label: "Master Scheduler",        color: "#e91e63", target: 24, members: ["David Kuchař"] },
@@ -507,6 +508,14 @@ const peopleHierarchy = [
     { label: "Traders - Europe",        color: "#8bc34a", target: 40, members: ["Denis M.", "Ivan", "Jakub K.", "Jan K.", "Jiří K.", "Lukáš T.", "Marek M.", "Martin N.", "Matyáš P.", "Michal F.", "Michal P.", "Michal W.", "Petr H.", "Petr R.", "Przemyslaw K.", "Sebastián W.", "Stanislav U.", "Tadeáš F.", "Tomáš M.", "Viet"] },
     { label: "Traders - Lima",          color: "#ff5722", target: 40, members: ["Adrian M.", "Andres", "Christian C.", "David Z.", "Flabio T.", "Francesco", "Franco M.", "Gustavo P.", "Hadi B.", "James H.", "Jose C.", "Martin M. M.", "Santiago B.", "William M.", "Kevin R."] }
 ];
+
+// --- Lide: live struktury (seed = fallback; pri startu/refreshe prepsane z listu "People") ---
+const GROUPS = SEED_HIERARCHY.map(({ label, color, target }) => ({ label, color, target }));
+const PEOPLE_SEED = SEED_HIERARCHY.flatMap(g =>
+    g.members.map(name => ({ Name: name, Group: g.label, Color: SEED_PERSON_COLORS[name] || '#888' }))
+);
+let peopleHierarchy, personColors, limaSet;
+({ peopleHierarchy, personColors, limaSet } = buildPeopleStructures(PEOPLE_SEED, GROUPS));
 
 const productMapping = [
     { name: "Valhalla Cup A",  startCol: 2,  trading: "FIFA",       slots: [{o:0,s:'22:55',e:'06:44'},{o:1,s:'06:55',e:'14:48'},{o:2,s:'14:55',e:'22:47'}] },
@@ -2095,7 +2104,7 @@ app.post('/add-shift', async (req, res) => {
             if (auditSheet) await auditSheet.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location||'', Action: 'ADD_SHIFT|' + req.body.name + '|' + req.body.product + '|' + req.body.date });
         } catch(e) {}
         invalidateCache();
-        sendSlackMessage(':heavy_plus_sign: *Shift added* by ' + req.user.jmeno + ': ' + req.body.name + ' - ' + req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + (LIMA_MEMBERS.has(req.body.name) ? ' — Lima: ' + shiftLimaTime(req.body.start) + '-' + shiftLimaTime(req.body.end) : '') + ')');
+        sendSlackMessage(':heavy_plus_sign: *Shift added* by ' + req.user.jmeno + ': ' + req.body.name + ' - ' + req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + (limaSet.has(req.body.name) ? ' — Lima: ' + shiftLimaTime(req.body.start) + '-' + shiftLimaTime(req.body.end) : '') + ')');
         notifyShiftChange(req.user.jmeno, req.body.name, 'added', req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + ')', req.body.start, req.body.end);
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
@@ -2197,7 +2206,7 @@ app.post('/update-shift', async (req, res) => {
         } catch(e) {}
 
         invalidateCache();
-        sendSlackMessage(':pencil2: *Shift edited* by ' + req.user.jmeno + ': ' + (name || originalName) + ' - ' + (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + (LIMA_MEMBERS.has(name || originalName) ? ' — Lima: ' + shiftLimaTime(start) + '-' + shiftLimaTime(end) : '') + ')');
+        sendSlackMessage(':pencil2: *Shift edited* by ' + req.user.jmeno + ': ' + (name || originalName) + ' - ' + (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + (limaSet.has(name || originalName) ? ' — Lima: ' + shiftLimaTime(start) + '-' + shiftLimaTime(end) : '') + ')');
         notifyShiftChange(req.user.jmeno, name || originalName, 'edited', (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + ')', start, end);
         res.json({ success: true, found: true });
     } catch(e) { res.status(500).send(e.message); }
