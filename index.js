@@ -4,6 +4,7 @@ const { JWT } = require('google-auth-library');
 const session = require('express-session');
 const crypto = require('crypto');
 const { hashPassword, verifyPassword } = require('./lib/auth');
+const { validateNoTemplateChars } = require('./lib/validate');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1472,6 +1473,8 @@ function togglePw(id,btn){const i=document.getElementById(id);i.type=i.type==='p
 app.post('/change-password', async (req, res) => {
     if (!req.user) return res.redirect('/');
     const { currentPassword, newPassword, confirmPassword } = req.body;
+    const vErr = validateNoTemplateChars(newPassword);
+    if (vErr) return res.redirect('/change-password?error=short');
     const userEmail = req.user.email;
 
     // Validace
@@ -2023,6 +2026,8 @@ app.get('/debug-schedule', async (req, res) => {
 // add-shift - ulozi do listu "ManualShifts" v Google Sheets
 app.post('/add-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
+    const vErr = validateNoTemplateChars(req.body.name, req.body.product, req.body.trading, req.body.note, req.body.date);
+    if (vErr) return res.status(400).json({ error: vErr });
     try {
         await doc.loadInfo();
         // Pokud list ManualShifts neexistuje, vytvor ho
@@ -2104,6 +2109,8 @@ app.post('/api/reset-colors', async (req, res) => {
 app.post('/update-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
     const { originalName, originalDate, originalStart, name, date, start, end, product, trading, note } = req.body;
+    const vErr = validateNoTemplateChars(name, product, trading, note, date);
+    if (vErr) return res.status(400).json({ error: vErr });
     try {
         await doc.loadInfo();
 
