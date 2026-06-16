@@ -16,7 +16,7 @@ app.use(session({
     secret: COOKIE_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, httpOnly: true, sameSite: 'lax' }
+    cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, sameSite: 'lax' }
 }));
 
 // CSRF: zajisti token v session
@@ -1429,6 +1429,7 @@ app.get('/change-password', (req, res) => {
         ${error === 'nomatch' ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>New passwords do not match.</div>' : ''}
         ${error === 'short'   ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Password must be at least 6 characters.</div>' : ''}
         ${error === 'same'    ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>New password must differ from current.</div>' : ''}
+        ${error === 'badchars' ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Heslo obsahuje nepovolené znaky (zpětná uvozovka nebo \${).</div>' : ''}
         ${success ? '<div class="alert alert-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Password changed successfully!</div>' : ''}
 
         <form action="/change-password" method="POST" id="pwdForm">
@@ -1476,7 +1477,7 @@ app.post('/change-password', async (req, res) => {
     if (!req.user) return res.redirect('/');
     const { currentPassword, newPassword, confirmPassword } = req.body;
     const vErr = validateNoTemplateChars(newPassword);
-    if (vErr) return res.redirect('/change-password?error=short');
+    if (vErr) return res.redirect('/change-password?error=badchars');
     const userEmail = req.user.email;
 
     // Validace
@@ -2117,6 +2118,7 @@ app.get('/api/custom-colors', async (req, res) => {
 });
 
 app.post('/api/set-color', async (req, res) => {
+    if (!req.user) return res.status(401).send('Unauthorized');
     try {
         const { name, color } = req.body;
         if (!name) return res.status(400).send('Missing name');
@@ -2138,6 +2140,7 @@ app.post('/api/set-color', async (req, res) => {
 });
 
 app.post('/api/reset-colors', async (req, res) => {
+    if (!req.user) return res.status(401).send('Unauthorized');
     try {
         await doc.loadInfo();
         const sheet = doc.sheetsByTitle['CustomColors'];
