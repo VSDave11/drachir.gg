@@ -2111,6 +2111,80 @@ app.get('/api/capabilities', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// === Admin: sprava lidi (Faze 3) ===
+app.get('/api/admin/people', async (req, res) => {
+    if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    try {
+        const caps = await loadCapabilities();
+        const people = [];
+        peopleHierarchy.forEach(g => g.members.forEach(nm => people.push({
+            name: nm, group: g.label, color: personColors[nm] || '#888', products: caps.byPerson[nm] || []
+        })));
+        res.json({ people, groups: GROUPS.map(g => g.label), allProducts: productMapping.map(p => p.name) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/people', async (req, res) => {
+    if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    const { name, group, color, products } = req.body;
+    const vErr = validateNoTemplateChars(name, group, color);
+    if (vErr) return res.status(400).json({ error: vErr });
+    const existingNames = peopleHierarchy.flatMap(g => g.members);
+    const err = validatePersonInput({ name, group, color }, { groups: GROUPS.map(g => g.label), existingNames, mode: 'add' });
+    if (err) return res.status(400).json({ error: err });
+    try {
+        const sheet = await ensurePeopleSheetSeeded();
+        await sheet.addRow({ Name: name.trim(), Group: group, Color: (color || '').trim() || '#888' });
+        await writeCapabilityRow(name.trim(), Array.isArray(products) ? products : []);
+        _capsCache = null; _capsCacheTime = 0;
+        await refreshPeopleFromSheet();
+        try { const a = doc.sheetsByTitle['AuditLog']; if (a) await a.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location || '', Action: 'ADD_PERSON|' + name }); } catch (_) {}
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/people/update', async (req, res) => {
+    if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    const { name, group, color, products } = req.body;
+    const vErr = validateNoTemplateChars(name, group, color);
+    if (vErr) return res.status(400).json({ error: vErr });
+    const existingNames = peopleHierarchy.flatMap(g => g.members);
+    const err = validatePersonInput({ name, group, color }, { groups: GROUPS.map(g => g.label), existingNames, mode: 'update' });
+    if (err) return res.status(400).json({ error: err });
+    try {
+        const sheet = await ensurePeopleSheetSeeded();
+        const rows = await sheet.getRows();
+        const target = rows.find(r => (r.get('Name') || '').toString().trim() === name.trim());
+        if (!target) return res.status(404).json({ error: 'Nenalezen' });
+        target.set('Group', group);
+        target.set('Color', (color || '').trim() || '#888');
+        await target.save();
+        await writeCapabilityRow(name.trim(), Array.isArray(products) ? products : []);
+        _capsCache = null; _capsCacheTime = 0;
+        await refreshPeopleFromSheet();
+        try { const a = doc.sheetsByTitle['AuditLog']; if (a) await a.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location || '', Action: 'EDIT_PERSON|' + name }); } catch (_) {}
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/people/remove', async (req, res) => {
+    if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    const { name } = req.body;
+    const vErr = validateNoTemplateChars(name);
+    if (vErr) return res.status(400).json({ error: vErr });
+    try {
+        const sheet = await ensurePeopleSheetSeeded();
+        const rows = await sheet.getRows();
+        const target = rows.find(r => (r.get('Name') || '').toString().trim() === (name || '').trim());
+        if (target) await target.delete();
+        await removeCapabilityRow((name || '').trim());
+        _capsCache = null; _capsCacheTime = 0;
+        await refreshPeopleFromSheet();
+        try { const a = doc.sheetsByTitle['AuditLog']; if (a) await a.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location || '', Action: 'REMOVE_PERSON|' + name }); } catch (_) {}
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // BambooHR manual sync trigger (admin-only)
 app.post('/api/bamboo-sync', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
