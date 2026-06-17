@@ -2127,13 +2127,13 @@ app.get('/api/admin/people', async (req, res) => {
 app.post('/api/admin/people', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { name, group, color, products } = req.body;
-    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
+    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Name is required' });
     const vErr = validateNoTemplateChars(name, group, color, ...(Array.isArray(products) ? products : []));
     if (vErr) return res.status(400).json({ error: vErr });
     const existingNames = peopleHierarchy.flatMap(g => g.members);
     const err = validatePersonInput({ name, group, color }, { groups: GROUPS.map(g => g.label), existingNames, mode: 'add' });
     if (err) return res.status(400).json({ error: err });
-    if (color && !/^#[0-9a-fA-F]{6}$/.test((color || '').trim())) return res.status(400).json({ error: 'Neplatná barva (očekává #rrggbb)' });
+    if (color && !/^#[0-9a-fA-F]{6}$/.test((color || '').trim())) return res.status(400).json({ error: 'Invalid color (#rrggbb expected)' });
     try {
         const sheet = await ensurePeopleSheetSeeded();
         await sheet.addRow({ Name: name.trim(), Group: group, Color: (color || '').trim() || '#888' });
@@ -2148,18 +2148,18 @@ app.post('/api/admin/people', async (req, res) => {
 app.post('/api/admin/people/update', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { name, group, color, products } = req.body;
-    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
+    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Name is required' });
     const vErr = validateNoTemplateChars(name, group, color, ...(Array.isArray(products) ? products : []));
     if (vErr) return res.status(400).json({ error: vErr });
     const existingNames = peopleHierarchy.flatMap(g => g.members);
     const err = validatePersonInput({ name, group, color }, { groups: GROUPS.map(g => g.label), existingNames, mode: 'update' });
     if (err) return res.status(400).json({ error: err });
-    if (color && !/^#[0-9a-fA-F]{6}$/.test((color || '').trim())) return res.status(400).json({ error: 'Neplatná barva (očekává #rrggbb)' });
+    if (color && !/^#[0-9a-fA-F]{6}$/.test((color || '').trim())) return res.status(400).json({ error: 'Invalid color (#rrggbb expected)' });
     try {
         const sheet = await ensurePeopleSheetSeeded();
         const rows = await sheet.getRows();
         const target = rows.find(r => (r.get('Name') || '').toString().trim() === name.trim());
-        if (!target) return res.status(404).json({ error: 'Nenalezen' });
+        if (!target) return res.status(404).json({ error: 'Not found' });
         target.set('Group', group);
         target.set('Color', (color || '').trim() || '#888');
         await target.save();
@@ -2174,7 +2174,7 @@ app.post('/api/admin/people/update', async (req, res) => {
 app.post('/api/admin/people/remove', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { name } = req.body;
-    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
+    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Name is required' });
     const vErr = validateNoTemplateChars(name);
     if (vErr) return res.status(400).json({ error: vErr });
     try {
@@ -4172,7 +4172,7 @@ app.get('/dashboard', async (req, res) => {
         <button onclick="openAIGenModal()" style="background:rgba(91,127,166,0.08);color:#7ba3cc;border:1px solid rgba(91,127,166,0.3);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(91,127,166,0.18)'" onmouseout="this.style.background='rgba(91,127,166,0.08)'">&#129302; AI GENERATE</button>
         <button onclick="openSyncModal()" style="background:rgba(251,192,45,0.08);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.15)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'" id="syncBtn">SYNC WITH SCHEDULE</button>
         <a href="/admin/audit-log" style="display:block;box-sizing:border-box;text-align:center;text-decoration:none;background:rgba(120,144,156,0.08);color:#90a4ae;border:1px solid rgba(120,144,156,0.3);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(120,144,156,0.18)'" onmouseout="this.style.background='rgba(120,144,156,0.08)'">&#128203; AUDIT LOG</a>
-        <button onclick="openPeopleAdmin()" style="display:block;box-sizing:border-box;text-align:center;background:rgba(126,87,194,0.1);color:#b39ddb;border:1px solid rgba(126,87,194,0.35);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(126,87,194,0.2)'" onmouseout="this.style.background='rgba(126,87,194,0.1)'">&#128101; SPRÁVA LIDÍ</button>
+        <button onclick="openPeopleAdmin()" style="display:block;box-sizing:border-box;text-align:center;background:rgba(126,87,194,0.1);color:#b39ddb;border:1px solid rgba(126,87,194,0.35);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(126,87,194,0.2)'" onmouseout="this.style.background='rgba(126,87,194,0.1)'">&#128101; MANAGE PEOPLE</button>
         <button onclick="openDeleteMonth()" style="background:rgba(255,68,68,0.06);color:#ff6b6b;border:1px solid rgba(255,68,68,0.2);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:16px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background='rgba(255,68,68,0.15)'" onmouseout="this.style.background='rgba(255,68,68,0.06)'">DELETE ALL SHIFTS THIS MONTH</button>
         ` : ''}
 
@@ -6264,20 +6264,20 @@ app.get('/dashboard', async (req, res) => {
 <div id="peopleAdminModal" style="display:none;position:fixed;z-index:3000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);">
   <div style="max-width:760px;margin:40px auto;background:#13141c;border:1px solid #2a2d3a;border-radius:14px;max-height:88vh;overflow:auto;padding:22px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 style="color:#b39ddb;font-size:1.1rem;margin:0;">&#128101; Správa lidí</h2>
+      <h2 style="color:#b39ddb;font-size:1.1rem;margin:0;">&#128101; Manage People</h2>
       <button onclick="closePeopleAdmin()" style="background:none;border:none;color:#888;font-size:1.4rem;cursor:pointer;">&times;</button>
     </div>
     <div id="paFormWrap" style="background:rgba(255,255,255,0.03);border:1px solid #2a2d3a;border-radius:10px;padding:14px;margin-bottom:16px;">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
-        <label style="font-size:0.7rem;color:#9aa;">Jméno<br><input id="paName" style="padding:7px;background:#0d0e14;color:#eee;border:1px solid #2a2d3a;border-radius:6px;width:170px;"></label>
-        <label style="font-size:0.7rem;color:#9aa;">Skupina<br><select id="paGroup" style="padding:7px;background:#0d0e14;color:#eee;border:1px solid #2a2d3a;border-radius:6px;"></select></label>
-        <label style="font-size:0.7rem;color:#9aa;">Barva<br><input id="paColor" type="color" value="#8888aa" style="padding:2px;background:#0d0e14;border:1px solid #2a2d3a;border-radius:6px;height:34px;width:48px;"></label>
+        <label style="font-size:0.7rem;color:#9aa;">Name<br><input id="paName" style="padding:7px;background:#0d0e14;color:#eee;border:1px solid #2a2d3a;border-radius:6px;width:170px;"></label>
+        <label style="font-size:0.7rem;color:#9aa;">Group<br><select id="paGroup" style="padding:7px;background:#0d0e14;color:#eee;border:1px solid #2a2d3a;border-radius:6px;"></select></label>
+        <label style="font-size:0.7rem;color:#9aa;">Color<br><input id="paColor" type="color" value="#8888aa" style="padding:2px;background:#0d0e14;border:1px solid #2a2d3a;border-radius:6px;height:34px;width:48px;"></label>
       </div>
-      <div style="font-size:0.7rem;color:#9aa;margin:12px 0 6px;">Eligibilita (produkty):</div>
+      <div style="font-size:0.7rem;color:#9aa;margin:12px 0 6px;">Eligibility (products):</div>
       <div id="paProducts" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
       <div style="margin-top:14px;display:flex;gap:8px;">
-        <button id="paSaveBtn" onclick="paSave()" style="background:#7e57c2;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:bold;">Přidat</button>
-        <button onclick="paResetForm()" style="background:#2a2d3a;color:#ccc;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">Vyčistit</button>
+        <button id="paSaveBtn" onclick="paSave()" style="background:#7e57c2;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:bold;">Add</button>
+        <button onclick="paResetForm()" style="background:#2a2d3a;color:#ccc;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">Clear</button>
         <span id="paMsg" style="align-self:center;font-size:0.78rem;"></span>
       </div>
     </div>
@@ -6306,14 +6306,14 @@ app.get('/dashboard', async (req, res) => {
     document.getElementById('paColor').value = '#8888aa';
     document.querySelectorAll('.pa-prod').forEach(function(c){ c.checked = false; });
     var pg = document.getElementById('paGroup'); if (pg) pg.selectedIndex = 0;
-    document.getElementById('paSaveBtn').textContent = 'Přidat';
+    document.getElementById('paSaveBtn').textContent = 'Add';
     document.getElementById('paMsg').textContent = '';
   }
   function paSetMsg(t, okFlag){ var m = document.getElementById('paMsg'); m.textContent = t; m.style.color = okFlag ? '#69c56e' : '#ff6b6b'; }
   function paEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function paLoad(){
     fetch('/api/admin/people').then(function(r){ return r.json(); }).then(function(d){
-      if (!d.people) { document.getElementById('paList').textContent = 'Chyba načtení'; return; }
+      if (!d.people) { document.getElementById('paList').textContent = 'Load error'; return; }
       var html = '';
       d.people.forEach(function(p){
         var prods = (p.products || []).length;
@@ -6321,12 +6321,12 @@ app.get('/dashboard', async (req, res) => {
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #1e2030;">'
           + '<span style="width:12px;height:12px;border-radius:50%;background:' + safeColor + ';flex-shrink:0;"></span>'
           + '<span style="flex:1;">' + paEsc(p.name) + ' <span style="color:#667;">· ' + paEsc(p.group) + ' · ' + prods + ' prod.</span></span>'
-          + '<button onclick=\'paEdit(' + JSON.stringify(p).replace(/'/g, "&#39;") + ')\' style="background:#2a2d3a;color:#bbb;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Upravit</button>'
-          + '<button onclick=\'paRemove(' + JSON.stringify(p.name).replace(/'/g, "&#39;") + ')\' style="background:rgba(255,68,68,0.12);color:#ff8a8a;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Odebrat</button>'
+          + '<button onclick=\'paEdit(' + JSON.stringify(p).replace(/'/g, "&#39;") + ')\' style="background:#2a2d3a;color:#bbb;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Edit</button>'
+          + '<button onclick=\'paRemove(' + JSON.stringify(p.name).replace(/'/g, "&#39;") + ')\' style="background:rgba(255,68,68,0.12);color:#ff8a8a;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Remove</button>'
           + '</div>';
       });
       document.getElementById('paList').innerHTML = html;
-    }).catch(function(e){ document.getElementById('paList').textContent = 'Chyba: ' + e.message; });
+    }).catch(function(e){ document.getElementById('paList').textContent = 'Error: ' + e.message; });
   }
   function paEdit(p){
     _paEditing = p.name;
@@ -6336,31 +6336,31 @@ app.get('/dashboard', async (req, res) => {
     document.getElementById('paColor').value = (/^#[0-9a-fA-F]{6}$/.test(p.color) ? p.color : '#8888aa');
     var set = {}; (p.products || []).forEach(function(x){ set[x] = true; });
     document.querySelectorAll('.pa-prod').forEach(function(c){ c.checked = !!set[c.value]; });
-    document.getElementById('paSaveBtn').textContent = 'Uložit změny';
-    paSetMsg('Úprava: ' + p.name, true);
+    document.getElementById('paSaveBtn').textContent = 'Save changes';
+    paSetMsg('Editing: ' + p.name, true);
   }
   function paSave(){
     var name = document.getElementById('paName').value.trim();
     var group = document.getElementById('paGroup').value;
     var color = document.getElementById('paColor').value;
     var products = Array.prototype.slice.call(document.querySelectorAll('.pa-prod:checked')).map(function(c){ return c.value; });
-    if (!name) { paSetMsg('Zadej jméno', false); return; }
+    if (!name) { paSetMsg('Enter a name', false); return; }
     var url = _paEditing ? '/api/admin/people/update' : '/api/admin/people';
     document.getElementById('paSaveBtn').disabled = true;
     fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, group: group, color: color, products: products }) })
       .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
       .then(function(res){
         document.getElementById('paSaveBtn').disabled = false;
-        if (!res.ok) { paSetMsg('Chyba: ' + (res.j.error || 'neznámá'), false); return; }
-        paSetMsg('Uloženo', true); paResetForm(); paLoad();
-      }).catch(function(e){ document.getElementById('paSaveBtn').disabled = false; paSetMsg('Chyba: ' + e.message, false); });
+        if (!res.ok) { paSetMsg('Error: ' + (res.j.error || 'unknown'), false); return; }
+        paSetMsg('Saved', true); paResetForm(); paLoad();
+      }).catch(function(e){ document.getElementById('paSaveBtn').disabled = false; paSetMsg('Error: ' + e.message, false); });
   }
   function paRemove(name){
-    if (!confirm('Odebrat ' + name + '?')) return;
+    if (!confirm('Remove ' + name + '?')) return;
     fetch('/api/admin/people/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
       .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
-      .then(function(res){ if (!res.ok) { paSetMsg('Chyba: ' + (res.j.error || ''), false); return; } paSetMsg('Odebráno', true); paResetForm(); paLoad(); })
-      .catch(function(e){ paSetMsg('Chyba: ' + e.message, false); });
+      .then(function(res){ if (!res.ok) { paSetMsg('Error: ' + (res.j.error || ''), false); return; } paSetMsg('Removed', true); paResetForm(); paLoad(); })
+      .catch(function(e){ paSetMsg('Error: ' + e.message, false); });
   }
 </script>
 </body>

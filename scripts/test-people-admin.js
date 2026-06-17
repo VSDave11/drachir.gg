@@ -6,15 +6,15 @@ const GROUPS = ['Team Leaders', 'Traders - Lima'];
 
 assert.strictEqual(validatePersonInput({ name: 'Nový', group: 'Team Leaders', color: '#111' }, { groups: GROUPS, existingNames: ['Starý'], mode: 'add' }), null);
 ok('platny add => null');
-assert.match(validatePersonInput({ name: '', group: 'Team Leaders' }, { groups: GROUPS, existingNames: [], mode: 'add' }), /povinn/);
+assert.match(validatePersonInput({ name: '', group: 'Team Leaders' }, { groups: GROUPS, existingNames: [], mode: 'add' }), /required/);
 ok('prazdne jmeno => chyba');
-assert.match(validatePersonInput({ name: 'X', group: 'Neznama' }, { groups: GROUPS, existingNames: [], mode: 'add' }), /skupina/);
+assert.match(validatePersonInput({ name: 'X', group: 'Neznama' }, { groups: GROUPS, existingNames: [], mode: 'add' }), /Unknown group/);
 ok('neznama skupina => chyba');
-assert.match(validatePersonInput({ name: 'Starý', group: 'Team Leaders' }, { groups: GROUPS, existingNames: ['Starý'], mode: 'add' }), /už existuje/);
+assert.match(validatePersonInput({ name: 'Starý', group: 'Team Leaders' }, { groups: GROUPS, existingNames: ['Starý'], mode: 'add' }), /already exists/);
 ok('duplicita v add => chyba');
 assert.strictEqual(validatePersonInput({ name: 'Starý', group: 'Team Leaders' }, { groups: GROUPS, existingNames: ['Starý'], mode: 'update' }), null);
 ok('update existujiciho => null');
-assert.match(validatePersonInput({ name: 'Duch', group: 'Team Leaders' }, { groups: GROUPS, existingNames: ['Starý'], mode: 'update' }), /neexistuje/);
+assert.match(validatePersonInput({ name: 'Duch', group: 'Team Leaders' }, { groups: GROUPS, existingNames: ['Starý'], mode: 'update' }), /does not exist/);
 ok('update neexistujiciho => chyba');
 
 const header = [{ col: 1, name: 'CS 2 Duels' }, { col: 2, name: 'Madden' }, { col: 3, name: 'eHockey' }];
