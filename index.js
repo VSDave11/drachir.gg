@@ -6288,6 +6288,7 @@ app.get('/dashboard', async (req, res) => {
   var PA_GROUPS = ${JSON.stringify(GROUPS.map(g => g.label))};
   var PA_PRODUCTS = ${JSON.stringify(productMapping.map(p => p.name))};
   var _paEditing = null;
+  var _paChanged = false;
   function openPeopleAdmin(){
     var sel = document.getElementById('paGroup');
     sel.innerHTML = PA_GROUPS.map(function(g){ return '<option>' + g + '</option>'; }).join('');
@@ -6298,7 +6299,7 @@ app.get('/dashboard', async (req, res) => {
     document.getElementById('peopleAdminModal').style.display = 'block';
     paLoad();
   }
-  function closePeopleAdmin(){ document.getElementById('peopleAdminModal').style.display = 'none'; }
+  function closePeopleAdmin(){ if (_paChanged) { location.reload(); return; } document.getElementById('peopleAdminModal').style.display = 'none'; }
   function paResetForm(){
     _paEditing = null;
     document.getElementById('paName').value = '';
@@ -6352,14 +6353,14 @@ app.get('/dashboard', async (req, res) => {
       .then(function(res){
         document.getElementById('paSaveBtn').disabled = false;
         if (!res.ok) { paSetMsg('Error: ' + (res.j.error || 'unknown'), false); return; }
-        paSetMsg('Saved', true); paResetForm(); paLoad();
+        _paChanged = true; paSetMsg('Saved', true); paResetForm(); paLoad();
       }).catch(function(e){ document.getElementById('paSaveBtn').disabled = false; paSetMsg('Error: ' + e.message, false); });
   }
   function paRemove(name){
     if (!confirm('Remove ' + name + '?')) return;
     fetch('/api/admin/people/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
       .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
-      .then(function(res){ if (!res.ok) { paSetMsg('Error: ' + (res.j.error || ''), false); return; } paSetMsg('Removed', true); paResetForm(); paLoad(); })
+      .then(function(res){ if (!res.ok) { paSetMsg('Error: ' + (res.j.error || ''), false); return; } _paChanged = true; paSetMsg('Removed', true); paResetForm(); paLoad(); })
       .catch(function(e){ paSetMsg('Error: ' + e.message, false); });
   }
 </script>
