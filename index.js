@@ -6321,8 +6321,8 @@ app.get('/dashboard', async (req, res) => {
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #1e2030;">'
           + '<span style="width:12px;height:12px;border-radius:50%;background:' + safeColor + ';flex-shrink:0;"></span>'
           + '<span style="flex:1;">' + paEsc(p.name) + ' <span style="color:#667;">· ' + paEsc(p.group) + ' · ' + prods + ' prod.</span></span>'
-          + '<button onclick=\'paEdit(' + JSON.stringify(p).replace(/'/g, "&#39;") + ')\' style="background:#2a2d3a;color:#bbb;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Edit</button>'
-          + '<button onclick=\'paRemove(' + JSON.stringify(p.name).replace(/'/g, "&#39;") + ')\' style="background:rgba(255,68,68,0.12);color:#ff8a8a;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Remove</button>'
+          + '<button onclick=\\'paEdit(' + JSON.stringify(p).replace(/'/g, "&#39;") + ')\\' style="background:#2a2d3a;color:#bbb;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Edit</button>'
+          + '<button onclick=\\'paRemove(' + JSON.stringify(p.name).replace(/'/g, "&#39;") + ')\\' style="background:rgba(255,68,68,0.12);color:#ff8a8a;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;">Remove</button>'
           + '</div>';
       });
       document.getElementById('paList').innerHTML = html;
