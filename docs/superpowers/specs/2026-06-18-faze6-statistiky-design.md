@@ -114,4 +114,15 @@ Beze změny. 6A jen **čte** existující směny. Žádný nový list.
 ---
 
 ## 9. Otevřené otázky
-Žádné blokující pro 6A. 6B (coverage) potřebuje rozhodnutí o zdroji požadovaného pokrytí — řešit samostatně.
+Žádné blokující pro 6A.
+
+---
+
+## 10. Fáze 6B — Coverage (implementováno 2026-06-18)
+
+Zdroj požadovaného pokrytí **není** nový vstup — bere se z existujícího `productCoverage` / `getCoverageProfile()` (`index.js`), což přesně odpovídá criteria.md §2 (default 24/7; World of Tanks = jen ranní Po–Pá; eHockey = ranní+odpolední každý den).
+
+- **Logika** (`lib/stats.js`): `slotOfStart(start)` (noční/ranní/odpolední dle hodiny, pokrývá všechny start časy z productMapping) + `buildCoverage(shifts, productProfiles, periodDates)` → per produkt `{expected, covered, gaps, pct, gapDates}` + celkové součty; slot `(produkt,den,slot)` je „covered", když existuje aspoň jedna směna toho produktu/dne/slotu; řazeno nejhorší pct první.
+- **UI** (`/stats`): panel **COVERAGE** v team overview (měsíc) — per produkt bar + `covered/expected slots` + % + počet dnů s mezerou; barva zelená ≥95 %, žlutá ≥80 %, červená jinak.
+- **Pozn.:** měří se proti **definovanému** coverage profilu, ne proti „někdo tam byl" — produkt může mít směny (trading rozpad), ale 0 % coverage, pokud nejsou v jeho definovaném okně (typicky World of Tanks / eHockey). Coverage zahrnuje i budoucí dny měsíce (nenaplánované dny = mezery).
+- **Testy:** `scripts/test-stats.js` #7–#9 (slotOfStart, expected/covered/gaps, weekdays vyloučení víkendu). Ověřeno živě: 10 produktů 100 %, reálné mezery u WoT/eHockey/Table Tennis.

@@ -1,6 +1,6 @@
 // Unit testy pro lib/stats.js (Fáze 6). Spuštění: node scripts/test-stats.js
 const assert = require('assert');
-const { buildTradingBreakdown } = require('../lib/stats');
+const { buildTradingBreakdown, slotOfStart, buildCoverage } = require('../lib/stats');
 
 let n = 0; const ok = (m) => { n++; console.log('  ok ' + n + ' - ' + m); };
 
@@ -70,5 +70,47 @@ ok('null prvek přeskočen, NaN duration => 0');
 r = buildTradingBreakdown([{ Trading: 'Duels', Product: '', Start: '08:00', End: '16:00' }], dur8);
 assert.strictEqual(r.categories[0].products[0].product, '(none)');
 ok('prázdný produkt => (none)');
+
+// 7) slotOfStart — pokrývá reálné productMapping start časy
+assert.strictEqual(slotOfStart('22:55'), 0);
+assert.strictEqual(slotOfStart('00:04'), 0);
+assert.strictEqual(slotOfStart('06:55'), 1);
+assert.strictEqual(slotOfStart('08:04'), 1);
+assert.strictEqual(slotOfStart('14:40'), 2);
+assert.strictEqual(slotOfStart('16:04'), 2);
+assert.strictEqual(slotOfStart('xx'), -1);
+ok('slotOfStart: noční/ranní/odpolední dle start hodiny');
+
+// 8) buildCoverage — expected/covered/gaps dle profilů (2026-06-01 = Po, 06-02 = Út)
+const profiles = [
+    { name: 'CS 2 Duels',     slots: [0, 1, 2], days: 'all' },
+    { name: 'World of Tanks', slots: [1],       days: 'weekdays' }
+];
+const periodDates = ['2026-06-01', '2026-06-02'];
+const covShifts = [
+    { Product: 'CS 2 Duels',     Start: '00:00', Date: '2026-06-01' }, // noční
+    { Product: 'CS 2 Duels',     Start: '08:00', Date: '2026-06-01' }, // ranní
+    { Product: 'World of Tanks', Start: '07:30', Date: '2026-06-01' }  // ranní
+];
+const cov = buildCoverage(covShifts, profiles, periodDates);
+const duels = cov.products.find(p => p.product === 'CS 2 Duels');
+assert.strictEqual(duels.expected, 6);                 // 3 sloty * 2 dny
+assert.strictEqual(duels.covered, 2);                  // noční+ranní den1
+assert.strictEqual(duels.gaps, 4);
+assert.deepStrictEqual(duels.gapDates, ['2026-06-01', '2026-06-02']); // den1 chybí odpolední, den2 nic
+const tanks = cov.products.find(p => p.product === 'World of Tanks');
+assert.strictEqual(tanks.expected, 2);                 // slot1 ve 2 všední dny
+assert.strictEqual(tanks.covered, 1);
+assert.deepStrictEqual(tanks.gapDates, ['2026-06-02']);
+assert.strictEqual(cov.totalExpected, 8);
+assert.strictEqual(cov.totalCovered, 3);
+assert.strictEqual(cov.products[0].product, 'CS 2 Duels'); // nejhorší pct první (33 % < 50 %)
+ok('buildCoverage: expected/covered/gaps + worst-first sort');
+
+// 9) weekdays profil ignoruje víkend (2026-06-06 = So, 06-07 = Ne)
+const we = buildCoverage([], [{ name: 'X', slots: [1], days: 'weekdays' }], ['2026-06-06', '2026-06-07']);
+assert.strictEqual(we.products[0].expected, 0);
+assert.strictEqual(we.pct, 100); // nic očekáváno => 100 %
+ok('weekdays profil vyloučí víkendová data');
 
 console.log('\nVSECHNY TESTY OK (' + n + ')');

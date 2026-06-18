@@ -7,7 +7,8 @@ const { hashPassword, verifyPassword } = require('./lib/auth');
 const { validateNoTemplateChars } = require('./lib/validate');
 const { buildPeopleStructures } = require('./lib/people');
 const { validatePersonInput, computeCapabilityCells } = require('./lib/people-admin');
-const { buildTradingBreakdown } = require('./lib/stats');
+const { buildTradingBreakdown, buildCoverage } = require('./lib/stats');
+const { dedupeIds, partitionSelection } = require('./lib/bulk');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2437,6 +2438,38 @@ app.post('/delete-shift', async (req, res) => {
     } catch(e) { res.status(500).send(e.message); }
 });
 
+// Hromadne mazani smen (Faze 5). Maze jen ManualShifts (podle Id); Schedule smeny nejsou editovatelne.
+app.post('/api/bulk-delete', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const items = Array.isArray(req.body && req.body.items) ? req.body.items : null;
+    if (!items || !items.length) return res.status(400).json({ error: 'No items' });
+    if (items.length > 200) return res.status(400).json({ error: 'Too many items (max 200)' });
+    const vErr = validateNoTemplateChars.apply(null, items.map(function (it) { return (it && it.name) || ''; }));
+    if (vErr) return res.status(400).json({ error: vErr });
+    const part = partitionSelection(items);
+    const ids = new Set(dedupeIds(part.manual.map(function (m) { return m.id; })));
+    let deleted = 0;
+    try {
+        await doc.loadInfo();
+        if (ids.size > 0) {
+            const sheet = doc.sheetsByTitle['ManualShifts'];
+            if (sheet) {
+                const rows = await sheet.getRows();
+                const targets = rows.filter(function (r) { return ids.has((r.get('Id') || '').toString()); });
+                // mazat odzadu — delete posouva indexy ostatnich radku
+                for (let i = targets.length - 1; i >= 0; i--) { await targets[i].delete(); deleted++; }
+            }
+        }
+        invalidateCache();
+        try {
+            const a = doc.sheetsByTitle['AuditLog'];
+            if (a) await a.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location || '', Action: 'BULK_DELETE_SHIFT|count=' + deleted });
+        } catch (_) {}
+        try { sendSlackMessage(':wastebasket: *Bulk delete* by ' + req.user.jmeno + ': ' + deleted + ' shifts'); } catch (_) {}
+        res.json({ success: true, deleted: deleted, scheduleSkipped: part.scheduleOnly.length });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // BOD 2: EXCHANGE SHIFT - zameni jmena ve dvou bunkach
 app.post('/exchange-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
@@ -2723,6 +2756,30 @@ app.get('/stats', async (req, res) => {
             return '<div class="panel"><div class="panel-header"><div class="panel-title">' + title + '</div><div class="panel-sub">' + bd.categories.length + ' categories &middot; ' + bd.totalHours.toFixed(1) + 'h &middot; ' + bd.totalShifts + ' shifts</div></div><div style="padding:6px 2px;">' + rows + '</div></div>';
         }
 
+        // Pokrytí (Fáze 6B): očekávané sloty (productCoverage) vs odsloužené, per produkt, nejhorší první
+        function renderCoveragePanel(periodLabel) {
+            const periodDates = [];
+            for (let dd = new Date(monthStart); dd <= monthEnd; dd.setDate(dd.getDate() + 1)) periodDates.push(toISOLocal(dd));
+            const profiles = productMapping.map(p => { const c = getCoverageProfile(p.name); return { name: p.name, slots: c.slots, days: c.days }; });
+            const cov = buildCoverage(shiftsInRange(monthStart, monthEnd), profiles, periodDates);
+            const barColor = (pct) => pct >= 95 ? '#4ade80' : (pct >= 80 ? '#facc15' : '#f87171');
+            let rows = '';
+            cov.products.forEach(p => {
+                const col = barColor(p.pct);
+                const gapTxt = p.gaps > 0
+                    ? (p.gaps + ' missing &middot; ' + p.gapDates.length + ' day' + (p.gapDates.length !== 1 ? 's' : '') + ' with gaps')
+                    : 'fully covered';
+                rows += '<div style="margin-bottom:11px;"><div style="display:flex;align-items:center;gap:10px;">'
+                    + '<span style="flex:1;font-weight:600;color:#dfe6f2;">' + tclean(p.product) + '</span>'
+                    + '<span style="color:#aab4c8;font-size:0.8rem;">' + p.covered + '/' + p.expected + ' slots</span>'
+                    + '<span style="color:' + col + ';font-weight:700;font-size:0.82rem;min-width:42px;text-align:right;">' + p.pct + '%</span></div>'
+                    + '<div style="height:8px;background:rgba(255,255,255,0.05);border-radius:5px;overflow:hidden;margin-top:5px;"><div style="height:100%;width:' + p.pct + '%;background:' + col + ';border-radius:5px;"></div></div>'
+                    + '<div style="font-size:0.7rem;color:' + (p.gaps > 0 ? '#c08a8a' : '#5a7a5a') + ';margin-top:3px;">' + gapTxt + '</div></div>';
+            });
+            const headColor = barColor(cov.pct);
+            return '<div class="panel"><div class="panel-header"><div class="panel-title">COVERAGE</div><div class="panel-sub">' + periodLabel + ' &middot; <span style="color:' + headColor + ';font-weight:700;">' + cov.pct + '%</span> &middot; ' + cov.totalCovered + '/' + cov.totalExpected + ' slots</div></div><div style="padding:6px 2px;">' + rows + '</div></div>';
+        }
+
         // ========== SIDEBAR HTML ==========
         const periodQs = 'date=' + toISOLocal(anchorDate);
         let sidebarHTML = '';
@@ -2777,7 +2834,7 @@ app.get('/stats', async (req, res) => {
                 const day = d.toLocaleDateString('en-GB', { weekday: 'short' });
                 const date = d.getDate() + '.' + (d.getMonth() + 1) + '.';
                 const { typeColor, typeLabel } = shiftTypeTag(s);
-                const prod = (s.Product || s.Trading || '').replace(/`/g, "'");
+                const prod = tclean(s.Product || s.Trading || '');
                 h += '<div class="shift-item"><div class="shift-date"><div class="sd-day">' + day + '</div><div class="sd-num">' + date + '</div></div><div class="shift-body"><div class="shift-prod">' + prod + '</div><div class="shift-time">' + s.Start + ' &rarr; ' + s.End + '</div></div><div class="shift-type" style="background:' + typeColor + '22;color:' + typeColor + ';border:1px solid ' + typeColor + '44;">' + typeLabel + '</div></div>';
             });
             return h;
@@ -2958,6 +3015,7 @@ app.get('/stats', async (req, res) => {
             mainHTML += renderTeamSection('WEEK', weekLabel, weekMap);
             mainHTML += renderTeamSection('MONTH', monthLabel, monthMap);
             mainHTML += renderTradingPanel(shiftsInRange(monthStart, monthEnd).filter(s => teamMemberSet.has(s.Name)), 'TEAM TRADING BREAKDOWN', monthLabel);
+            mainHTML += renderCoveragePanel(monthLabel);
         }
 
         res.send(`<!DOCTYPE html>
@@ -3463,7 +3521,7 @@ app.get('/dashboard', async (req, res) => {
                     });
                     crewHTML += '</div>';
                 }
-                return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(sharedNote) + '"'
+                return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(sharedNote) + '" data-sid="' + (s._id||'') + '" data-sht="' + (s._sheet||'') + '" data-snm="' + safe(name) + '"'
                      + ' style="left:' + left + '%;width:' + width + '%;top:50%;transform:translateY(-50%);height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
                      + ' onclick="openViewModal(\'' + safe(name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(sharedNote) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\')">'
                      + '<div style="display:flex;align-items:center;white-space:nowrap;">'
@@ -3575,7 +3633,7 @@ app.get('/dashboard', async (req, res) => {
                             });
                             namesHTML += '</div>';
                         }
-                        return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(s.Name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(pName) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(groupNote) + '"'
+                        return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(s.Name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(pName) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(groupNote) + '" data-sid="' + (s._id||'') + '" data-sht="' + (s._sheet||'') + '" data-snm="' + safe(s.Name) + '"'
                              + ' style="left:' + left + '%;width:' + width + '%;top:50%;transform:translateY(-50%);height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
                              + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(pName) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\')">'
                              + '<div style="display:flex;align-items:center;white-space:nowrap;">'
@@ -6398,6 +6456,119 @@ app.get('/dashboard', async (req, res) => {
       .then(function(res){ if (!res.ok) { paSetMsg('Error: ' + (res.j.error || ''), false); return; } _paChanged = true; paSetMsg('Removed', true); paResetForm(); paLoad(); })
       .catch(function(e){ paSetMsg('Error: ' + e.message, false); });
   }
+</script>
+<script>
+(function(){
+  // Faze 5: multi-select + hromadne mazani (timeline view). Ctrl/Cmd+klik na pilulku = vyber.
+  var sel={};
+  function cnt(){ return Object.keys(sel).length; }
+  function mark(el,on){ el.style.outline=on?'3px solid #ffd54f':''; el.style.outlineOffset=on?'-1px':''; }
+  function ensureBar(){
+    var b=document.getElementById('yggBulkBar');
+    if(b) return b;
+    b=document.createElement('div'); b.id='yggBulkBar';
+    b.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:4000;background:#13141c;border:1px solid #2a2d3a;border-radius:12px;padding:10px 14px;display:none;gap:10px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,0.5);font-size:0.85rem;color:#dfe6f2;';
+    var c=document.createElement('span'); c.id='yggBulkCount';
+    var d=document.createElement('button'); d.textContent='Delete selected'; d.style.cssText='background:#e05260;color:#fff;border:none;padding:7px 14px;border-radius:7px;cursor:pointer;font-weight:bold;'; d.addEventListener('click',doDelete);
+    var x=document.createElement('button'); x.textContent='Clear'; x.style.cssText='background:#2a2d3a;color:#ccc;border:none;padding:7px 12px;border-radius:7px;cursor:pointer;'; x.addEventListener('click',clearSel);
+    b.appendChild(c); b.appendChild(d); b.appendChild(x);
+    document.body.appendChild(b);
+    return b;
+  }
+  function refresh(){ var b=ensureBar(),c=cnt(); b.style.display=c?'flex':'none'; var cs=document.getElementById('yggBulkCount'); if(cs) cs.textContent=c+' selected'; }
+  function toggle(pill){
+    var sid=pill.getAttribute('data-sid')||'';
+    if(!sid) return;
+    if(sel[sid]){ sel[sid].els.forEach(function(e){mark(e,false);}); delete sel[sid]; }
+    else {
+      var els=Array.prototype.slice.call(document.querySelectorAll('.shift-pill[data-sid="'+sid+'"]'));
+      els.forEach(function(e){mark(e,true);});
+      sel[sid]={ id:sid, sht:pill.getAttribute('data-sht')||'', snm:pill.getAttribute('data-snm')||'', els:els };
+    }
+    refresh();
+  }
+  function clearSel(){ Object.keys(sel).forEach(function(k){ sel[k].els.forEach(function(e){mark(e,false);}); }); sel={}; refresh(); }
+  function doDelete(){
+    var keys=Object.keys(sel); if(!keys.length) return;
+    if(!confirm('Delete '+keys.length+' selected shift(s)? This cannot be undone.')) return;
+    var items=keys.map(function(k){ return { id:sel[k].id, sheetTitle:sel[k].sht, name:sel[k].snm }; });
+    fetch('/api/bulk-delete',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:items}) })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+      .then(function(res){ if(!res.ok){ alert('Error: '+(res.j.error||'unknown')); return; } location.reload(); })
+      .catch(function(e){ alert('Error: '+e.message); });
+  }
+  document.addEventListener('click',function(e){
+    if(!(e.ctrlKey||e.metaKey)) return;
+    var pill=e.target.closest?e.target.closest('.shift-pill'):null;
+    if(!pill||!pill.getAttribute('data-sid')) return;
+    e.preventDefault(); e.stopPropagation();
+    toggle(pill);
+  },true);
+})();
+</script>
+<script>
+(function(){
+  // Faze 4: per-uzivatel razeni timeline radku (localStorage ygg_order_*). Self-contained.
+  function getOrder(k){ try{ return (localStorage.getItem(k)||'').split('||').filter(Boolean);}catch(e){return [];} }
+  function setOrder(k,a){ try{ localStorage.setItem(k,a.join('||'));}catch(e){} }
+  function reorderBySaved(cur,saved){
+    var curSet={}; cur.forEach(function(k){curSet[k]=1;});
+    var seen={},out=[];
+    saved.forEach(function(k){ if(curSet[k]&&!seen[k]){out.push(k);seen[k]=1;} });
+    cur.forEach(function(k){ if(!seen[k]){out.push(k);seen[k]=1;} });
+    return out;
+  }
+  var ROWS=[
+    { sel:'.timeline-row.user-row', attr:'data-name', key:'ygg_order_names' },
+    { sel:'.timeline-row.product-row', attr:'data-product-row', key:'ygg_order_prods' }
+  ];
+  function applyOrder(cfg){
+    var rows=Array.prototype.slice.call(document.querySelectorAll(cfg.sel));
+    if(!rows.length) return;
+    var groups=[];
+    rows.forEach(function(r){ var p=r.parentNode,g=null; for(var i=0;i<groups.length;i++){if(groups[i].p===p){g=groups[i];break;}} if(!g){g={p:p,rows:[]};groups.push(g);} g.rows.push(r); });
+    var saved=getOrder(cfg.key);
+    groups.forEach(function(g){
+      var keys=g.rows.map(function(r){return r.getAttribute(cfg.attr);});
+      reorderBySaved(keys,saved).forEach(function(k){
+        for(var i=0;i<g.rows.length;i++){ if(g.rows[i].getAttribute(cfg.attr)===k){ g.p.appendChild(g.rows[i]); break; } }
+      });
+    });
+  }
+  function rowSiblings(row,cfg){ var p=row.parentNode,out=[]; Array.prototype.slice.call(p.children).forEach(function(ch){ if(ch.classList&&ch.classList.contains('timeline-row')&&ch.getAttribute(cfg.attr)!=null) out.push(ch); }); return out; }
+  function saveCurrent(cfg){ var rows=Array.prototype.slice.call(document.querySelectorAll(cfg.sel)),keys=[]; rows.forEach(function(r){var k=r.getAttribute(cfg.attr); if(k&&keys.indexOf(k)<0)keys.push(k);}); setOrder(cfg.key,keys); }
+  function move(row,cfg,dir){
+    var p=row.parentNode,sib=rowSiblings(row,cfg),i=sib.indexOf(row),j=i+dir;
+    if(i<0||j<0||j>=sib.length) return;
+    if(dir<0) p.insertBefore(row,sib[j]); else p.insertBefore(row,sib[j].nextSibling);
+    saveCurrent(cfg);
+  }
+  function mkBtn(t){ var b=document.createElement('button'); b.textContent=t; b.className='ygg-ord-btn'; b.style.cssText='background:#2a2d3a;color:#bbb;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;line-height:1;padding:2px 5px;margin-right:3px;pointer-events:auto;'; return b; }
+  var editing=false;
+  function addControls(){
+    ROWS.forEach(function(cfg){
+      Array.prototype.slice.call(document.querySelectorAll(cfg.sel)).forEach(function(row){
+        if(row.querySelector('.ygg-ord-wrap')) return;
+        var wrap=document.createElement('span'); wrap.className='ygg-ord-wrap'; wrap.style.cssText='position:sticky;left:150px;z-index:30;pointer-events:auto;white-space:nowrap;';
+        var up=mkBtn('▲'),dn=mkBtn('▼');
+        up.addEventListener('click',function(ev){ev.stopPropagation();move(row,cfg,-1);});
+        dn.addEventListener('click',function(ev){ev.stopPropagation();move(row,cfg,1);});
+        wrap.appendChild(up);wrap.appendChild(dn);
+        var label=row.querySelector('div'); if(label) label.insertBefore(wrap,label.firstChild); else row.insertBefore(wrap,row.firstChild);
+      });
+    });
+  }
+  function removeControls(){ Array.prototype.slice.call(document.querySelectorAll('.ygg-ord-wrap')).forEach(function(w){ if(w.parentNode) w.parentNode.removeChild(w); }); }
+  function toggleMode(){ editing=!editing; if(editing) addControls(); else removeControls(); var t=document.getElementById('yggOrdToggle'); if(t) t.style.background=editing?'#7e57c2':'#2a2d3a'; }
+  function init(){
+    ROWS.forEach(applyOrder);
+    var t=document.createElement('button'); t.id='yggOrdToggle'; t.title='Reorder rows (per-user)'; t.textContent='⇅';
+    t.style.cssText='position:fixed;bottom:18px;right:18px;z-index:3500;background:#2a2d3a;color:#fff;border:1px solid #444;border-radius:50%;width:42px;height:42px;font-size:1.1rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.4);';
+    t.addEventListener('click',toggleMode);
+    document.body.appendChild(t);
+  }
+  if(document.readyState==='complete') init(); else window.addEventListener('load',init);
+})();
 </script>
 </body>
 </html>`);
