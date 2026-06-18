@@ -7,6 +7,7 @@ const { hashPassword, verifyPassword } = require('./lib/auth');
 const { validateNoTemplateChars } = require('./lib/validate');
 const { buildPeopleStructures } = require('./lib/people');
 const { validatePersonInput, computeCapabilityCells } = require('./lib/people-admin');
+const { buildTradingBreakdown } = require('./lib/stats');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2690,6 +2691,38 @@ app.get('/stats', async (req, res) => {
         const statsArr = Object.values(monthMap);
         const periodStart = monthStart, periodEnd = monthEnd;
 
+        // ========== TRADING BREAKDOWN (Fáze 6A) ==========
+        // tclean: názvy z dat (Trading/Product) jdou do ${mainHTML} template literalu — odstranit backtick/${ + HTML
+        const tclean = (v) => String(v == null ? '' : v).replace(/`/g, "'").replace(/\$\{/g, '$ {').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const TRADING_PALETTE = ['#60a5fa','#f59e0b','#a78bfa','#34d399','#f472b6','#22d3ee','#fb7185','#facc15','#4ade80','#38bdf8','#fdba74','#c084fc'];
+        const shiftsInRange = (rs, re) => allShifts.filter(s => { const d = new Date(s.Date); return d >= rs && d <= re; });
+        // Stejná populace jako team KPI (computeStats počítá jen členy peopleHierarchy) — ať team panely nesedí rozdílně
+        const teamMemberSet = new Set(peopleHierarchy.flatMap(g => g.members));
+        function renderTradingPanel(rangeShifts, title, periodLabel) {
+            const bd = buildTradingBreakdown(rangeShifts, calculateDuration, { excludeProducts: ['RIP', 'Vacation'] });
+            if (!bd.categories.length) {
+                return '<div class="panel"><div class="panel-header"><div class="panel-title">' + title + '</div><div class="panel-sub">' + periodLabel + '</div></div><div style="padding:26px;text-align:center;color:#4a5060;font-size:0.82rem;font-family:Oswald;letter-spacing:1px;">NO TRADING SHIFTS</div></div>';
+            }
+            const maxH = Math.max(1, ...bd.categories.map(c => c.hours));
+            let rows = '';
+            bd.categories.forEach((c, i) => {
+                const col = TRADING_PALETTE[i % TRADING_PALETTE.length];
+                const barPct = (c.hours / maxH) * 100;
+                rows += '<div style="margin-bottom:12px;"><div style="display:flex;align-items:center;gap:10px;">'
+                    + '<span style="width:10px;height:10px;border-radius:2px;background:' + col + ';flex-shrink:0;"></span>'
+                    + '<span style="flex:1;font-weight:600;color:#dfe6f2;">' + tclean(c.trading) + '</span>'
+                    + '<span style="color:#aab4c8;font-size:0.82rem;">' + c.hours.toFixed(1) + 'h &middot; ' + c.shifts + ' shifts</span></div>'
+                    + '<div style="height:8px;background:rgba(255,255,255,0.05);border-radius:5px;overflow:hidden;margin-top:5px;"><div style="height:100%;width:' + barPct.toFixed(1) + '%;background:linear-gradient(90deg,' + col + ',' + col + '99);border-radius:5px;"></div></div>';
+                if (c.products.length > 1) {
+                    rows += '<div style="margin:7px 0 2px 20px;display:flex;flex-wrap:wrap;gap:6px;">';
+                    c.products.forEach(p => { rows += '<span style="font-size:0.72rem;color:#8a94a8;background:rgba(255,255,255,0.04);border-radius:4px;padding:2px 8px;">' + tclean(p.product) + ' <b style="color:#c8d0e0;">' + p.hours.toFixed(1) + 'h</b></span>'; });
+                    rows += '</div>';
+                }
+                rows += '</div>';
+            });
+            return '<div class="panel"><div class="panel-header"><div class="panel-title">' + title + '</div><div class="panel-sub">' + bd.categories.length + ' categories &middot; ' + bd.totalHours.toFixed(1) + 'h &middot; ' + bd.totalShifts + ' shifts</div></div><div style="padding:6px 2px;">' + rows + '</div></div>';
+        }
+
         // ========== SIDEBAR HTML ==========
         const periodQs = 'date=' + toISOLocal(anchorDate);
         let sidebarHTML = '';
@@ -2871,6 +2904,7 @@ app.get('/stats', async (req, res) => {
             mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">SHIFT MIX</div><div class="panel-sub">' + donutTotal + ' shifts total</div></div><div class="donut-wrap"><svg viewBox="0 0 200 200" style="width:180px;height:180px;">' + donutSegments + '<text x="100" y="96" text-anchor="middle" fill="#c8d0e0" font-size="28" font-weight="700" font-family="Oswald">' + donutTotal + '</text><text x="100" y="116" text-anchor="middle" fill="#4a5060" font-size="10" letter-spacing="2" font-family="Oswald">SHIFTS</text></svg><div class="donut-legend"><div class="dl-item"><span class="dl-dot" style="background:#ffa726"></span>Morning<span class="dl-val">' + pMonth.morningCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#42a5f5"></span>Afternoon<span class="dl-val">' + pMonth.afternoonCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#7c4dff"></span>Night<span class="dl-val">' + pMonth.nightCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#ef5350"></span>RIP<span class="dl-val">' + pMonth.ripCount + '</span></div><div class="dl-item"><span class="dl-dot" style="background:#26c6da"></span>Vacation<span class="dl-val">' + pMonth.vacationCount + '</span></div></div></div></div>';
             mainHTML += '</div>';
             mainHTML += '<div class="panel"><div class="panel-header"><div class="panel-title">ALL SHIFTS THIS MONTH</div><div class="panel-sub">' + monthShifts.length + ' shifts</div></div><div class="shifts-list">' + buildShiftList(monthShifts) + '</div></div>';
+            mainHTML += renderTradingPanel(monthShifts, 'TRADING BREAKDOWN', monthLabel);
 
         } else {
             // === TEAM OVERVIEW — three stacked sections ===
@@ -2923,6 +2957,7 @@ app.get('/stats', async (req, res) => {
             mainHTML += renderTeamSection('DAY', dayLabel, dayMap);
             mainHTML += renderTeamSection('WEEK', weekLabel, weekMap);
             mainHTML += renderTeamSection('MONTH', monthLabel, monthMap);
+            mainHTML += renderTradingPanel(shiftsInRange(monthStart, monthEnd).filter(s => teamMemberSet.has(s.Name)), 'TEAM TRADING BREAKDOWN', monthLabel);
         }
 
         res.send(`<!DOCTYPE html>
