@@ -4800,6 +4800,11 @@ app.get('/dashboard', async (req, res) => {
 
     // BOD 1: MODAL
     function openViewModal(name,date,start,end,product,note,trading,personColor,prodColor,sheetTitle,row,col,id){
+        // Faze 5: Ctrl/Cmd+klik = vyber pro hromadne mazani (neotevira modal)
+        if (window.event && (window.event.ctrlKey || window.event.metaKey) && typeof window.yggBulkClick === 'function') {
+            window.yggBulkClick(name, sheetTitle, id, window.event.target);
+            return;
+        }
         // Pokud jsme v picking mode, zachytneme tuto smenu pro exchange
         if (_pickingMode && typeof pickShiftForExchange === 'function') {
             pickShiftForExchange(name,date,start,end,product,note,trading,personColor,prodColor,sheetTitle,row,col);
@@ -6476,14 +6481,13 @@ app.get('/dashboard', async (req, res) => {
     return b;
   }
   function refresh(){ var b=ensureBar(),c=cnt(); b.style.display=c?'flex':'none'; var cs=document.getElementById('yggBulkCount'); if(cs) cs.textContent=c+' selected'; }
-  function toggle(pill){
-    var sid=pill.getAttribute('data-sid')||'';
-    if(!sid) return;
-    if(sel[sid]){ sel[sid].els.forEach(function(e){mark(e,false);}); delete sel[sid]; }
+  function toggleId(id,sht,snm){
+    if(!id) return;
+    if(sel[id]){ sel[id].els.forEach(function(e){mark(e,false);}); delete sel[id]; }
     else {
-      var els=Array.prototype.slice.call(document.querySelectorAll('.shift-pill[data-sid="'+sid+'"]'));
+      var els=Array.prototype.slice.call(document.querySelectorAll('.shift-pill[data-sid="'+id+'"]'));
       els.forEach(function(e){mark(e,true);});
-      sel[sid]={ id:sid, sht:pill.getAttribute('data-sht')||'', snm:pill.getAttribute('data-snm')||'', els:els };
+      sel[id]={ id:id, sht:sht||'', snm:snm||'', els:els };
     }
     refresh();
   }
@@ -6497,13 +6501,21 @@ app.get('/dashboard', async (req, res) => {
       .then(function(res){ if(!res.ok){ alert('Error: '+(res.j.error||'unknown')); return; } location.reload(); })
       .catch(function(e){ alert('Error: '+e.message); });
   }
-  document.addEventListener('click',function(e){
-    if(!(e.ctrlKey||e.metaKey)) return;
-    var pill=e.target.closest?e.target.closest('.shift-pill'):null;
-    if(!pill||!pill.getAttribute('data-sid')) return;
-    e.preventDefault(); e.stopPropagation();
-    toggle(pill);
-  },true);
+  function toast(msg){
+    var t=document.getElementById('yggToast');
+    if(!t){ t=document.createElement('div'); t.id='yggToast'; t.style.cssText='position:fixed;bottom:74px;left:50%;transform:translateX(-50%);z-index:4100;background:#3a2030;border:1px solid #6b3a4a;color:#ffd0d8;padding:8px 14px;border-radius:8px;font-size:0.8rem;box-shadow:0 4px 16px rgba(0,0,0,0.5);transition:opacity 0.3s;'; document.body.appendChild(t); }
+    t.textContent=msg; t.style.opacity='1'; clearTimeout(t._h); t._h=setTimeout(function(){ t.style.opacity='0'; },2200);
+  }
+  // Volano z openViewModal pri Ctrl/Cmd+kliku (neotevira modal). Vybira jen ManualShifts (maji Id).
+  window.yggBulkClick=function(name, sheetTitle, id, targetEl){
+    var pill=(targetEl && targetEl.closest)?targetEl.closest('.shift-pill'):null;
+    if(sheetTitle==='ManualShifts' && id){
+      toggleId(id, sheetTitle, name||'');
+    } else {
+      if(pill){ pill.style.outline='3px solid #e05260'; setTimeout(function(){ pill.style.outline=''; },500); }
+      toast('Hromadně mazat lze jen ručně přidané směny (ManualShifts).');
+    }
+  };
 })();
 </script>
 <script>
