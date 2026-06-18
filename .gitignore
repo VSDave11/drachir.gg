@@ -4,3 +4,21 @@ outputs/
 _sync_test.txt
 _probe_*
 finish-backup.bat
+
+# --- Osobní OneDrive soubory (repo má kořen v OneDrive, nepatří do projektu) ---
+desktop.ini
+**/desktop.ini
+Dokument.docx
+Dokument*.docx
+Prezentace.pptx
+Prezentace*.pptx
+Vlastní účetní uzávěrka s revizemi.pdf
+Osobní trezor.lnk
+Dokumenty/
+Obrázky/
+Plocha/
+Práce/
+Veřejné/
+E-mailové přílohy/
+# OneDrive dočasné soubory (GUID .lock apod.)
+.[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]-*
