@@ -592,8 +592,9 @@ function normalizePersonName(raw) {
     }).filter(n => n.length > 0);
 }
 
-async function loadAllShifts(forceSync) {
-    if (isCacheValid() && !forceSync) {
+async function loadAllShifts(forceSync, opts) {
+    opts = opts || {};
+    if (isCacheValid() && !forceSync && !opts.refresh) {
         console.log('Cache HIT - pouzivam ulozena data (' + _shiftsCache.length + ' smen)');
         return _shiftsCache;
     }
@@ -617,11 +618,19 @@ async function loadAllShifts(forceSync) {
 
     console.log('[SYNC] Found schedule sheets:', scheduleSheets);
     console.log('[SYNC] Hidden sheets:', [..._hiddenSheets]);
+    // PERF: nacti bunky VSECH listu paralelne (drive sekvencne = hlavni zdroj pomaleho loadingu).
+    const _toLoad = scheduleSheets.map(function (t) {
+        const sh = doc.sheetsByTitle[t];
+        return sh ? sh.loadCells('A1:BG500').catch(function (e) { console.error('Chyba loadCells ' + t + ':', e.message); }) : Promise.resolve();
+    });
+    const _manualForLoad = doc.sheetsByTitle['ManualShifts'];
+    if (_manualForLoad) _toLoad.push(_manualForLoad.loadCells('A1:Z500').catch(function (e) { console.error('Chyba loadCells ManualShifts:', e.message); }));
+    await Promise.all(_toLoad);
+
     for (const sheetTitle of scheduleSheets) {
         const sheet = doc.sheetsByTitle[sheetTitle];
         if (!sheet) { console.log('[SYNC] Sheet not found in doc:', sheetTitle); continue; }
         try {
-            await sheet.loadCells('A1:BG500');
             let sheetShiftCount = 0;
             for (let r = 0; r < Math.min(sheet.rowCount, 500); r++) {
                 const dateCell = sheet.getCell(r, 0);
@@ -686,7 +695,7 @@ async function loadAllShifts(forceSync) {
     try {
         const manualSheet = doc.sheetsByTitle['ManualShifts'];
         if (manualSheet) {
-            await manualSheet.loadCells('A1:Z500');
+            // bunky uz nactene v paralelnim batchi vyse
             let mColDate=-1,mColName=-1,mColTrading=-1,mColProduct=-1,mColStart=-1,mColEnd=-1,mColNote=-1,mColId=-1;
             for (let c = 0; c < 12; c++) {
                 const v = manualSheet.getCell(0, c).value?.toString().trim().toLowerCase();
@@ -703,7 +712,6 @@ async function loadAllShifts(forceSync) {
                 const rawD = mColDate >= 0 ? manualSheet.getCell(r, mColDate).value : null;
                 const d = convertCzechDate(rawD) || (rawD ? rawD.toString().trim() : null);
                 const nRaw = mColName >= 0 ? manualSheet.getCell(r, mColName).value?.toString().trim() : null;
-                console.log('ManualShifts row', r, '-> rawD:', rawD, 'converted:', d, 'name:', nRaw);
                 if (!d || !nRaw || nRaw === '') continue;
                 const normalizedNames = normalizePersonName(nRaw);
                 if (normalizedNames.length === 0) continue;
@@ -6710,6 +6718,9 @@ if (require.main === module) {
         console.log('Drachir.gg active');
         refreshPeopleFromSheet().catch(e => console.error('[PEOPLE] Startup load failed, using seed:', e.message));
         setInterval(() => { refreshPeopleFromSheet().catch(() => {}); }, 5 * 60 * 1000);
+        // PERF: nahrej cache smen pri startu + drz ji teplou (prewarm kazde 4 min < 5min TTL) — uzivatel necaka na cold load
+        loadAllShifts(false).catch(e => console.error('[SHIFTS] Startup warm failed:', e.message));
+        setInterval(() => { loadAllShifts(false, { refresh: true }).catch(() => {}); }, 4 * 60 * 1000);
         loadSlackData().catch(e => console.error('Initial Slack data load failed:', e.message));
         if (BAMBOOHR_API_KEY && BAMBOOHR_SUBDOMAIN) {
             setTimeout(() => {
