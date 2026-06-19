@@ -170,6 +170,18 @@ app.get('/healthz', (req, res) => {
     });
 });
 
+// Real-time SSE stream (authed) - klient dostane udalost "changed" pri kazde zmene dat
+app.get('/events', (req, res) => {
+    if (!req.user) return res.status(401).end();
+    res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
+    if (res.flushHeaders) res.flushHeaders();
+    res.write('retry: 5000\n\n');
+    res.write(': connected\n\n');
+    sseClients.add(res);
+    const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
+    req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
+});
+
 // ICS feed (token-authed, bez loginu) - napojeni do Google/Apple/Outlook kalendare
 app.get('/calendar/:token/feed.ics', async (req, res) => {
     try {
@@ -243,9 +255,17 @@ function setCache(data) {
     _shiftsCache = data;
     _shiftsCacheTime = Date.now();
 }
+
+// --- Real-time: SSE broadcast pri zmene dat (napojeno na invalidateCache = univerzalni write hook) ---
+const sseClients = new Set();
+function broadcastChange(reason) {
+    const payload = 'event: changed\ndata: ' + JSON.stringify({ ts: Date.now(), reason: reason || 'update' }) + '\n\n';
+    for (const r of sseClients) { try { r.write(payload); } catch (e) { sseClients.delete(r); } }
+}
 function invalidateCache() {
     _shiftsCache = null;
     _shiftsCacheTime = 0;
+    broadcastChange();
 }
 
 
@@ -4143,14 +4163,33 @@ app.get('/dashboard', async (req, res) => {
       var meta = document.querySelector('meta[name="csrf-token"]');
       var _csrf = meta ? meta.content : '';
       var _origFetch = window.fetch;
+      var _lastLocal = 0;
       window.fetch = function(url, opts){
         opts = opts || {};
         var method = (opts.method || 'GET').toUpperCase();
         if (method !== 'GET' && method !== 'HEAD') {
+          _lastLocal = Date.now();   // vlastni zmena -> potlac self-reload z SSE
           opts.headers = Object.assign({}, opts.headers || {}, { 'X-CSRF-Token': _csrf });
         }
         return _origFetch(url, opts);
       };
+      // Real-time: SSE oznameni o zmenach rozvrhu (dorovnani Huginnu)
+      if (window.EventSource) {
+        var _dirty = false;
+        try {
+          var es = new EventSource('/events');
+          es.addEventListener('changed', function(){
+            if (Date.now() - _lastLocal < 6000) return;     // moje vlastni editace -> ignoruj
+            if (document.hidden) { _dirty = true; return; } // skryta zalozka -> obnov az pri navratu
+            if (typeof toast === 'function') toast('📡 Rozvrh byl aktualizovan — obnovuji…');
+            setTimeout(function(){ if (typeof refreshDashboard === 'function') refreshDashboard(); else location.reload(); }, 1500);
+          });
+          es.onerror = function(){};   // EventSource se sam reconnectne dle retry:5000
+        } catch(e){}
+        document.addEventListener('visibilitychange', function(){
+          if (!document.hidden && _dirty) { _dirty = false; if (typeof refreshDashboard === 'function') refreshDashboard(); else location.reload(); }
+        });
+      }
     })();
     </script>
     <meta name="apple-mobile-web-app-capable" content="yes">

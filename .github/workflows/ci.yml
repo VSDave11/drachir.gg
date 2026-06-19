@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Unit tests (pure libs, no deps needed)
+        run: |
+          node scripts/test-products.js
+          node scripts/test-people.js
+          node scripts/test-stats.js
+          node scripts/test-ordering.js
+          node scripts/test-bulk.js
+      - name: Syntax check index.js
+        run: node --check index.js
