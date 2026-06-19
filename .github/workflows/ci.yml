@@ -15,6 +15,7 @@ jobs:
           node-version: '20'
       - name: Unit tests (pure libs, no deps needed)
         run: |
+          node scripts/test-swaps.js
           node scripts/test-products.js
           node scripts/test-people.js
           node scripts/test-stats.js

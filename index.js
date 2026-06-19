@@ -10,6 +10,7 @@ const { buildProductStructures } = require('./lib/products');
 const { validatePersonInput, computeCapabilityCells } = require('./lib/people-admin');
 const { buildTradingBreakdown, buildCoverage } = require('./lib/stats');
 const { dedupeIds, partitionSelection } = require('./lib/bulk');
+const { validateNewRequest, canClaim, canCancel, canApprove, buildBoard, replaceNameInCell } = require('./lib/swaps');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2687,6 +2688,131 @@ app.post('/api/bulk-delete', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ====== Zadosti o vymenu smen (swap requests) ======
+const SWAP_HEADERS = ['Id','CreatedAt','RequesterName','RequesterEmail','ShiftDate','ShiftProduct','ShiftTrading','ShiftStart','ShiftEnd','ShiftSheet','ShiftRow','ShiftCol','ShiftMsId','Note','Status','ClaimedBy','ClaimedByEmail','UpdatedAt','ResolvedBy'];
+function isManager(u) { return !!u && u.role === 'Admin'; }
+async function getSwapSheet() {
+    let sheet = doc.sheetsByTitle['SwapRequests'];
+    if (!sheet) sheet = await doc.addSheet({ title: 'SwapRequests', headerValues: SWAP_HEADERS });
+    return sheet;
+}
+function swapRowToObj(r) { const o = {}; SWAP_HEADERS.forEach(h => { o[h] = r.get(h); }); return o; }
+async function readSwaps(sheet) { return (await sheet.getRows()).map(swapRowToObj); }
+async function findSwapRow(sheet, id) { return (await sheet.getRows()).find(x => (x.get('Id') || '') === id); }
+function swapAudit(req, action) { try { const a = doc.sheetsByTitle['AuditLog']; if (a) a.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location || '', Action: action }); } catch (e) {} }
+
+// Reassign smeny na noveho cloveka: ManualShifts = update radku, Schedule = prepis jmena v bunce.
+async function reassignShift(swap, newName) {
+    if (swap.ShiftSheet === 'ManualShifts') {
+        const ms = doc.sheetsByTitle['ManualShifts'];
+        if (!ms) return { ok: false, reason: 'ManualShifts neexistuje' };
+        const rows = await ms.getRows();
+        let target = swap.ShiftMsId ? rows.find(r => (r.get('Id') || '') === swap.ShiftMsId) : null;
+        if (!target) target = rows.find(r => convertCzechDate(r.get('Date') || '') === swap.ShiftDate && (r.get('Name') || '') === swap.RequesterName && (r.get('Start') || '') === swap.ShiftStart && (r.get('Product') || '') === swap.ShiftProduct);
+        if (!target) return { ok: false, reason: 'směna nenalezena v ManualShifts' };
+        target.set('Name', newName); await target.save();
+        return { ok: true };
+    }
+    const sheet = doc.sheetsByTitle[swap.ShiftSheet];
+    if (!sheet) return { ok: false, reason: 'list ' + swap.ShiftSheet + ' neexistuje' };
+    await sheet.loadCells('A1:BG500');
+    const cell = sheet.getCell(parseInt(swap.ShiftRow, 10), parseInt(swap.ShiftCol, 10));
+    const rep = replaceNameInCell(cell.value, swap.RequesterName, newName);
+    if (!rep.replaced) return { ok: false, reason: 'jméno v buňce nenalezeno (rozvrh se mezitím změnil)' };
+    cell.value = rep.value; await sheet.saveUpdatedCells();
+    return { ok: true };
+}
+
+// Board (z pohledu uzivatele)
+app.get('/api/swaps', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const all = await readSwaps(await getSwapSheet());
+        res.json({ board: buildBoard(all, req.user.jmeno, isManager(req.user)), isManager: isManager(req.user), me: req.user.jmeno });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Vytvor zadost (z vlastni smeny)
+app.post('/api/swaps', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const s = req.body || {};
+    const vErr = validateNewRequest({ name: s.name, date: s.date, product: s.product, start: s.start }, req.user.jmeno)
+        || validateNoTemplateChars(s.product, s.trading, s.note, s.date, s.name);
+    if (vErr) return res.status(400).json({ error: vErr });
+    try {
+        const sheet = await getSwapSheet();
+        const all = await readSwaps(sheet);
+        if (all.find(r => (r.Status === 'OPEN' || r.Status === 'CLAIMED') && r.RequesterName === req.user.jmeno && r.ShiftDate === s.date && r.ShiftProduct === s.product && r.ShiftStart === s.start))
+            return res.status(409).json({ error: 'Na tuto směnu už máš aktivní žádost' });
+        const now = new Date().toISOString();
+        await sheet.addRow({
+            Id: crypto.randomUUID(), CreatedAt: now,
+            RequesterName: req.user.jmeno, RequesterEmail: req.user.email,
+            ShiftDate: s.date, ShiftProduct: s.product, ShiftTrading: s.trading || '', ShiftStart: s.start, ShiftEnd: s.end || '',
+            ShiftSheet: s.sheet || '', ShiftRow: s.row != null ? String(s.row) : '', ShiftCol: s.col != null ? String(s.col) : '', ShiftMsId: s.msId || '',
+            Note: s.note || '', Status: 'OPEN', ClaimedBy: '', ClaimedByEmail: '', UpdatedAt: now, ResolvedBy: ''
+        });
+        invalidateCache();
+        swapAudit(req, 'SWAP_CREATE|' + req.user.jmeno + '|' + s.product + '|' + s.date);
+        sendSlackMessage(':twisted_rightwards_arrows: *Zadost o vymenu* — ' + req.user.jmeno + ' nabizi ' + s.product + ' ' + s.date + ' (' + s.start + '-' + (s.end || '') + ')' + (s.note ? ' — ' + s.note : ''));
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Prevzit
+app.post('/api/swaps/:id/claim', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const sheet = await getSwapSheet();
+        const row = await findSwapRow(sheet, req.params.id);
+        if (!row) return res.status(404).json({ error: 'Žádost nenalezena' });
+        if (!canClaim(swapRowToObj(row), req.user.jmeno)) return res.status(409).json({ error: 'Tuto žádost nelze převzít' });
+        row.set('Status', 'CLAIMED'); row.set('ClaimedBy', req.user.jmeno); row.set('ClaimedByEmail', req.user.email); row.set('UpdatedAt', new Date().toISOString());
+        await row.save();
+        invalidateCache();
+        swapAudit(req, 'SWAP_CLAIM|' + req.user.jmeno + '|' + row.get('ShiftProduct') + '|' + row.get('ShiftDate'));
+        sendSlackMessage(':raising_hand: *Vymena prevzata* — ' + req.user.jmeno + ' bere ' + row.get('ShiftProduct') + ' ' + row.get('ShiftDate') + ' za ' + row.get('RequesterName') + ' (ceka na schvaleni)');
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Schvalit -> reassign
+app.post('/api/swaps/:id/approve', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const sheet = await getSwapSheet();
+        const row = await findSwapRow(sheet, req.params.id);
+        if (!row) return res.status(404).json({ error: 'Žádost nenalezena' });
+        const obj = swapRowToObj(row);
+        if (!canApprove(obj, req.user.jmeno, isManager(req.user))) return res.status(403).json({ error: 'Schválit může žadatel nebo admin' });
+        const r = await reassignShift(obj, obj.ClaimedBy);
+        if (!r.ok) return res.status(409).json({ error: 'Přepis směny selhal: ' + r.reason });
+        row.set('Status', 'APPROVED'); row.set('ResolvedBy', req.user.jmeno); row.set('UpdatedAt', new Date().toISOString());
+        await row.save();
+        invalidateCache();
+        swapAudit(req, 'SWAP_APPROVE|' + obj.RequesterName + '->' + obj.ClaimedBy + '|' + obj.ShiftProduct + '|' + obj.ShiftDate);
+        sendSlackMessage(':white_check_mark: *Vymena schvalena* — ' + obj.ShiftProduct + ' ' + obj.ShiftDate + ' prechazi z ' + obj.RequesterName + ' na ' + obj.ClaimedBy + ' (schvalil ' + req.user.jmeno + ')');
+        try { notifyShiftChange(req.user.jmeno, obj.ClaimedBy, 'assigned', obj.ShiftProduct + ' on ' + obj.ShiftDate + ' (' + obj.ShiftStart + '-' + obj.ShiftEnd + ')', obj.ShiftStart, obj.ShiftEnd); } catch (e) {}
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Zrusit
+app.post('/api/swaps/:id/cancel', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const sheet = await getSwapSheet();
+        const row = await findSwapRow(sheet, req.params.id);
+        if (!row) return res.status(404).json({ error: 'Žádost nenalezena' });
+        if (!canCancel(swapRowToObj(row), req.user.jmeno, isManager(req.user))) return res.status(403).json({ error: 'Zrušit může žadatel nebo admin' });
+        row.set('Status', 'CANCELLED'); row.set('ResolvedBy', req.user.jmeno); row.set('UpdatedAt', new Date().toISOString());
+        await row.save();
+        invalidateCache();
+        swapAudit(req, 'SWAP_CANCEL|' + row.get('ShiftProduct') + '|' + row.get('ShiftDate'));
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // BOD 2: EXCHANGE SHIFT - zameni jmena ve dvou bunkach
 app.post('/exchange-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
@@ -4192,6 +4318,7 @@ app.get('/dashboard', async (req, res) => {
           es.addEventListener('changed', function(){
             if (Date.now() - _lastLocal < 6000) return;     // moje vlastni editace -> ignoruj
             if (document.hidden) { _dirty = true; return; } // skryta zalozka -> obnov az pri navratu
+            if (window.__swapOpen && typeof window.loadSwapBoard === 'function') { window.loadSwapBoard(); return; } // otevreny swap board -> jen ho obnov
             if (typeof toast === 'function') toast('📡 Rozvrh byl aktualizovan — obnovuji…');
             setTimeout(function(){ if (typeof refreshDashboard === 'function') refreshDashboard(); else location.reload(); }, 1500);
           });
@@ -4577,6 +4704,7 @@ app.get('/dashboard', async (req, res) => {
                 <a href="/stats" class="cov-chip" title="${_covTitle}" style="padding:5px 11px;border:1px solid ${_covColor};border-radius:6px;background:#0e1621;color:${_covColor};font-weight:700;font-size:0.72rem;letter-spacing:0.5px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;" onmouseover="this.style.background='#13202e'" onmouseout="this.style.background='#0e1621'">&#128202; Pokryti ${weekCov.pct}%${_covGaps > 0 ? ' &middot; ' + _covGaps + ' mezer' : ' &middot; OK'}</a>
                 <button class="btn-current-week" onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
                 <a href="/stats" class="btn-stats" title="Statistics" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128202;</a>
+                <button class="btn-swaps" onclick="openSwapBoard()" title="Žádosti o výměnu směn" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128260;</button>
                 <a href="/calendar" class="btn-ics" title="Muj kalendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
@@ -4684,6 +4812,7 @@ app.get('/dashboard', async (req, res) => {
             <button id="mSplitBtn" class="modal-btn-exchange" onclick="toggleSplitMode()" style="display:none;">&#9135; SPLIT</button>
             <button id="mExchangeBtn" class="modal-btn-exchange" onclick="startExchange()" style="display:none;">&#8646; EXCHANGE</button>
             <button id="mDeleteBtn" class="modal-btn-delete" onclick="deleteShift()" style="display:none;">DELETE</button>
+            <button id="mSwapBtn" onclick="requestSwapFromModal()" style="display:none;background:rgba(33,150,243,0.12);border:1px solid rgba(33,150,243,0.4);color:#64b5f6;border-radius:6px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:0.78rem;">&#128260; Požádat o výměnu</button>
             <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
         </div>
         <!-- DoubleShift split section -->
@@ -4928,6 +5057,8 @@ app.get('/dashboard', async (req, res) => {
     ${productColorsClientJS}
     const _crewMap = ${JSON.stringify(crewMap)};
     window._productList = ${JSON.stringify(productMapping.map(p => p.name))};
+    window._me = ${JSON.stringify(req.user.jmeno)};
+    window._isMgr = ${req.user.role === 'Admin' ? 'true' : 'false'};
 
     // SHOW ALL
     function showAllRows(el) {
@@ -5101,6 +5232,10 @@ app.get('/dashboard', async (req, res) => {
             name:       name,
             date:       date,
             product:    product,
+            start:      start,
+            end:        end,
+            trading:    trading,
+            note:       note || '',
             sheetTitle: sheetTitle || '',
             row:        (row !== undefined && row !== null) ? parseInt(row) : -1,
             col:        (col !== undefined && col !== null) ? parseInt(col) : -1,
@@ -5110,6 +5245,9 @@ app.get('/dashboard', async (req, res) => {
         document.getElementById('mDeleteBtn').style.display = 'block';
         document.getElementById('mExchangeBtn').style.display = 'block';
         document.getElementById('mSplitBtn').style.display = 'block';
+        // Pozadat o vymenu - jen u vlastni smeny (ne RIP/Vacation)
+        var _swBtn = document.getElementById('mSwapBtn');
+        if (_swBtn) _swBtn.style.display = (name === window._me && product !== 'Vacation' && product !== 'RIP') ? 'block' : 'none';
         // Populate extra traders from crew
         const crewKey2 = date+'|'+product+'|'+start+'|'+end;
         const crewAll2 = _crewMap[crewKey2] || [];
@@ -6744,6 +6882,55 @@ app.get('/dashboard', async (req, res) => {
     if(!t){ t=document.createElement('div'); t.id='yggToast'; t.style.cssText='position:fixed;bottom:74px;left:50%;transform:translateX(-50%);z-index:4100;background:#3a2030;border:1px solid #6b3a4a;color:#ffd0d8;padding:8px 14px;border-radius:8px;font-size:0.8rem;box-shadow:0 4px 16px rgba(0,0,0,0.5);transition:opacity 0.3s;'; document.body.appendChild(t); }
     t.textContent=msg; t.style.opacity='1'; clearTimeout(t._h); t._h=setTimeout(function(){ t.style.opacity='0'; },2200);
   }
+
+  // ====== Swap board (zadosti o vymenu smen) ======
+  window.__swapOpen = false;
+  function openSwapBoard(){
+    var ov = document.getElementById('swapOverlay');
+    if(!ov){
+      ov = document.createElement('div'); ov.id='swapOverlay';
+      ov.style.cssText='position:fixed;inset:0;z-index:4200;background:rgba(0,0,0,0.6);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;';
+      ov.addEventListener('click', function(e){ if(e.target===ov) closeSwapBoard(); });
+      var box=document.createElement('div'); box.style.cssText='max-width:720px;width:100%;background:#13151e;border:1px solid #1e2030;border-radius:14px;padding:22px;';
+      var head=document.createElement('div'); head.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;';
+      var h2=document.createElement('h2'); h2.style.cssText='margin:0;color:#fbc02d;font-size:1.2rem;'; h2.textContent='🔄 Žádosti o výměnu';
+      var xb=document.createElement('button'); xb.textContent='×'; xb.style.cssText='background:none;border:none;color:#8892a4;font-size:1.4rem;cursor:pointer;'; xb.addEventListener('click', closeSwapBoard);
+      head.appendChild(h2); head.appendChild(xb);
+      var bodyD=document.createElement('div'); bodyD.id='swapBody'; bodyD.style.cssText='color:#c8d0e0;'; bodyD.textContent='Načítám…';
+      box.appendChild(head); box.appendChild(bodyD); ov.appendChild(box); document.body.appendChild(ov);
+    }
+    ov.style.display='flex'; window.__swapOpen=true; loadSwapBoard();
+  }
+  function closeSwapBoard(){ var ov=document.getElementById('swapOverlay'); if(ov) ov.style.display='none'; window.__swapOpen=false; }
+  window.loadSwapBoard=function(){
+    fetch('/api/swaps').then(function(r){return r.json();}).then(function(d){
+      var b=d.board||{}; var body=document.getElementById('swapBody'); if(!body) return; body.innerHTML='';
+      function makeBtn(label,color,fn){ var x=document.createElement('button'); x.textContent=label; x.style.cssText='background:'+color+'22;border:1px solid '+color+'66;color:'+color+';border-radius:6px;padding:5px 11px;font-weight:700;cursor:pointer;font-size:0.74rem;margin-right:6px;'; x.addEventListener('click',fn); return x; }
+      function makeCard(r,btns){ var c=document.createElement('div'); c.style.cssText='border:1px solid #1e2030;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#0e1621;'; var t=document.createElement('div'); t.style.cssText='font-weight:700;color:#e8eaf0;'; t.textContent=r.ShiftProduct+' · '+r.ShiftDate+' · '+r.ShiftStart+'-'+r.ShiftEnd; var sub=document.createElement('div'); sub.style.cssText='font-size:0.8rem;color:#8892a4;margin:3px 0;'; sub.textContent='Nabízí: '+r.RequesterName+(r.ClaimedBy?(' → '+r.ClaimedBy):'')+(r.Note?(' · '+r.Note):''); var ba=document.createElement('div'); btns.forEach(function(x){ba.appendChild(x);}); c.appendChild(t); c.appendChild(sub); c.appendChild(ba); return c; }
+      function section(title,color){ var h=document.createElement('div'); h.style.cssText='font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:'+color+';margin:12px 0 6px;'; h.textContent=title; body.appendChild(h); }
+      var toApprove=b.toApprove||[],open=b.open||[],mine=b.mine||[];
+      if(toApprove.length){ section('Ke schválení','#fbc02d'); toApprove.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('✓ Schválit','#4caf50',function(){swapAction(r.Id,'approve');}),makeBtn('Zrušit','#e05260',function(){swapAction(r.Id,'cancel');})])); }); }
+      section('Otevřené nabídky ('+open.length+')','#5b7fa6');
+      if(open.length){ open.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('✋ Převzít','#64b5f6',function(){swapAction(r.Id,'claim');})])); }); }
+      else { var em=document.createElement('div'); em.style.cssText='color:#5b6478;font-size:0.85rem;'; em.textContent='Žádné otevřené nabídky.'; body.appendChild(em); }
+      if(mine.length){ section('Moje žádosti','#5b7fa6'); mine.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('Zrušit','#e05260',function(){swapAction(r.Id,'cancel');})])); }); }
+    }).catch(function(err){ var body=document.getElementById('swapBody'); if(body) body.textContent='Chyba: '+err.message; });
+  };
+  window.swapAction=function(id,act){
+    fetch('/api/swaps/'+id+'/'+act,{method:'POST'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(x){
+      if(!x.ok){ toast('Chyba: '+((x.j&&x.j.error)||'?')); return; }
+      toast(act==='approve'?'Výměna schválena ✓':act==='claim'?'Převzato ✋':'Hotovo'); loadSwapBoard();
+    }).catch(function(e){ toast('Chyba: '+e.message); });
+  };
+  window.requestSwapFromModal=function(){
+    var s=_currentShiftSource; if(!s){ toast('Není vybraná směna'); return; }
+    var note=prompt('Poznámka k výměně (nepovinné):','')||'';
+    fetch('/api/swaps',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:s.name,date:s.date,product:s.product,start:s.start,end:s.end,trading:s.trading,note:note,sheet:s.sheetTitle,row:s.row,col:s.col,msId:(s.sheetTitle==='ManualShifts'?s.id:'')})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(x){
+        if(!x.ok){ toast('Chyba: '+((x.j&&x.j.error)||'?')); return; }
+        toast('Žádost o výměnu vytvořena 🔄'); if(typeof closeModal==='function') closeModal();
+      }).catch(function(e){ toast('Chyba: '+e.message); });
+  };
   // Volano z openViewModal pri Ctrl/Cmd+kliku (neotevira modal). Vybira jen ManualShifts (maji Id).
   window.yggBulkClick=function(name, sheetTitle, id, targetEl){
     var pill=(targetEl && targetEl.closest)?targetEl.closest('.shift-pill'):null;
