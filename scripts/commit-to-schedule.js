@@ -217,7 +217,7 @@ async function main() {
     let written = 0;
     for (const p of plan) {
         if (p.action === 'SAME') continue; // uz tam je
-        const cell = sheet.getCell(p.targetRow - 1, pm.startCol + p.slotIndex);
+        const cell = sheet.getCell(p.targetRow - 1, pm.startCol + pm.slots[p.slotIndex].o);
         cell.value = p.person;
         written++;
     }
