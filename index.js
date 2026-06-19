@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { hashPassword, verifyPassword } = require('./lib/auth');
 const { validateNoTemplateChars } = require('./lib/validate');
 const { buildPeopleStructures } = require('./lib/people');
+const { buildProductStructures } = require('./lib/products');
 const { validatePersonInput, computeCapabilityCells } = require('./lib/people-admin');
 const { buildTradingBreakdown, buildCoverage } = require('./lib/stats');
 const { dedupeIds, partitionSelection } = require('./lib/bulk');
@@ -14,6 +15,49 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1); // Render reverse proxy
+
+// --- Bezpecnostni hlavicky (na vsech odpovedich) ---
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('Content-Security-Policy', [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "img-src 'self' data: https:",
+        "connect-src 'self' https:",
+        "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'self'"
+    ].join('; '));
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+});
+
+// --- Rate limiting (in-memory, per-IP; bez extra zavislosti) ---
+function makeRateLimiter({ max, windowMs, message }) {
+    const hits = new Map();
+    const t = setInterval(() => { const now = Date.now(); for (const [k, v] of hits) if (now > v.resetAt) hits.delete(k); }, windowMs);
+    if (t.unref) t.unref();
+    const mw = (req, res, next) => {
+        const ip = req.ip || 'unknown';
+        const now = Date.now();
+        let rec = hits.get(ip);
+        if (!rec || now > rec.resetAt) { rec = { count: 0, resetAt: now + windowMs }; hits.set(ip, rec); }
+        rec.count++;
+        if (rec.count > max) {
+            res.setHeader('Retry-After', Math.ceil((rec.resetAt - now) / 1000));
+            return res.status(429).send((message || 'Too many requests.') + ' (' + Math.ceil((rec.resetAt - now) / 60000) + ' min)');
+        }
+        next();
+    };
+    mw.reset = (req) => { hits.delete(req.ip || 'unknown'); };
+    return mw;
+}
+const loginLimiter = makeRateLimiter({ max: 10, windowMs: 15 * 60 * 1000, message: 'Prilis mnoho pokusu o prihlaseni, zkuste to pozdeji.' });
 
 const COOKIE_SECRET = process.env.SESSION_SECRET || 'drachir-viking-secret-2026';
 app.use(session({
@@ -81,6 +125,95 @@ app.use((req, res, next) => {
     next();
 });
 app.use(express.static('public'));
+
+// ====== Platform: health check + ICS kalendarovy feed ======
+function icsTokenForName(name) {
+    return crypto.createHmac('sha256', COOKIE_SECRET).update('ics:' + name).digest('hex').slice(0, 32);
+}
+function icsEscape(s) {
+    return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+function buildIcs(name, shifts) {
+    const pad = n => String(n).padStart(2, '0');
+    const fmt = (dateStr, timeStr) => {
+        const [y, m, d] = dateStr.split('-');
+        const [hh, mm] = timeStr.split(':');
+        return y + m + d + 'T' + pad(hh) + pad(mm) + '00';
+    };
+    const nextDay = (dateStr) => { const dd = new Date(dateStr + 'T12:00:00'); dd.setDate(dd.getDate() + 1); return dd.toISOString().slice(0, 10); };
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+    const out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//drachir.gg//calendar//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+        'X-WR-CALNAME:' + icsEscape('Drachir - ' + name), 'X-WR-TIMEZONE:Europe/Prague'];
+    shifts.forEach((s, i) => {
+        const endDate = (s.End < s.Start) ? nextDay(s.Date) : s.Date;   // overnight smeny
+        const uid = (s._sheet ? (s._sheet + '-' + s._row + '-' + s._col) : (s.Date + '-' + s.Product + '-' + s.Start + '-' + i)).replace(/\s+/g, '_') + '@drachir.gg';
+        out.push('BEGIN:VEVENT', 'UID:' + uid, 'DTSTAMP:' + stamp,
+            'DTSTART:' + fmt(s.Date, s.Start), 'DTEND:' + fmt(endDate, s.End),
+            'SUMMARY:' + icsEscape(s.Product || s.Trading || 'Shift'),
+            'DESCRIPTION:' + icsEscape((s.Trading || '') + (s.Note ? (' - ' + s.Note) : '')),
+            'END:VEVENT');
+    });
+    out.push('END:VCALENDAR');
+    return out.join('\r\n') + '\r\n';
+}
+
+// Health check (verejny) - monitoring/uptime
+app.get('/healthz', (req, res) => {
+    res.json({
+        status: 'ok',
+        uptime: Math.round(process.uptime()),
+        shiftsCached: Array.isArray(_shiftsCache) ? _shiftsCache.length : 0,
+        cacheAgeSec: _shiftsCacheTime ? Math.round((Date.now() - _shiftsCacheTime) / 1000) : null,
+        people: peopleHierarchy ? peopleHierarchy.reduce((a, g) => a + g.members.length, 0) : 0,
+        products: Array.isArray(productMapping) ? productMapping.length : 0,
+        ts: new Date().toISOString()
+    });
+});
+
+// ICS feed (token-authed, bez loginu) - napojeni do Google/Apple/Outlook kalendare
+app.get('/calendar/:token/feed.ics', async (req, res) => {
+    try {
+        const token = (req.params.token || '').toLowerCase();
+        const names = peopleHierarchy.flatMap(g => g.members);
+        const name = names.find(n => icsTokenForName(n) === token);
+        if (!name) return res.status(404).send('Invalid calendar token');
+        const all = await loadAllShifts();
+        const mine = all.filter(s => s.Name === name).sort((a, b) => (a.Date + a.Start).localeCompare(b.Date + b.Start));
+        res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+        res.setHeader('Content-Disposition', 'inline; filename="drachir.ics"');
+        res.setHeader('Cache-Control', 'private, max-age=300');
+        res.send(buildIcs(name, mine));
+    } catch (e) {
+        console.error('[ICS] error:', e.message);
+        res.status(500).send('Calendar error');
+    }
+});
+
+// Stranka s osobni adresou kalendare (authed)
+app.get('/calendar', (req, res) => {
+    if (!req.user) return res.redirect('/');
+    const token = icsTokenForName(req.user.jmeno);
+    const url = req.protocol + '://' + req.get('host') + '/calendar/' + token + '/feed.ics';
+    res.send(`<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Muj kalendar (ICS)</title>
+<style>body{margin:0;background:#0d0e14;color:#c8d0e0;font-family:'Segoe UI',system-ui,sans-serif;display:flex;justify-content:center;padding:40px 16px;}
+.card{max-width:680px;width:100%;background:#13151e;border:1px solid #1e2030;border-radius:14px;padding:28px;}
+h1{font-size:1.4rem;margin:0 0 6px;color:#fbc02d;}p{color:#8892a4;line-height:1.6;font-size:0.92rem;}
+.url{display:flex;gap:8px;margin:18px 0;}input{flex:1;background:#0a0b0f;border:1px solid #2a4060;border-radius:8px;color:#c0d4e8;padding:11px 12px;font-size:0.82rem;font-family:monospace;}
+.url button{background:rgba(251,192,45,0.12);border:1px solid rgba(251,192,45,0.3);color:#fbc02d;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;}
+ol{color:#8892a4;line-height:1.9;font-size:0.9rem;}a.back{color:#5b7fa6;text-decoration:none;font-size:0.85rem;}</style></head>
+<body><div class="card">
+<a class="back" href="/dashboard">&#8592; Zpet na kalendar</a>
+<h1>&#128197; Muj kalendar (ICS)</h1>
+<p>Napoj si svoje smeny primo do Google / Apple / Outlook kalendare. Adresa je osobni (obsahuje podpisovy token) &mdash; nesdilej ji. Kalendar se aktualizuje automaticky.</p>
+<div class="url"><input id="u" readonly value="${url}"><button onclick="navigator.clipboard.writeText(document.getElementById('u').value);this.textContent='Zkopirovano'">Kopirovat</button></div>
+<ol>
+<li><b>Google Kalendar:</b> vlevo &bdquo;Jine kalendare&ldquo; &rarr; <b>+</b> &rarr; &bdquo;Z adresy URL&ldquo; &rarr; vloz adresu.</li>
+<li><b>Apple Kalendar:</b> Soubor &rarr; Novy odber kalendare &rarr; vloz adresu.</li>
+<li><b>Outlook:</b> Pridat kalendar &rarr; Odebirat z webu &rarr; vloz adresu.</li>
+</ol>
+<p style="font-size:0.8rem;color:#5b6478;">Aplikace si feed sama tahá kazdych par desitek minut &mdash; zmeny ve smenach se projevi automaticky.</p>
+</div></body></html>`);
+});
 
 let googleKeys;
 if (process.env.GOOGLE_CREDENTIALS) {
@@ -485,7 +618,7 @@ const SEED_PERSON_COLORS = {
     "William M.":             "#ff9e80"
 };
 
-const productColors = {
+const PRODUCT_COLORS_SEED = {
     "Valhalla Cup A":  "#f44336",
     "Valhalla Cup B":  "#ff5722",
     "Valhalla Cup C":  "#ff9800",
@@ -540,7 +673,7 @@ async function refreshPeopleFromSheet() {
     }
 }
 
-const productMapping = [
+const PRODUCT_MAPPING_SEED = [
     { name: "Valhalla Cup A",  startCol: 2,  trading: "FIFA",       slots: [{o:0,s:'22:55',e:'06:44'},{o:1,s:'06:55',e:'14:48'},{o:2,s:'14:55',e:'22:47'}] },
     { name: "Valhalla Cup B",  startCol: 6,  trading: "FIFA",       slots: [{o:0,s:'22:57',e:'06:46'},{o:1,s:'06:57',e:'14:50'},{o:2,s:'14:57',e:'22:49'}] },
     { name: "Valhalla Cup C",  startCol: 10, trading: "FIFA",       slots: [{o:0,s:'00:04',e:'08:04'},{o:1,s:'08:04',e:'16:04'},{o:2,s:'16:04',e:'00:04'}] },
@@ -922,11 +1055,66 @@ function getProductMeta(productName) {
 // Coverage profile = ktere sloty + ktere dny ma generator pokrývat.
 // Default = 24/7 (vsechny 3 sloty, kazdy den)
 // 'weekdays' = pondeli az patek (dow 1-5), 'weekends' = (dow 0 a 6), 'all' = vsechny
-const productCoverage = {
+const PRODUCT_COVERAGE_SEED = {
     "Table Tennis":   { slots: [0,1,2], days: 'all' },      // 24/7
     "World of Tanks": { slots: [1],     days: 'weekdays' }, // jen ranni Po-Pa
     "eHockey":        { slots: [1,2],   days: 'all' },      // ranni + odpoledni, kazdy den (16/7)
 };
+
+// --- Produkty: trading kategorie (barva/ikona) zustavaji v kodu (jako role lidi v 2A) ---
+const TRADING_CATEGORIES = [
+    { name: "FIFA",         color: "#fbc02d", icon: "&#9917;"   },
+    { name: "NBA",          color: "#2196f3", icon: "&#127936;" },
+    { name: "Cricket",      color: "#4caf50", icon: "&#127955;" },
+    { name: "Duels",        color: "#9c27b0", icon: "&#9876;"   },
+    { name: "eTouchdown",   color: "#795548", icon: "&#127944;" },
+    { name: "Table Tennis", color: "#00bcd4", icon: "&#127955;" },
+    { name: "Tanks",        color: "#607d8b", icon: "&#128299;" },
+    { name: "Hockey",       color: "#e91e63", icon: "&#127954;" },
+    { name: "Other",        color: "#607d8b", icon: "&#128203;", subs: ["Stand Up", "1on1", "All Hands", "Training", "Interview", "Other Event", "RIP", "Vacation"] }
+];
+
+// --- Produkty: live struktury (seed = fallback; pri startu/refreshe prepsane z listu "Products") ---
+const PRODUCTS_SEED = PRODUCT_MAPPING_SEED.map(p => ({
+    Name: p.name, Trading: p.trading, Color: PRODUCT_COLORS_SEED[p.name] || '',
+    StartCol: p.startCol,
+    NightStart: p.slots[0].s,     NightEnd: p.slots[0].e,
+    MorningStart: p.slots[1].s,   MorningEnd: p.slots[1].e,
+    AfternoonStart: p.slots[2].s, AfternoonEnd: p.slots[2].e,
+    CoverageSlots: PRODUCT_COVERAGE_SEED[p.name] ? PRODUCT_COVERAGE_SEED[p.name].slots.join(',') : '',
+    CoverageDays:  PRODUCT_COVERAGE_SEED[p.name] ? PRODUCT_COVERAGE_SEED[p.name].days : '',
+}));
+
+let productMapping, productColors, productCoverage, tradingHierarchy;
+({ productMapping, productColors, productCoverage, tradingHierarchy } =
+    buildProductStructures(PRODUCTS_SEED, TRADING_CATEGORIES));
+
+// Nacte list "Products" a prepise live struktury; pri chybe/absenci/odmitnuti ponechava seed.
+async function refreshProductsFromSheet() {
+    try {
+        await doc.loadInfo();
+        const sheet = doc.sheetsByTitle['Products'];
+        if (!sheet) { console.warn('[PRODUCTS] List "Products" nenalezen - pouzivam seed.'); return; }
+        const rows = (await sheet.getRows()).map(r => ({
+            Name: r.get('Name'), Trading: r.get('Trading'), Color: r.get('Color'), StartCol: r.get('StartCol'),
+            NightStart: r.get('NightStart'), NightEnd: r.get('NightEnd'),
+            MorningStart: r.get('MorningStart'), MorningEnd: r.get('MorningEnd'),
+            AfternoonStart: r.get('AfternoonStart'), AfternoonEnd: r.get('AfternoonEnd'),
+            CoverageSlots: r.get('CoverageSlots'), CoverageDays: r.get('CoverageDays'),
+        }));
+        if (rows.length === 0) { console.warn('[PRODUCTS] List "Products" je prazdny - pouzivam seed.'); return; }
+        const built = buildProductStructures(rows, TRADING_CATEGORIES);
+        if (built.rejected) { console.error('[PRODUCTS] List odmitnut (' + built.rejected + ') - drzim seed.'); return; }
+        productMapping   = built.productMapping;
+        productColors    = built.productColors;
+        productCoverage  = built.productCoverage;
+        tradingHierarchy = built.tradingHierarchy;
+        built.warnings.forEach(w => console.warn('[PRODUCTS] ' + w));
+        console.log('[PRODUCTS] Nacteno z listu: ' + built.productMapping.length + ' produktu.');
+    } catch (e) {
+        console.error('[PRODUCTS] Chyba nacitani, ponechavam soucasna data:', e.message);
+    }
+}
 
 function getCoverageProfile(productName) {
     return productCoverage[productName] || { slots: [0,1,2], days: 'all' };
@@ -1364,7 +1552,7 @@ function checkOverlap(shift, allShifts) {
 
 // --- API ---
 
-app.post('/login', async (req, res) => {
+app.post('/login', loginLimiter, async (req, res) => {
     const emailInput = req.body.email.toLowerCase().trim();
     const passwordInput = req.body.password.trim();
     try {
@@ -1415,6 +1603,7 @@ app.post('/login', async (req, res) => {
 
         if (foundUser) {
             req.session.user = foundUser;
+            loginLimiter.reset(req); // uspesne prihlaseni vynuluje pocitadlo pokusu
 
             // Remember me — HMAC token cookie na 30 dni
             if (req.body.remember === 'on') {
@@ -2487,8 +2676,8 @@ app.post('/exchange-shift', async (req, res) => {
         const s1 = doc.sheetsByTitle[sheet1];
         const s2 = doc.sheetsByTitle[sheet2];
         if (!s1 || !s2) return res.status(404).send('Sheet not found');
-        await s1.loadCells('A1:AQ500');
-        if (sheet1 !== sheet2) await s2.loadCells('A1:AQ500');
+        await s1.loadCells('A1:BG500');
+        if (sheet1 !== sheet2) await s2.loadCells('A1:BG500');
         const cell1 = s1.getCell(parseInt(row1), parseInt(col1));
         const cell2 = s2.getCell(parseInt(row2), parseInt(col2));
         // Zamena jmen
@@ -3401,18 +3590,6 @@ app.get('/dashboard', async (req, res) => {
 
     let hHTML = ""; let rHTML = ""; let pRowsHTML = ""; let mainContentHTML = "";
     let allShifts = [];
-
-    const tradingHierarchy = [
-        { name: "FIFA",       color: "#fbc02d", icon: "&#9917;",  subs: ["Valhalla Cup A", "Valhalla Cup B", "Valhalla Cup C", "Valkyrie Cup A", "Valkyrie Cup B"] },
-        { name: "NBA",        color: "#2196f3", icon: "&#127936;", subs: ["Valhalla League"] },
-        { name: "Cricket",    color: "#4caf50", icon: "&#127955;", subs: ["Yodha League"] },
-        { name: "Duels",      color: "#9c27b0", icon: "&#9876;",  subs: ["CS 2 Duels", "Dota 2 Duels"] },
-        { name: "eTouchdown", color: "#795548", icon: "&#127944;", subs: ["Madden"] },
-        { name: "Table Tennis", color: "#00bcd4", icon: "&#127955;", subs: ["Table Tennis"] },
-        { name: "Tanks",      color: "#607d8b", icon: "&#128299;", subs: ["World of Tanks"] },
-        { name: "Hockey",     color: "#e91e63", icon: "&#127954;", subs: ["eHockey"] },
-        { name: "Other",       color: "#607d8b", icon: "&#128203;", subs: ["Stand Up", "1on1", "All Hands", "Training", "Interview", "Other Event", "RIP", "Vacation"] }
-    ];
 
     function getProductColor(tradingName, productName) {
         if (productName && productColors[productName]) return productColors[productName];
@@ -4349,6 +4526,7 @@ app.get('/dashboard', async (req, res) => {
                 <div class="month-label" style="font-weight:700;font-size:0.9rem;color:#5b7fa6;font-family:'Oswald';letter-spacing:1.5px;">${queryDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'}).toUpperCase()}</div>
                 <button class="btn-current-week" onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
                 <a href="/stats" class="btn-stats" title="Statistics" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128202;</a>
+                <a href="/calendar" class="btn-ics" title="Muj kalendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
                 <!-- Uzivatel desktop -->
@@ -5314,7 +5492,7 @@ app.get('/dashboard', async (req, res) => {
     // =============================================
     // BOD 1b: PRODUCT DROPDOWN - dynamicky podle Trading
     // =============================================
-    const productsByTrading = {"FIFA": ["Valhalla Cup A", "Valhalla Cup B", "Valhalla Cup C", "Valkyrie Cup A", "Valkyrie Cup B"], "NBA": ["Valhalla League"], "Cricket": ["Yodha League"], "Duels": ["CS 2 Duels", "Dota 2 Duels"], "eTouchdown": ["Madden"], "Table Tennis": ["Table Tennis"], "Tanks": ["World of Tanks"], "Hockey": ["eHockey"], "Other": ["Stand Up", "1on1", "All Hands", "Training", "Interview", "Other Event", "RIP", "Vacation"]};
+    const productsByTrading = ${JSON.stringify(Object.fromEntries(tradingHierarchy.map(t => [t.name, t.subs])))};
 
     function updateProductDropdown() {
         const trading = document.getElementById('mTrading').value;
@@ -6718,6 +6896,8 @@ if (require.main === module) {
         console.log('Drachir.gg active');
         refreshPeopleFromSheet().catch(e => console.error('[PEOPLE] Startup load failed, using seed:', e.message));
         setInterval(() => { refreshPeopleFromSheet().catch(() => {}); }, 5 * 60 * 1000);
+        refreshProductsFromSheet().catch(e => console.error('[PRODUCTS] Startup load failed, using seed:', e.message));
+        setInterval(() => { refreshProductsFromSheet().catch(() => {}); }, 5 * 60 * 1000);
         // PERF: nahrej cache smen pri startu + drz ji teplou (prewarm kazde 4 min < 5min TTL) — uzivatel necaka na cold load
         loadAllShifts(false).catch(e => console.error('[SHIFTS] Startup warm failed:', e.message));
         setInterval(() => { loadAllShifts(false, { refresh: true }).catch(() => {}); }, 4 * 60 * 1000);
@@ -6748,5 +6928,6 @@ module.exports = {
     getProductMeta,
     getCoverageProfile,
     productMapping,
+    productColors,
     productCoverage
 };
