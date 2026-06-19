@@ -3642,6 +3642,17 @@ app.get('/dashboard', async (req, res) => {
         allShifts = await loadAllShifts(forceSync);
         console.log('Nacteno smen celkem:', allShifts.length);
 
+        // Live coverage tohoto tydne (reuse Faze 6B buildCoverage) -> chip v topbaru, aktualizuje se pres SSE
+        const _covDates = [];
+        for (let _i = 0; _i < 7; _i++) { const _dd = new Date(startOfWeek); _dd.setDate(startOfWeek.getDate() + _i); _covDates.push(toISOLocal(_dd)); }
+        const _covSet = new Set(_covDates);
+        const _covProfiles = productMapping.map(p => { const c = getCoverageProfile(p.name); return { name: p.name, slots: c.slots, days: c.days }; });
+        const weekCov = buildCoverage(allShifts.filter(s => _covSet.has(s.Date)), _covProfiles, _covDates);
+        const _covGaps = weekCov.totalExpected - weekCov.totalCovered;
+        const _covColor = weekCov.pct >= 95 ? '#4caf50' : (weekCov.pct >= 80 ? '#fbc02d' : '#e05260');
+        const _covWorst = weekCov.products.filter(p => p.gaps > 0).slice(0, 6).map(p => p.product + ' ' + p.pct + '%').join(', ');
+        const _covTitle = _covGaps === 0 ? 'Tento tyden je plne pokryto' : ('Nepokryto tento tyden (' + _covGaps + ' slotu). Nejhorsi: ' + _covWorst);
+
         // 3. STATISTIKY A AKTIVNÍ PUNTÍK
         const weekStats = {}; allNames.forEach(n => weekStats[n] = 0);
         const currentTimePercent = timeToPercent(nowS.getHours() + ':' + nowS.getMinutes());
@@ -4563,6 +4574,7 @@ app.get('/dashboard', async (req, res) => {
             </div>
             <div class="topbar-right" style="display:flex;align-items:center;gap:12px;">
                 <div class="month-label" style="font-weight:700;font-size:0.9rem;color:#5b7fa6;font-family:'Oswald';letter-spacing:1.5px;">${queryDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'}).toUpperCase()}</div>
+                <a href="/stats" class="cov-chip" title="${_covTitle}" style="padding:5px 11px;border:1px solid ${_covColor};border-radius:6px;background:#0e1621;color:${_covColor};font-weight:700;font-size:0.72rem;letter-spacing:0.5px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;" onmouseover="this.style.background='#13202e'" onmouseout="this.style.background='#0e1621'">&#128202; Pokryti ${weekCov.pct}%${_covGaps > 0 ? ' &middot; ' + _covGaps + ' mezer' : ' &middot; OK'}</a>
                 <button class="btn-current-week" onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
                 <a href="/stats" class="btn-stats" title="Statistics" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128202;</a>
                 <a href="/calendar" class="btn-ics" title="Muj kalendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
