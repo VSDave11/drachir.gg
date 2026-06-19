@@ -11,6 +11,7 @@ const { validatePersonInput, computeCapabilityCells } = require('./lib/people-ad
 const { buildTradingBreakdown, buildCoverage } = require('./lib/stats');
 const { dedupeIds, partitionSelection } = require('./lib/bulk');
 const { validateNewRequest, canClaim, canCancel, canApprove, buildBoard, replaceNameInCell } = require('./lib/swaps');
+const { parseShiftsCsv } = require('./lib/csvimport');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2813,6 +2814,32 @@ app.post('/api/swaps/:id/cancel', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ====== Import smen z CSV ======
+function importPreview(csvText) { return parseShiftsCsv(csvText, { normalizeDate: convertCzechDate }); }
+app.post('/api/import-preview', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try { res.json(importPreview((req.body && req.body.csv) || '')); }
+    catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/import-commit', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const parsed = importPreview((req.body && req.body.csv) || '');
+        if (parsed.headerError) return res.status(400).json({ error: parsed.headerError });
+        const valid = parsed.rows.filter(r => r.valid);
+        if (!valid.length) return res.status(400).json({ error: 'Žádné platné řádky k importu' });
+        if (valid.length > 500) return res.status(400).json({ error: 'Příliš mnoho řádků (max 500)' });
+        await doc.loadInfo();
+        let sheet = doc.sheetsByTitle['ManualShifts'];
+        if (!sheet) sheet = await doc.addSheet({ title: 'ManualShifts', headerValues: ['Date', 'Name', 'Trading', 'Product', 'Start', 'End', 'Note', 'AddedBy', 'Id'] });
+        await sheet.addRows(valid.map(r => ({ Date: r.Date, Name: r.Name, Trading: r.Trading || 'Other', Product: r.Product, Start: r.Start, End: r.End, Note: r.Note || '', AddedBy: req.user.jmeno, Id: crypto.randomUUID() })), { raw: true });
+        invalidateCache();
+        try { const a = doc.sheetsByTitle['AuditLog']; if (a) await a.addRow({ Timestamp: new Date().toISOString(), Jmeno: req.user.jmeno, Email: req.user.email, Role: req.user.role, Location: req.user.location || '', Action: 'IMPORT_CSV|count=' + valid.length }); } catch (_) {}
+        try { sendSlackMessage(':inbox_tray: *CSV import* by ' + req.user.jmeno + ': ' + valid.length + ' smen'); } catch (_) {}
+        res.json({ success: true, imported: valid.length, skipped: parsed.errorCount });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // BOD 2: EXCHANGE SHIFT - zameni jmena ve dvou bunkach
 app.post('/exchange-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
@@ -4705,6 +4732,7 @@ app.get('/dashboard', async (req, res) => {
                 <button class="btn-current-week" onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
                 <a href="/stats" class="btn-stats" title="Statistics" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128202;</a>
                 <button class="btn-swaps" onclick="openSwapBoard()" title="Žádosti o výměnu směn" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128260;</button>
+                ${req.user.role === 'Admin' ? '<button class="btn-import" onclick="openImportModal()" title="Import směn z CSV" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor=&apos;rgba(91,127,166,0.5)&apos;;this.style.color=&apos;#7ba3cc&apos;" onmouseout="this.style.borderColor=&apos;#1e2d3d&apos;;this.style.color=&apos;#5b7fa6&apos;">&#128229;</button>' : ''}
                 <a href="/calendar" class="btn-ics" title="Muj kalendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
@@ -6931,6 +6959,52 @@ app.get('/dashboard', async (req, res) => {
         toast('Žádost o výměnu vytvořena 🔄'); if(typeof closeModal==='function') closeModal();
       }).catch(function(e){ toast('Chyba: '+e.message); });
   };
+
+  // ====== Import z CSV ======
+  function openImportModal(){
+    var ov=document.getElementById('importOverlay');
+    if(!ov){
+      ov=document.createElement('div'); ov.id='importOverlay';
+      ov.style.cssText='position:fixed;inset:0;z-index:4200;background:rgba(0,0,0,0.6);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;';
+      ov.addEventListener('click',function(e){ if(e.target===ov) ov.style.display='none'; });
+      var box=document.createElement('div'); box.style.cssText='max-width:760px;width:100%;background:#13151e;border:1px solid #1e2030;border-radius:14px;padding:22px;';
+      var h2=document.createElement('h2'); h2.style.cssText='margin:0 0 6px;color:#fbc02d;font-size:1.2rem;'; h2.textContent='📥 Import směn z CSV';
+      var hint=document.createElement('div'); hint.style.cssText='font-size:0.8rem;color:#8892a4;margin-bottom:10px;'; hint.textContent='Sloupce: Date, Name, Start, End (povinné) + Product, Trading, Note. Datum YYYY-MM-DD nebo D.M.YYYY, čas HH:MM. Oddělovač , nebo ;';
+      var ta=document.createElement('textarea'); ta.id='importCsv'; ta.placeholder='Date,Name,Trading,Product,Start,End,Note'; ta.style.cssText='width:100%;height:140px;background:#0a0b0f;border:1px solid #2a4060;border-radius:8px;color:#c0d4e8;padding:10px;font-family:monospace;font-size:0.78rem;box-sizing:border-box;';
+      var file=document.createElement('input'); file.type='file'; file.accept='.csv,text/csv'; file.style.cssText='margin:8px 0;color:#8892a4;font-size:0.8rem;display:block;';
+      file.addEventListener('change',function(){ var f=file.files[0]; if(!f) return; var rd=new FileReader(); rd.onload=function(){ ta.value=rd.result; }; rd.readAsText(f); });
+      var bar=document.createElement('div'); bar.style.cssText='display:flex;gap:8px;align-items:center;margin:6px 0 12px;';
+      var prev=document.createElement('button'); prev.textContent='Náhled'; prev.style.cssText='background:rgba(91,127,166,0.15);border:1px solid #2a4060;color:#9fc0e0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;'; prev.addEventListener('click',importDoPreview);
+      var commit=document.createElement('button'); commit.id='importCommitBtn'; commit.textContent='Importovat'; commit.disabled=true; commit.style.cssText='background:rgba(76,175,80,0.15);border:1px solid #2e6b32;color:#7fd383;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;opacity:0.5;'; commit.addEventListener('click',importDoCommit);
+      var close=document.createElement('button'); close.textContent='Zavřít'; close.style.cssText='margin-left:auto;background:none;border:1px solid #2e3348;color:#8892a4;border-radius:8px;padding:8px 14px;cursor:pointer;'; close.addEventListener('click',function(){ ov.style.display='none'; });
+      var result=document.createElement('div'); result.id='importResult'; result.style.cssText='color:#c8d0e0;';
+      bar.appendChild(prev); bar.appendChild(commit); bar.appendChild(close);
+      box.appendChild(h2); box.appendChild(hint); box.appendChild(ta); box.appendChild(file); box.appendChild(bar); box.appendChild(result);
+      ov.appendChild(box); document.body.appendChild(ov);
+    }
+    ov.style.display='flex';
+  }
+  function importDoPreview(){
+    var csv=document.getElementById('importCsv').value;
+    fetch('/api/import-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csv:csv})})
+      .then(function(r){return r.json();}).then(function(d){
+        var res=document.getElementById('importResult'); var commit=document.getElementById('importCommitBtn'); res.innerHTML='';
+        if(d.headerError){ res.textContent='Chyba: '+d.headerError; commit.disabled=true; commit.style.opacity='0.5'; return; }
+        var head=document.createElement('div'); head.style.cssText='margin-bottom:8px;font-weight:700;'; head.textContent='Platných: '+d.validCount+' · Chybných: '+d.errorCount; res.appendChild(head);
+        var tbl=document.createElement('div'); tbl.style.cssText='max-height:260px;overflow:auto;border:1px solid #1e2030;border-radius:8px;';
+        (d.rows||[]).slice(0,200).forEach(function(r){ var row=document.createElement('div'); row.style.cssText='display:flex;gap:10px;padding:5px 10px;border-bottom:1px solid #161821;font-size:0.76rem;'+(r.valid?'color:#c0d4e8;':'color:#e0879a;background:rgba(224,82,96,0.06);'); row.textContent=(r.valid?'✓':'✗')+' '+r.Date+' · '+r.Name+' · '+r.Product+' · '+r.Start+'-'+r.End+(r.error?(' — '+r.error):''); tbl.appendChild(row); });
+        res.appendChild(tbl);
+        commit.disabled=d.validCount===0; commit.style.opacity=d.validCount===0?'0.5':'1'; commit.textContent='Importovat '+d.validCount+' platných';
+      }).catch(function(e){ document.getElementById('importResult').textContent='Chyba: '+e.message; });
+  }
+  function importDoCommit(){
+    var csv=document.getElementById('importCsv').value;
+    fetch('/api/import-commit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csv:csv})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(x){
+        if(!x.ok){ toast('Chyba: '+((x.j&&x.j.error)||'?')); return; }
+        toast('Importováno '+x.j.imported+' směn 📥'); setTimeout(function(){ location.reload(); },900);
+      }).catch(function(e){ toast('Chyba: '+e.message); });
+  }
   // Volano z openViewModal pri Ctrl/Cmd+kliku (neotevira modal). Vybira jen ManualShifts (maji Id).
   window.yggBulkClick=function(name, sheetTitle, id, targetEl){
     var pill=(targetEl && targetEl.closest)?targetEl.closest('.shift-pill'):null;
