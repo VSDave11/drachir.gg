@@ -4951,6 +4951,9 @@ app.get('/dashboard', async (req, res) => {
                 <button class="btn-swaps" onclick="openSwapBoard()" title="Shift swaps" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128260;</button>
                 <a href="/calendar" class="btn-ics" title="My calendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
+                <button class="btn-move" id="moveModeBtn" onclick="toggleMoveMode()" title="Move mode — drag your shifts on the timeline to reschedule within the day (click again to exit)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;line-height:1;">&#10021;</button>
+                <button id="undoBtn" onclick="dragUndo()" title="Undo move (Ctrl+Z)" style="display:none;padding:6px 9px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.9rem;line-height:1;">&#8617;</button>
+                <button id="redoBtn" onclick="dragRedo()" title="Redo move (Ctrl+Y)" style="display:none;padding:6px 9px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.9rem;line-height:1;">&#8618;</button>
                 <span style="position:relative;display:inline-flex;">
                     <button class="btn-bell" id="bellBtn" onclick="toggleBell()" title="Notifications" style="position:relative;padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;">&#128276;<span id="bellBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:#ef5350;color:#fff;border-radius:10px;font-size:0.58rem;min-width:15px;height:15px;line-height:15px;text-align:center;font-weight:700;padding:0 2px;">0</span></button>
                     <div id="bellPanel" style="display:none;position:absolute;top:120%;right:0;width:300px;max-height:400px;overflow:auto;background:#13151e;border:1px solid #1e2030;border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,0.55);z-index:3000;padding:6px;"></div>
@@ -5392,6 +5395,61 @@ app.get('/dashboard', async (req, res) => {
     };
     document.addEventListener('click',function(e){ var p=document.getElementById('bellPanel'),b=document.getElementById('bellBtn'); if(p&&p.style.display==='block'&&!p.contains(e.target)&&b&&!b.contains(e.target)) p.style.display='none'; });
     loadNotifs(); setInterval(loadNotifs, 90000);
+
+    // ===== Drag-to-reschedule — opt-in "Move mode"; timeline, your ManualShifts, same day, Europe tz =====
+    (function(){
+        var HOURPX=40, DAYPX=960, GRIDPX=6720, SNAP=0.25; // 15-min snap
+        var moveMode=false, drag=null, justDragged=false, undoStack=[], redoStack=[];
+        var st=document.createElement('style'); st.textContent='body.move-mode .shift-pill{cursor:grab;} body.move-mode .shift-pill:active{cursor:grabbing;}'; document.head.appendChild(st);
+        function toH(t){ var a=(t||'0:0').split(':'); return (+a[0])+(+a[1])/60; }
+        function hhmm(h){ var H=Math.floor(h+1e-9), M=Math.round((h-H)*60); if(M===60){H++;M=0;} return (H<10?'0':'')+H+':'+(M<10?'0':'')+M; }
+        function tzEurope(){ var el=document.getElementById('tzLabel'); return !el || (el.textContent||'').trim().toUpperCase()==='EUROPE'; }
+        function eligible(p){ return p && p.classList && p.classList.contains('shift-pill') && (p.dataset.sht||'')==='ManualShifts' && (p.dataset.pillPart||'0')==='0' && p.dataset.tooltipProduct!=='Vacation' && p.dataset.tooltipProduct!=='RIP' && p.closest('.user-row') && p.closest('.row-grid-bg'); }
+        function setUndoBtns(){ var u=document.getElementById('undoBtn'),r=document.getElementById('redoBtn'); if(u){ u.style.display=moveMode?'inline-block':'none'; u.style.opacity=undoStack.length?'1':'0.4'; } if(r){ r.style.display=moveMode?'inline-block':'none'; r.style.opacity=redoStack.length?'1':'0.4'; } }
+        window.toggleMoveMode=function(){ moveMode=!moveMode; document.body.classList.toggle('move-mode',moveMode); var b=document.getElementById('moveModeBtn'); if(b) b.style.color=moveMode?'#22d3ee':'#5b7fa6'; setUndoBtns(); if(moveMode) toast('Move mode ON — drag your shifts to reschedule within the day. Ctrl+Z = undo. Click again on ✥ to exit.'); };
+        document.addEventListener('mousedown',function(e){
+            if(!moveMode||e.button!==0||!tzEurope()) return;
+            var p=e.target.closest&&e.target.closest('.shift-pill'); if(!p||!eligible(p)) return;
+            var dur=toH(p.dataset.origEnd)-toH(p.dataset.origStart); if(!(dur>0)) return;
+            e.preventDefault();
+            drag={ p:p, x0:e.clientX, l0:p.offsetLeft, w:p.offsetWidth, dur:dur, day:parseInt(p.dataset.origDay||'0',10), moved:false };
+            p.style.zIndex='200'; p.style.opacity='0.85';
+        },true);
+        document.addEventListener('mousemove',function(e){
+            if(!drag) return;
+            var dx=e.clientX-drag.x0; if(Math.abs(dx)>4) drag.moved=true;
+            var lo=drag.day*DAYPX, hi=(drag.day+1)*DAYPX-drag.w;
+            drag.p.style.left=Math.max(lo,Math.min(hi,drag.l0+dx))+'px';
+        });
+        document.addEventListener('mouseup',function(){
+            if(!drag) return; var d=drag; drag=null;
+            d.p.style.zIndex=''; d.p.style.opacity='';
+            if(!d.moved){ d.p.style.left=d.l0+'px'; return; }
+            justDragged=true; setTimeout(function(){justDragged=false;},60);
+            var nl=parseFloat(d.p.style.left)||d.l0;
+            var startH=Math.round(((nl-d.day*DAYPX)/HOURPX)/SNAP)*SNAP;
+            startH=Math.max(0,Math.min(24-d.dur,startH));
+            var finalLeft=d.day*DAYPX+startH*HOURPX; d.p.style.left=finalLeft+'px';
+            var before={start:d.p.dataset.origStart,end:d.p.dataset.origEnd,left:d.l0};
+            var after={start:hhmm(startH),end:hhmm(startH+d.dur),left:finalLeft};
+            if(after.start===before.start && after.end===before.end){ d.p.style.left=d.l0+'px'; return; }
+            applyMove(d.p,before,after,true);
+        });
+        function applyMove(p,before,after,push){
+            var body={ id:p.dataset.sid||'', originalName:p.dataset.snm||p.dataset.person||'', originalDate:p.dataset.shiftDate, originalStart:before.start, name:p.dataset.snm||p.dataset.person||'', date:p.dataset.shiftDate, start:after.start, end:after.end, product:p.dataset.tooltipProduct||'', trading:p.dataset.tooltipTrading||'', note:p.dataset.tooltipNote||'' };
+            fetch('/update-shift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(x){
+                if(!x.ok||(x.j&&x.j.error)){ p.style.left=before.left+'px'; toast('Move failed: '+((x.j&&x.j.error)||'?')); return; }
+                p.dataset.origStart=after.start; p.dataset.origEnd=after.end;
+                var t=p.querySelector('.pill-time'); if(t) t.textContent=after.start+' - '+after.end;
+                if(push){ undoStack.push({p:p,before:before,after:after}); redoStack=[]; }
+                setUndoBtns(); toast('Moved to '+after.start+'–'+after.end);
+            }).catch(function(err){ p.style.left=before.left+'px'; toast('Move failed: '+err.message); });
+        }
+        window.dragUndo=function(){ var m=undoStack.pop(); if(!m){ toast('Nothing to undo'); return; } redoStack.push(m); m.p.style.left=m.before.left+'px'; applyMove(m.p,m.after,m.before,false); };
+        window.dragRedo=function(){ var m=redoStack.pop(); if(!m){ toast('Nothing to redo'); return; } undoStack.push(m); m.p.style.left=m.after.left+'px'; applyMove(m.p,m.before,m.after,false); };
+        document.addEventListener('keydown',function(e){ if(!moveMode) return; var k=(e.key||'').toLowerCase(); if((e.ctrlKey||e.metaKey)&&k==='z'){ e.preventDefault(); dragUndo(); } else if((e.ctrlKey||e.metaKey)&&k==='y'){ e.preventDefault(); dragRedo(); } });
+        document.addEventListener('click',function(e){ if(justDragged){ var p=e.target.closest&&e.target.closest('.shift-pill'); if(p){ e.stopPropagation(); e.preventDefault(); } } },true);
+    })();
     // Zebra striping over VISIBLE rows only (so it stays alternating after sidebar filtering)
     function restripeRows() {
         let vis = 0;
