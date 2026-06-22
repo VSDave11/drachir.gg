@@ -4708,6 +4708,23 @@ app.get('/dashboard', async (req, res) => {
         .theme-light [style*="background:#161b2c"]{ background:#e9edf4 !important; color:#46526a; }
         .theme-light .week-grid-row, .theme-light .week-header-row, .theme-light .list-viewport, .theme-light .list-wrapper{ color:#46526a; }
         .theme-light .week-header-row [style*="color:#a78bfa"], .theme-light [style*="color:#a78bfa"]{ color:#5a4fcf !important; }
+        /* ---- inline dark surfaces everywhere (chrome + JS-built overlays: swap board, people admin, modals, selects) ---- */
+        .theme-light [style*="background:#0d0e14"], .theme-light [style*="background:#0a0b0f"], .theme-light [style*="background:#0a1018"], .theme-light [style*="background:#1a1a1a"], .theme-light [style*="background:#1c1c1c"], .theme-light [style*="background:#12131a"], .theme-light [style*="background:#13141c"]{ background:#f6f7fb !important; }
+        .theme-light [style*="background:#0e1621"], .theme-light [style*="background:#13151e"], .theme-light [style*="background:#162030"]{ background:#eef0f4 !important; }
+        .theme-light [style*="background:#2a2d3a"]{ background:#e4e7ee !important; }
+        /* light-on-dark text -> dark for white surfaces */
+        .theme-light [style*="color:#c8d0e0"], .theme-light [style*="color:#dfe6f2"], .theme-light [style*="color:#e8ecf4"], .theme-light [style*="color:#e8eaf0"], .theme-light [style*="color:#eef2fb"], .theme-light [style*="color:#e0ecf6"], .theme-light [style*="color:#f2f5fb"], .theme-light [style*="color:#e0e0e0"], .theme-light [style*="color:#eee"]{ color:#1b2230 !important; }
+        .theme-light [style*="color:#8892a4"], .theme-light [style*="color:#7c87a3"], .theme-light [style*="color:#aab6cf"], .theme-light [style*="color:#a7b4c8"], .theme-light [style*="color:#aab4c8"], .theme-light [style*="color:#9aadc7"], .theme-light [style*="color:#bcd0ea"], .theme-light [style*="color:#c0d4e8"], .theme-light [style*="color:#8a93ab"], .theme-light [style*="color:#cdd"], .theme-light [style*="color:#ccc"], .theme-light [style*="color:#9aa"]{ color:#46526a !important; }
+        .theme-light [style*="color:#6b7585"], .theme-light [style*="color:#6b768f"]{ color:#4a5568 !important; }
+        .theme-light [style*="color:#7ba3cc"]{ color:#2f6193 !important; }
+        .theme-light [style*="color:#5b7fa6"]{ color:#345f86 !important; }
+        .theme-light [style*="color:#82b4ff"], .theme-light [style*="color:#8fb4e4"]{ color:#3163ad !important; }
+        .theme-light [style*="color:#b39ddb"]{ color:#7a5fc0 !important; }
+        .theme-light [style*="color:#a5d6a7"]{ color:#4e9e54 !important; }
+        /* accent texts: keep hue but darken so they read on white surfaces */
+        .theme-light [style*="color:#42a5f5"], .theme-light [style*="color:#64b5f6"]{ color:#1f6fc8 !important; }
+        .theme-light [style*="color:#66bb6a"]{ color:#3a9e4a !important; }
+        .theme-light [style*="color:#ff6b6b"], .theme-light [style*="color:#ff4444"], .theme-light [style*="color:#e57373"], .theme-light [style*="color:#ef9a9a"]{ color:#cc3b3b !important; }
     </style>
     <!-- Early: restore saved view + hide unselected rows before first paint -->
     <script>
@@ -7032,12 +7049,12 @@ app.get('/dashboard', async (req, res) => {
       ov = document.createElement('div'); ov.id='swapOverlay';
       ov.style.cssText='position:fixed;inset:0;z-index:4200;background:rgba(0,0,0,0.6);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;';
       ov.addEventListener('click', function(e){ if(e.target===ov) closeSwapBoard(); });
-      var box=document.createElement('div'); box.style.cssText='max-width:720px;width:100%;background:#13151e;border:1px solid #1e2030;border-radius:14px;padding:22px;';
+      var box=document.createElement('div'); box.style.cssText='max-width:720px;width:100%;background:var(--bg1);border:1px solid var(--gborder);border-radius:14px;padding:22px;';
       var head=document.createElement('div'); head.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;';
-      var h2=document.createElement('h2'); h2.style.cssText='margin:0;color:#a78bfa;font-size:1.2rem;'; h2.textContent='🔄 Shift swaps';
-      var xb=document.createElement('button'); xb.textContent='×'; xb.style.cssText='background:none;border:none;color:#8892a4;font-size:1.4rem;cursor:pointer;'; xb.addEventListener('click', closeSwapBoard);
+      var h2=document.createElement('h2'); h2.style.cssText='margin:0;color:var(--au1);font-size:1.2rem;'; h2.textContent='🔄 Shift swaps';
+      var xb=document.createElement('button'); xb.textContent='×'; xb.style.cssText='background:none;border:none;color:var(--tmid);font-size:1.4rem;cursor:pointer;'; xb.addEventListener('click', closeSwapBoard);
       head.appendChild(h2); head.appendChild(xb);
-      var bodyD=document.createElement('div'); bodyD.id='swapBody'; bodyD.style.cssText='color:#c8d0e0;'; bodyD.textContent='Loading…';
+      var bodyD=document.createElement('div'); bodyD.id='swapBody'; bodyD.style.cssText='color:var(--tmid);'; bodyD.textContent='Loading…';
       box.appendChild(head); box.appendChild(bodyD); ov.appendChild(box); document.body.appendChild(ov);
     }
     ov.style.display='flex'; window.__swapOpen=true; loadSwapBoard();
@@ -7047,13 +7064,13 @@ app.get('/dashboard', async (req, res) => {
     fetch('/api/swaps').then(function(r){return r.json();}).then(function(d){
       var b=d.board||{}; var body=document.getElementById('swapBody'); if(!body) return; body.innerHTML='';
       function makeBtn(label,color,fn){ var x=document.createElement('button'); x.textContent=label; x.style.cssText='background:'+color+'22;border:1px solid '+color+'66;color:'+color+';border-radius:6px;padding:5px 11px;font-weight:700;cursor:pointer;font-size:0.74rem;margin-right:6px;'; x.addEventListener('click',fn); return x; }
-      function makeCard(r,btns){ var c=document.createElement('div'); c.style.cssText='border:1px solid #1e2030;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#0e1621;'; var t=document.createElement('div'); t.style.cssText='font-weight:700;color:#e8eaf0;'; t.textContent=r.ShiftProduct+' · '+r.ShiftDate+' · '+r.ShiftStart+'-'+r.ShiftEnd; var sub=document.createElement('div'); sub.style.cssText='font-size:0.8rem;color:#8892a4;margin:3px 0;'; sub.textContent='Offered by: '+r.RequesterName+(r.ClaimedBy?(' → '+r.ClaimedBy):'')+(r.Note?(' · '+r.Note):''); var ba=document.createElement('div'); btns.forEach(function(x){ba.appendChild(x);}); c.appendChild(t); c.appendChild(sub); c.appendChild(ba); return c; }
+      function makeCard(r,btns){ var c=document.createElement('div'); c.style.cssText='border:1px solid var(--gborder);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--bg0);'; var t=document.createElement('div'); t.style.cssText='font-weight:700;color:var(--thi);'; t.textContent=r.ShiftProduct+' · '+r.ShiftDate+' · '+r.ShiftStart+'-'+r.ShiftEnd; var sub=document.createElement('div'); sub.style.cssText='font-size:0.8rem;color:var(--tmid);margin:3px 0;'; sub.textContent='Offered by: '+r.RequesterName+(r.ClaimedBy?(' → '+r.ClaimedBy):'')+(r.Note?(' · '+r.Note):''); var ba=document.createElement('div'); btns.forEach(function(x){ba.appendChild(x);}); c.appendChild(t); c.appendChild(sub); c.appendChild(ba); return c; }
       function section(title,color){ var h=document.createElement('div'); h.style.cssText='font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:'+color+';margin:12px 0 6px;'; h.textContent=title; body.appendChild(h); }
       var toApprove=b.toApprove||[],open=b.open||[],mine=b.mine||[];
       if(toApprove.length){ section('To approve','#a78bfa'); toApprove.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('✓ Approve','#4caf50',function(){swapAction(r.Id,'approve');}),makeBtn('Cancel','#e05260',function(){swapAction(r.Id,'cancel');})])); }); }
       section('Open offers ('+open.length+')','#5b7fa6');
       if(open.length){ open.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('✋ Take','#64b5f6',function(){swapAction(r.Id,'claim');})])); }); }
-      else { var em=document.createElement('div'); em.style.cssText='color:#5b6478;font-size:0.85rem;'; em.textContent='No open offers.'; body.appendChild(em); }
+      else { var em=document.createElement('div'); em.style.cssText='color:var(--tlo);font-size:0.85rem;'; em.textContent='No open offers.'; body.appendChild(em); }
       if(mine.length){ section('My requests','#5b7fa6'); mine.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('Cancel','#e05260',function(){swapAction(r.Id,'cancel');})])); }); }
     }).catch(function(err){ var body=document.getElementById('swapBody'); if(body) body.textContent='Error: '+err.message; });
   };
