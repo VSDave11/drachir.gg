@@ -59,7 +59,7 @@ function makeRateLimiter({ max, windowMs, message }) {
     mw.reset = (req) => { hits.delete(req.ip || 'unknown'); };
     return mw;
 }
-const loginLimiter = makeRateLimiter({ max: 10, windowMs: 15 * 60 * 1000, message: 'Prilis mnoho pokusu o prihlaseni, zkuste to pozdeji.' });
+const loginLimiter = makeRateLimiter({ max: 10, windowMs: 15 * 60 * 1000, message: 'Too many login attempts, please try again later.' });
 
 const COOKIE_SECRET = process.env.SESSION_SECRET || 'drachir-viking-secret-2026';
 app.use(session({
@@ -203,7 +203,7 @@ app.get('/calendar/:token/feed.ics', async (req, res) => {
     }
 });
 
-// Stranka s osobni adresou kalendare (authed)
+// Page s osobni adresou kalendare (authed)
 app.get('/calendar', (req, res) => {
     if (!req.user) return res.redirect('/');
     const token = icsTokenForName(req.user.jmeno);
@@ -1151,10 +1151,10 @@ function isDateInCoverage(dateObj, coverage) {
 
 function buildGeneratorPrompt({ monthLabel, product, capabilities, existingShifts, rules }) {
     const parsed = parseMonthLabel(monthLabel);
-    if (!parsed) throw new Error('Nevalidni month label: ' + monthLabel);
+    if (!parsed) throw new Error('Invalid month label: ' + monthLabel);
     const dates = getMonthDates(parsed.year, parsed.month);
     const pm = getProductMeta(product);
-    if (!pm) throw new Error('Produkt nenalezen: ' + product);
+    if (!pm) throw new Error('Product not found: ' + product);
 
     // eligible people for this product
     const eligible = (capabilities.byProduct[product] || []).filter(name => capabilities.personMeta[name]);
@@ -1760,7 +1760,7 @@ app.get('/change-password', (req, res) => {
         ${error === 'nomatch' ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>New passwords do not match.</div>' : ''}
         ${error === 'short'   ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Password must be at least 6 characters.</div>' : ''}
         ${error === 'same'    ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>New password must differ from current.</div>' : ''}
-        ${error === 'badchars' ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Heslo obsahuje nepovolené znaky (zpětná uvozovka nebo \${).</div>' : ''}
+        ${error === 'badchars' ? '<div class="alert alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Password contains invalid characters (backtick or \${).</div>' : ''}
         ${success ? '<div class="alert alert-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Password changed successfully!</div>' : ''}
 
         <form action="/change-password" method="POST" id="pwdForm">
@@ -2037,18 +2037,18 @@ app.get('/admin/audit-log', async (req, res) => {
             + 'th{background:#1c1c1c;position:sticky;top:0;}tr:nth-child(even){background:#181818;}'
             + 'a{color:#6cf;}form{margin-bottom:16px;}input,select{padding:6px;margin-right:8px;background:#1c1c1c;color:#eee;border:1px solid #333;border-radius:4px;}</style>'
             + '</head><body>'
-            + '<h2>Audit log <span style="font-size:0.8rem;color:#888;">(' + total + ' zaznamu, poslednich ' + days + ' dni)</span></h2>'
-            + '<p><a href="/dashboard">&larr; zpet na dashboard</a></p>'
+            + '<h2>Audit log <span style="font-size:0.8rem;color:#888;">(' + total + ' records, last ' + days + ' days)</span></h2>'
+            + '<p><a href="/dashboard">&larr; back to dashboard</a></p>'
             + '<form method="GET" action="/admin/audit-log">'
-            + 'Osoba: <input name="person" value="' + esc(qPerson) + '" placeholder="jmeno">'
-            + 'Akce: <input name="action" value="' + esc(qAction) + '" placeholder="ADD_SHIFT, LOGIN...">'
-            + 'Dni zpet: <input name="days" type="number" value="' + days + '" style="width:80px">'
-            + '<button type="submit">Filtrovat</button></form>'
-            + '<table><thead><tr><th>Cas</th><th>Kdo</th><th>Akce</th><th>Detail</th></tr></thead><tbody>'
+            + 'Person: <input name="person" value="' + esc(qPerson) + '" placeholder="name">'
+            + 'Action: <input name="action" value="' + esc(qAction) + '" placeholder="ADD_SHIFT, LOGIN...">'
+            + 'Days back: <input name="days" type="number" value="' + days + '" style="width:80px">'
+            + '<button type="submit">Filter</button></form>'
+            + '<table><thead><tr><th>Time</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>'
             + rowsHtml + '</tbody></table>'
-            + '<p style="margin-top:12px;">Stranka ' + page + '/' + pages + ' '
-            + (page > 1 ? '<a href="?person=' + encodeURIComponent(qPerson) + '&action=' + encodeURIComponent(qAction) + '&days=' + days + '&page=' + (page-1) + '">&larr; novejsi</a> ' : '')
-            + (page < pages ? '<a href="?person=' + encodeURIComponent(qPerson) + '&action=' + encodeURIComponent(qAction) + '&days=' + days + '&page=' + (page+1) + '">starsi &rarr;</a>' : '')
+            + '<p style="margin-top:12px;">Page ' + page + '/' + pages + ' '
+            + (page > 1 ? '<a href="?person=' + encodeURIComponent(qPerson) + '&action=' + encodeURIComponent(qAction) + '&days=' + days + '&page=' + (page-1) + '">&larr; newer</a> ' : '')
+            + (page < pages ? '<a href="?person=' + encodeURIComponent(qPerson) + '&action=' + encodeURIComponent(qAction) + '&days=' + days + '&page=' + (page+1) + '">older &rarr;</a>' : '')
             + '</p></body></html>');
     } catch (e) { res.status(500).send('Error: ' + e.message); }
 });
@@ -2439,7 +2439,7 @@ app.get('/debug-schedule', async (req, res) => {
         const allTitles = Object.keys(doc.sheetsByTitle);
         const schedSheets = allTitles.filter(t => t.startsWith('Schedule -'));
         let out = '<style>table{border-collapse:collapse;font-size:11px;}td{border:1px solid #ccc;padding:3px;}</style>';
-        out += '<h2>Listy: ' + JSON.stringify(allTitles) + '</h2>';
+        out += '<h2>Sheets: ' + JSON.stringify(allTitles) + '</h2>';
 
         for (const title of schedSheets) {
             const sheet = doc.sheetsByTitle[title];
@@ -2483,7 +2483,7 @@ app.post('/add-shift', async (req, res) => {
     if (vErr) return res.status(400).json({ error: vErr });
     try {
         await doc.loadInfo();
-        // Pokud list ManualShifts neexistuje, vytvor ho
+        // Pokud list ManualShifts does not exist, vytvor ho
         let sheet = doc.sheetsByTitle['ManualShifts'];
         if (!sheet) {
             sheet = await doc.addSheet({ title: 'ManualShifts', headerValues: ['Date','Name','Trading','Product','Start','End','Note','AddedBy','Id'] });
@@ -2716,20 +2716,20 @@ function swapAudit(req, action) { try { const a = doc.sheetsByTitle['AuditLog'];
 async function reassignShift(swap, newName) {
     if (swap.ShiftSheet === 'ManualShifts') {
         const ms = doc.sheetsByTitle['ManualShifts'];
-        if (!ms) return { ok: false, reason: 'ManualShifts neexistuje' };
+        if (!ms) return { ok: false, reason: 'ManualShifts does not exist' };
         const rows = await ms.getRows();
         let target = swap.ShiftMsId ? rows.find(r => (r.get('Id') || '') === swap.ShiftMsId) : null;
         if (!target) target = rows.find(r => convertCzechDate(r.get('Date') || '') === swap.ShiftDate && (r.get('Name') || '') === swap.RequesterName && (r.get('Start') || '') === swap.ShiftStart && (r.get('Product') || '') === swap.ShiftProduct);
-        if (!target) return { ok: false, reason: 'směna nenalezena v ManualShifts' };
+        if (!target) return { ok: false, reason: 'shift not found in ManualShifts' };
         target.set('Name', newName); await target.save();
         return { ok: true };
     }
     const sheet = doc.sheetsByTitle[swap.ShiftSheet];
-    if (!sheet) return { ok: false, reason: 'list ' + swap.ShiftSheet + ' neexistuje' };
+    if (!sheet) return { ok: false, reason: 'list ' + swap.ShiftSheet + ' does not exist' };
     await sheet.loadCells('A1:BG500');
     const cell = sheet.getCell(parseInt(swap.ShiftRow, 10), parseInt(swap.ShiftCol, 10));
     const rep = replaceNameInCell(cell.value, swap.RequesterName, newName);
-    if (!rep.replaced) return { ok: false, reason: 'jméno v buňce nenalezeno (rozvrh se mezitím změnil)' };
+    if (!rep.replaced) return { ok: false, reason: 'name not found in cell (the schedule changed in the meantime)' };
     cell.value = rep.value; await sheet.saveUpdatedCells();
     return { ok: true };
 }
@@ -2827,7 +2827,7 @@ app.post('/api/swaps/:id/cancel', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// BOD 2: EXCHANGE SHIFT - zameni jmena ve dvou bunkach
+// POINT 2: EXCHANGE SHIFT - swap names in two cells
 app.post('/exchange-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
     const { sheet1, row1, col1, name1, date1, product1, sheet2, row2, col2, name2, date2, product2 } = req.body;
@@ -3791,7 +3791,7 @@ app.get('/dashboard', async (req, res) => {
         const _covGaps = weekCov.totalExpected - weekCov.totalCovered;
         const _covColor = weekCov.pct >= 95 ? '#4caf50' : (weekCov.pct >= 80 ? '#a78bfa' : '#e05260');
         const _covWorst = weekCov.products.filter(p => p.gaps > 0).slice(0, 6).map(p => p.product + ' ' + p.pct + '%').join(', ');
-        const _covTitle = _covGaps === 0 ? 'Tento tyden je plne pokryto' : ('Nepokryto tento tyden (' + _covGaps + ' slotu). Nejhorsi: ' + _covWorst);
+        const _covTitle = _covGaps === 0 ? 'This week is fully covered' : ('Not covered this week (' + _covGaps + ' slots). Worst: ' + _covWorst);
 
         // 3. STATISTIKY A AKTIVNÍ PUNTÍK
         const weekStats = {}; allNames.forEach(n => weekStats[n] = 0);
@@ -4319,7 +4319,7 @@ app.get('/dashboard', async (req, res) => {
         opts = opts || {};
         var method = (opts.method || 'GET').toUpperCase();
         if (method !== 'GET' && method !== 'HEAD') {
-          _lastLocal = Date.now();   // vlastni zmena -> potlac self-reload z SSE
+          _lastLocal = Date.now();   // own change -> suppress self-reload from SSE
           opts.headers = Object.assign({}, opts.headers || {}, { 'X-CSRF-Token': _csrf });
         }
         return _origFetch(url, opts);
@@ -4330,7 +4330,7 @@ app.get('/dashboard', async (req, res) => {
         try {
           var es = new EventSource('/events');
           es.addEventListener('changed', function(){
-            if (Date.now() - _lastLocal < 6000) return;     // moje vlastni editace -> ignoruj
+            if (Date.now() - _lastLocal < 6000) return;     // my own edit -> ignore
             if (document.hidden) { _dirty = true; return; } // skryta zalozka -> obnov az pri navratu
             if (window.__swapOpen && typeof window.loadSwapBoard === 'function') { window.loadSwapBoard(); return; } // otevreny swap board -> jen ho obnov
             if (typeof toast === 'function') toast('📡 Schedule updated — refreshing…');
@@ -4356,13 +4356,13 @@ app.get('/dashboard', async (req, res) => {
         .warp-arrival{position:fixed;inset:0;z-index:9999;pointer-events:none;background:rgba(13,13,13,0.95);animation:warpFadeIn 0.8s ease-out forwards;}
         @keyframes warpFadeIn{0%{opacity:1;}60%{opacity:0.3;}100%{opacity:0;}}
 
-        /* MOBILNI VERZE */
+        /* MOBILE VERSION */
         @media (max-width: 768px) {
             .dashboard-container{grid-template-columns:1fr!important;}
             .sidebar{display:none!important;}
             .mobile-menu-btn{display:flex!important;}
             .sidebar.mobile-open{display:flex!important;position:fixed;left:0;top:0;width:280px;height:100vh;z-index:999;box-shadow:4px 0 32px rgba(0,0,0,0.7);}
-            /* Topbar — position:fixed, vždy nahoře */
+            /* Topbar — position:fixed, always on top */
             .topbar-main{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:100!important;padding:8px 10px!important;min-height:44px!important;box-sizing:border-box!important;}
             .main-content{padding-top:44px!important;}
             .topbar-left{gap:6px!important;}
@@ -4373,14 +4373,14 @@ app.get('/dashboard', async (req, res) => {
             .topbar-right .btn-stats{display:none!important;}
             .topbar-right .btn-current-week{display:none!important;}
             .mobile-user-compact{display:flex!important;}
-            /* View toggle - menší, LIST first na mobilu */
+            /* View toggle - smaller, LIST first on mobile */
             .view-toggle-bar{gap:0px!important;}
             .view-toggle-bar button{padding:5px 7px!important;font-size:0.6rem!important;letter-spacing:0!important;}
             .view-toggle-bar .vt-list{order:-1!important;}
-            /* TZ toggle — skrýt fixed button, ukázat sidebar verzi */
+            /* TZ toggle — hide fixed button, show sidebar version */
             .tz-toggle-btn{display:none!important;}
             .sidebar-tz-toggle{display:flex!important;}
-            /* Modal na celou šířku */
+            /* Modal full width */
             .modal-outer{margin:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;height:100vh!important;max-height:100vh!important;display:flex;flex-direction:column;}
             .modal-form-section{overflow-y:auto;flex:1;}
             .modal-actions{flex-shrink:0;}
@@ -4390,14 +4390,14 @@ app.get('/dashboard', async (req, res) => {
             .modal-actions{padding:14px 16px!important;}
             .modal-tags-row{padding:10px 16px!important;}
             .modal-row2{flex-direction:column!important;gap:0!important;}
-            /* Sidebar: Color Settings skrýt, Logout ukázat */
+            /* Sidebar: hide Color Settings, show Logout */
             .sidebar-color-btn{display:none!important;}
             .sidebar-logout-btn{display:block!important;}
-            /* Week view na mobilu — horizontální scroll */
+            /* Week view on mobile — horizontal scroll */
             .week-wrapper{overflow-x:auto!important;-webkit-overflow-scrolling:touch;}
-            /* List view na mobilu */
+            /* List view on mobile */
             .list-viewport{padding:0!important;}
-            /* Agenda na mobilu */
+            /* Agenda on mobile */
             #agendaViewport .user-row{gap:6px!important;padding:6px 8px!important;}
         }
         @media (max-width: 480px) {
@@ -4426,7 +4426,7 @@ app.get('/dashboard', async (req, res) => {
         .logo-area img{height:44px;width:auto;filter:drop-shadow(0 0 8px rgba(167,139,250,0.3));}
         .logo-fallback{font-family:'Oswald';font-size:1.25rem;background:linear-gradient(135deg,#a78bfa 0%,#fff8e1 50%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-transform:uppercase;letter-spacing:4px;font-weight:700;}
 
-        /* Mini kalendář */
+        /* Mini calendar */
         .mini-calendar{background:transparent;border-radius:0;padding:8px 0 12px;margin-bottom:8px;border:none;border-bottom:1px solid #1e2030;}
         .mini-cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
         .mini-cal-nav button{background:none;border:none;color:#3a4050;cursor:pointer;font-size:0.9rem;padding:2px 6px;border-radius:4px;transition:0.15s;}
@@ -4463,7 +4463,7 @@ app.get('/dashboard', async (req, res) => {
         /* Timeline */
         .timeline-viewport{flex-grow:1;overflow:auto;display:flex;flex-direction:column;}
         .timeline-header{display:flex;background:#fff;border-bottom:2px solid #ddd;min-width:max-content;}
-        /* BOD 7: day-block stále 960px, ale 48 sloupců po 20px */
+        /* POINT 7: day-block still 960px, but 48 columns of 20px */
         .day-block{width:960px;border-right:2px solid #ccc;flex-shrink:0;}
         .today-block .day-label-top{background:#fff8e1!important;}
         .today-block{border-left:3px solid #a78bfa;border-right:3px solid #a78bfa!important;}
@@ -4479,7 +4479,7 @@ app.get('/dashboard', async (req, res) => {
         .timeline-row{display:flex;border-bottom:1px solid #eee;background:#fff;min-width:max-content;}
         .timeline-row.row-appearing{animation:rowSlideIn 0.25s ease forwards;}
 
-        /* BOD 7: Grid čáry každých 20px a 40px */
+        /* POINT 7: Grid lines every 20px and 40px */
         .row-grid-bg{
             display:flex;position:relative;height:62px;
             background-image:
@@ -4494,7 +4494,7 @@ app.get('/dashboard', async (req, res) => {
         @keyframes overlapBlink{0%{outline-color:#ff4444;box-shadow:0 0 8px #ff4444;}50%{outline-color:transparent;box-shadow:none;}100%{outline-color:#ff4444;box-shadow:0 0 8px #ff4444;}}
         .hidden-row{display:none!important;}
 
-        /* BOD 1: Redesign modal – TeamUp styl s tmavým tématem */
+        /* POINT 1: Redesign modal – TeamUp style with dark theme */
         /* === Shift Modal — Drachir dark theme === */
         #modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(5,5,12,0.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
         .modal-outer{background:#0d0e14;margin:3% auto;border-radius:16px;width:560px;max-width:96vw;overflow:hidden;color:#e0e0e0;box-shadow:0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(167,139,250,0.08);border:1px solid #1e2030;animation:modalSlideIn 0.25s cubic-bezier(0.16,1,0.3,1);}
@@ -4571,7 +4571,7 @@ app.get('/dashboard', async (req, res) => {
         .exchange-confirm-btn{padding:11px 28px;background:#a78bfa;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';cursor:pointer;font-size:1rem;}
         .exchange-confirm-btn:hover{background:#fff;}
         .exchange-cancel-btn{padding:11px 20px;background:#222;color:#aaa;border:none;border-radius:6px;cursor:pointer;}
-        /* Picking mode - cursor crosshair na pills */
+        /* Picking mode - cursor crosshair on pills */
         body.picking-exchange .shift-pill{cursor:crosshair!important;outline:2px dashed #42a5f5;animation:pickPulse 1s infinite;}
         @keyframes pickPulse{0%{outline-color:#42a5f5;}50%{outline-color:transparent;}100%{outline-color:#42a5f5;}}
         .picking-banner{display:none;position:fixed;top:0;left:0;right:0;padding:12px;background:#42a5f5;color:#000;text-align:center;font-weight:700;font-size:0.9rem;z-index:999;}
@@ -4754,7 +4754,7 @@ app.get('/dashboard', async (req, res) => {
     <main class="main-content" style="display:flex;flex-direction:column;overflow:hidden;background:#fafafa;">
         <div class="topbar-main" style="padding:10px 20px;border-bottom:1px solid #1e2030;display:flex;justify-content:space-between;align-items:center;background:#0d0e14;">
             <div class="topbar-left" style="display:flex;align-items:center;gap:10px;">
-                <!-- BOD 1: Mobilni menu tlacitko -->
+                <!-- POINT 1: Mobile menu button -->
                 <button class="mobile-menu-btn" onclick="toggleMobileMenu()" title="Menu">&#9776;</button>
                 <div class="view-toggle-bar" style="background:#13151e;border-radius:8px;padding:3px;display:inline-flex;gap:1px;border:1px solid #1e2030;">
                     <button onclick="switchView('timeline')" style="padding:6px 13px;border:none;cursor:pointer;border-radius:5px;font-weight:700;font-size:0.75rem;letter-spacing:0.5px;transition:0.15s;${view==='timeline'?'background:linear-gradient(135deg,rgba(167,139,250,0.30),rgba(34,211,238,0.20));color:#eef2fb;':'background:transparent;color:#4a5060;'}">TIMELINE</button>
@@ -4768,7 +4768,7 @@ app.get('/dashboard', async (req, res) => {
                 <button class="btn-current-week" onclick="location.href='/dashboard'" style="padding:6px 14px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-weight:700;font-size:0.72rem;letter-spacing:0.5px;transition:0.15s;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">CURRENT WEEK</button>
                 <a href="/stats" class="btn-stats" title="Statistics" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128202;</a>
                 <button class="btn-swaps" onclick="openSwapBoard()" title="Shift swaps" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128260;</button>
-                <a href="/calendar" class="btn-ics" title="Muj kalendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
+                <a href="/calendar" class="btn-ics" title="My calendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
                 <!-- Uzivatel desktop -->
@@ -4803,7 +4803,7 @@ app.get('/dashboard', async (req, res) => {
     </main>
 </div>
 
-<!-- BOD 1: Redesignovaný modal – TeamUp styl -->
+<!-- POINT 1: Redesigned modal – TeamUp style -->
 <div id="modal">
     <div class="modal-outer">
         <div class="modal-header" id="mHeader">
@@ -4891,7 +4891,7 @@ app.get('/dashboard', async (req, res) => {
                 <button type="button" id="mSplitSwapBtn" onclick="toggleSplitOrder()" style="padding:6px 12px;background:rgba(91,127,166,0.1);color:#7ba3cc;border:1px solid rgba(91,127,166,0.3);border-radius:6px;cursor:pointer;font-size:0.7rem;font-weight:600;" onmouseover="this.style.background='rgba(91,127,166,0.2)'" onmouseout="this.style.background='rgba(91,127,166,0.1)'">&#8645; Swap</button>
             </div>
         </div>
-        <!-- BOD 5: History / last edit -->
+        <!-- POINT 5: History / last edit -->
         <div id="mHistorySection" style="padding:0 24px 18px;border-top:1px solid #1e2030;background:rgba(0,0,0,0.15);">
             <div style="font-size:0.6rem;color:rgba(167,139,250,0.4);text-transform:uppercase;letter-spacing:1.5px;margin-top:14px;margin-bottom:8px;font-weight:600;">Recent Activity</div>
             <div id="mHistoryList" style="font-size:0.72rem;color:rgba(255,255,255,0.35);line-height:1.9;">
@@ -4901,7 +4901,7 @@ app.get('/dashboard', async (req, res) => {
     </div>
 </div>
 
-<!-- BOD 2: Exchange modal -->
+<!-- POINT 2: Exchange modal -->
 <div id="exchangeModal">
     <div class="exchange-outer">
         <div class="exchange-header">
@@ -4977,7 +4977,7 @@ app.get('/dashboard', async (req, res) => {
 
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;color:#aaa;cursor:pointer;margin-bottom:18px;"><input type="checkbox" id="aiGenApc" style="width:16px;height:16px;cursor:pointer;accent-color:#7ba3cc;">Allow partial coverage</label>
 
-                <div style="background:rgba(91,127,166,0.06);border-left:3px solid #7ba3cc;padding:10px 14px;border-radius:4px;margin-bottom:18px;font-size:0.78rem;color:#aaa;line-height:1.5;">Claude vygeneruje plan podle peopleHierarchy, productCoverage a Capabilities. Vystup projde validatorem H1-H8. Cena ~$0.30/produkt, doba 30-90s.</div>
+                <div style="background:rgba(91,127,166,0.06);border-left:3px solid #7ba3cc;padding:10px 14px;border-radius:4px;margin-bottom:18px;font-size:0.78rem;color:#aaa;line-height:1.5;">Claude generates a plan based on peopleHierarchy, productCoverage and Capabilities. The output passes through the H1-H8 validator. Cost about 0.30 USD per product, takes 30-90s.</div>
 
                 <div style="display:flex;gap:10px;">
                     <button onclick="aiGenRun()" id="aiGenRunBtn" style="flex:1;padding:12px;background:#7ba3cc;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';font-size:1rem;cursor:pointer;letter-spacing:1px;">&#9889; GENERATE</button>
@@ -5073,7 +5073,7 @@ app.get('/dashboard', async (req, res) => {
     </div>
 </div>
 
-<!-- BOD 1: Mobile overlay -->
+<!-- POINT 1: Mobile overlay -->
 <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileMenu()"></div>
 
 <!-- Shift hover tooltip -->
@@ -5229,15 +5229,15 @@ app.get('/dashboard', async (req, res) => {
     }
     function switchView(v){ saveSelection(); localStorage.setItem('ygg_view',v); const p=new URLSearchParams(window.location.search); p.set('view',v); window.location.href='/dashboard?'+p.toString(); }
 
-    // BOD 1: MODAL
+    // POINT 1: MODAL
     function openViewModal(name,date,start,end,product,note,trading,personColor,prodColor,sheetTitle,row,col,id,ev){
-        // Faze 5: Ctrl/Cmd+klik = vyber pro hromadne mazani (neotevira modal)
+        // Phase 5: Ctrl/Cmd+click = select for bulk delete (does not open modal)
         var _ev = ev || window.event;
         if (_ev && (_ev.ctrlKey || _ev.metaKey) && typeof window.yggBulkClick === 'function') {
             window.yggBulkClick(name, sheetTitle, id, _ev.currentTarget || _ev.target);
             return;
         }
-        // Pokud jsme v picking mode, zachytneme tuto smenu pro exchange
+        // If we are in picking mode, capture this shift for exchange
         if (_pickingMode && typeof pickShiftForExchange === 'function') {
             pickShiftForExchange(name,date,start,end,product,note,trading,personColor,prodColor,sheetTitle,row,col);
             return;
@@ -5269,7 +5269,7 @@ app.get('/dashboard', async (req, res) => {
         tr.innerHTML = '<span class="modal-tag" style="background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44;">'+trading+'</span>'
                      + (note?'<span class="modal-tag" style="background:#222;color:#ccc;">'+note+'</span>':'');
 
-        // Crew: zobraz ostatni lidi na stejne smene
+        // Crew: show other people on the same shift
         const crewKey = date+'|'+product+'|'+start+'|'+end;
         const crewAll = _crewMap[crewKey] || [];
         const crewOthers = crewAll.filter(n => n !== name);
@@ -5288,8 +5288,8 @@ app.get('/dashboard', async (req, res) => {
             crewEl.style.display = 'none';
         }
 
-        // Uloz zdrojova data pro smazani + exchange
-        // row muze byt 0 (prvni radek) - proto kontrolujeme !== undefined
+        // Store source data for delete + exchange
+        // row can be 0 (first row) - so we check !== undefined
         const hasSource = (sheetTitle !== undefined && sheetTitle !== null && sheetTitle !== '');
         _currentShiftSource = {
             name:       name,
@@ -5304,11 +5304,11 @@ app.get('/dashboard', async (req, res) => {
             col:        (col !== undefined && col !== null) ? parseInt(col) : -1,
             id:         (id !== undefined && id !== null) ? id : ''
         };
-        // DELETE a EXCHANGE vzdy viditelne v edit modu
+        // DELETE and EXCHANGE always visible in edit mode
         document.getElementById('mDeleteBtn').style.display = 'block';
         document.getElementById('mExchangeBtn').style.display = 'block';
         document.getElementById('mSplitBtn').style.display = 'block';
-        // Pozadat o vymenu - jen u vlastni smeny (ne RIP/Vacation)
+        // Request swap - only for own shift (not RIP/Vacation)
         var _swBtn = document.getElementById('mSwapBtn');
         if (_swBtn) _swBtn.style.display = ((name === window._me || window._isMgr) && product !== 'Vacation' && product !== 'RIP') ? 'block' : 'none';
         // Populate extra traders from crew
@@ -5356,7 +5356,7 @@ app.get('/dashboard', async (req, res) => {
         }
         document.getElementById('modal').style.display='block';
 
-        // BOD 5: Nacti historii smeny
+        // POINT 5: Load shift history
         const histList = document.getElementById('mHistoryList');
         histList.innerHTML = '<span style="color:#444;">Loading...</span>';
         function timeAgo(isoStr) {
@@ -5742,7 +5742,7 @@ app.get('/dashboard', async (req, res) => {
     }
 
     // =============================================
-    // BOD 1b: PRODUCT DROPDOWN - dynamicky podle Trading
+    // POINT 1b: PRODUCT DROPDOWN - dynamically by Trading
     // =============================================
     const productsByTrading = ${JSON.stringify(Object.fromEntries(tradingHierarchy.map(t => [t.name, t.subs])))};
 
@@ -5755,7 +5755,7 @@ app.get('/dashboard', async (req, res) => {
     }
 
     // =============================================
-    // BOD 2: EXCHANGE SHIFT
+    // POINT 2: EXCHANGE SHIFT
     // =============================================
     let _exchangeShift1 = null;
     let _exchangeShift2 = null;
@@ -5776,7 +5776,7 @@ app.get('/dashboard', async (req, res) => {
         _exchangeShift2 = null;
         closeModal();
 
-        // Zobraz exchange modal + picking mode
+        // Show exchange modal + picking mode
         document.getElementById('exTitle1').textContent = _exchangeShift1.product;
         document.getElementById('exSub1').textContent   = _exchangeShift1.date;
         document.getElementById('exTime1').textContent  = _exchangeShift1.start + ' - ' + _exchangeShift1.end;
@@ -5789,7 +5789,7 @@ app.get('/dashboard', async (req, res) => {
         document.getElementById('exCard2').classList.remove('selected');
         document.getElementById('exConfirmBtn').disabled = true;
         document.getElementById('exConfirmBtn').style.opacity = '0.4';
-        // Zobraz modal minimalizovane dole + picking mode
+        // Show modal minimized at the bottom + picking mode
         const exModal = document.getElementById('exchangeModal');
         exModal.style.display = 'block';
         exModal.classList.add('picking-mode');
@@ -5832,7 +5832,7 @@ app.get('/dashboard', async (req, res) => {
     }
 
     function startPickingMode() {
-        // Minimalizuj modal a aktivuj picking mode
+        // Minimize modal and activate picking mode
         const exModal = document.getElementById('exchangeModal');
         exModal.classList.add('picking-mode');
         _pickingMode = true;
@@ -5863,7 +5863,7 @@ app.get('/dashboard', async (req, res) => {
     });
 
     // =============================================
-    // BOD 1: MOBILNI MENU
+    // POINT 1: MOBILE MENU
     // =============================================
     function toggleMobileMenu() {
         const sidebar = document.querySelector('.sidebar');
@@ -5899,7 +5899,7 @@ app.get('/dashboard', async (req, res) => {
     })();
 
     // =============================================
-    // BOD 3+5: DELETE SHIFT a DELETE MONTH
+    // POINT 3+5: DELETE SHIFT and DELETE MONTH
     // =============================================
     let _currentShiftSource = null;
 
@@ -5997,21 +5997,21 @@ app.get('/dashboard', async (req, res) => {
 
     function closeSlackSettings() { document.getElementById('slackModal').style.display = 'none'; }
 
-    // BOD 2: Loading spinner pro sync
+    // POINT 2: Loading spinner for sync
     function startSync() {
         const btn = document.getElementById('syncBtn');
         if (btn) {
             btn.innerHTML = '<span class="sync-spinner"></span> Syncing...';
             btn.disabled = true;
         }
-        // Pridej ?sync=1 aby se vynutilo nacteni z Google Sheets
+        // Add ?sync=1 to force a reload from Google Sheets
         const p = new URLSearchParams(window.location.search);
         p.set('sync', '1');
         window.location.href = window.location.pathname + '?' + p.toString();
     }
 
-    // Mini kalendář
-    // BOD 4: Kalendar sleduje tyden ktery je aktualne zobrazeny
+    // Mini calendar
+    // POINT 4: Calendar follows the currently displayed week
     const _viewDate = new URLSearchParams(window.location.search).get('date');
     const _baseDate = _viewDate ? new Date(_viewDate) : new Date();
     let calYear=_baseDate.getFullYear(), calMonth=_baseDate.getMonth();
@@ -6019,9 +6019,9 @@ app.get('/dashboard', async (req, res) => {
 
     function buildMiniCal(){
         const today=new Date();
-        // Vypocti pondeli a nedeli zobrazeneho tydne
+        // Compute Monday and Sunday of the displayed week
         const vd=_viewDate ? new Date(_viewDate) : new Date();
-        const dow=vd.getDay()||7; // pondeli=1..nedele=7
+        const dow=vd.getDay()||7; // Monday=1..Sunday=7
         const weekMon=new Date(vd); weekMon.setDate(vd.getDate()-(dow-1)); weekMon.setHours(0,0,0,0);
         const weekSun=new Date(weekMon); weekSun.setDate(weekMon.getDate()+6); weekSun.setHours(23,59,59,999);
         let h='<div class="mini-cal-nav"><button onclick="navCal(-1)">&#9664;</button><span>'+mNames[calMonth]+' '+calYear+'</span><button onclick="navCal(1)">&#9654;</button></div><div class="mini-cal-grid">';
@@ -6227,7 +6227,7 @@ app.get('/dashboard', async (req, res) => {
         if(sTzBadge) sTzBadge.textContent=curTz==='lima'?'-> EUROPE':'-> LIMA';
     }
 
-    // BOD 2: Scroll vždy na začátek = Pondělí
+    // POINT 2: Scroll always to the start = Monday
     window.onload=()=>{
         if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
         loadSharedColors(()=>{ applyCustomColorsToDOM(); });
@@ -6336,7 +6336,7 @@ app.get('/dashboard', async (req, res) => {
             toggleTimezone();
         }
 
-        // Detekce překrývajících se směn - označ červeným blikáním
+        // Detect overlapping shifts - mark with red blinking
         const rows = document.querySelectorAll('.timeline-row');
         rows.forEach(row => {
             const pills = Array.from(row.querySelectorAll('.shift-pill'));
@@ -6347,12 +6347,12 @@ app.get('/dashboard', async (req, res) => {
                     if (i >= j) return;
                     // Blikat jen kdyz se jedna o stejneho cloveka
                     if (!pill.dataset.person || pill.dataset.person !== other.dataset.person) return;
-                    // Preskoc dve pulky te same nocni smeny
+                    // Skip the two halves of the same night shift
                     if (pill.dataset.origStart === other.dataset.origStart &&
                         pill.dataset.origEnd   === other.dataset.origEnd) return;
                     const left2 = parseFloat(other.style.left);
                     const w2    = parseFloat(other.style.width);
-                    // Epsilon 0.01% kvuli floating point (07:12|07:12 sousedici smeny nesmi blikat)
+                    // Epsilon 0.01% due to floating point (07:12|07:12 adjacent shifts must not flicker)
                     if (left1 + 0.01 < left2 + w2 && left1 + w1 > left2 + 0.01) {
                         pill.classList.add('overlap');
                         other.classList.add('overlap');
@@ -6421,7 +6421,7 @@ app.get('/dashboard', async (req, res) => {
         const month = document.getElementById('aiGenMonth').value;
         const product = document.getElementById('aiGenProduct').value;
         const apc = document.getElementById('aiGenApc').checked;
-        if (!month || !product) { alert('Vyber month + product'); return; }
+        if (!month || !product) { alert('Select month + product'); return; }
         document.getElementById('aiGenStep1').style.display = 'none';
         document.getElementById('aiGenStep2').style.display = 'block';
         const prog = document.getElementById('aiGenProgress');
@@ -6528,11 +6528,11 @@ app.get('/dashboard', async (req, res) => {
     async function aiGenBatch() {
         const month = document.getElementById('aiGenMonth').value;
         const apc = document.getElementById('aiGenApc').checked;
-        if (!month) { alert('Vyber month'); return; }
+        if (!month) { alert('Select month'); return; }
         const products = window._productList || [];
-        if (!products.length) { alert('Zadny produkty'); return; }
+        if (!products.length) { alert('No products'); return; }
 
-        if (!confirm('Vygenerovat schedule pro VSECH ' + products.length + ' produktu? Cena cca $5-8, doba ~' + Math.round(products.length * 1.2) + ' min. Auto-commit do sheetu po kazdem produktu (s overwrite).')) return;
+        if (!confirm('Generate schedule for ALL ' + products.length + ' products? Cost approx $5-8, time ~' + Math.round(products.length * 1.2) + ' min. Auto-commit to sheet after each product (with overwrite).')) return;
 
         document.getElementById('aiGenStep1').style.display = 'none';
         document.getElementById('aiGenStep2').style.display = 'block';
@@ -6586,11 +6586,11 @@ app.get('/dashboard', async (req, res) => {
 
         const elapsedMin = ((Date.now() - t0) / 60000).toFixed(1);
         log('', '#aaa');
-        log('=== BATCH HOTOVO ===', '#7ba3cc');
-        log('Celkem: ' + products.length + ' produktu, ' + totalCommitted + ' cells committed', '#a5d6a7');
-        log('Errors napric: ' + totalErrors + ' (manualne v Sheet)', totalErrors === 0 ? '#a5d6a7' : '#ffcc80');
-        log('Cena: $' + totalCost.toFixed(2) + ', cas: ' + elapsedMin + ' min', '#aaa');
-        log('Dashboard refresh za 5s...', '#7ba3cc');
+        log('=== BATCH DONE ===', '#7ba3cc');
+        log('Total: ' + products.length + ' products, ' + totalCommitted + ' cells committed', '#a5d6a7');
+        log('Errors across: ' + totalErrors + ' (manually in Sheet)', totalErrors === 0 ? '#a5d6a7' : '#ffcc80');
+        log('Cost: $' + totalCost.toFixed(2) + ', time: ' + elapsedMin + ' min', '#aaa');
+        log('Dashboard refresh in 5s...', '#7ba3cc');
         setTimeout(() => {
             const p = new URLSearchParams(window.location.search);
             p.set('sync', '1');
@@ -6903,7 +6903,7 @@ app.get('/dashboard', async (req, res) => {
 </script>
 <script>
 (function(){
-  // Faze 5: multi-select + hromadne mazani (timeline view). Ctrl/Cmd+klik na pilulku = vyber.
+  // Phase 5: multi-select + bulk delete (timeline view). Ctrl/Cmd+click on a pill = select.
   var sel={};
   function cnt(){ return Object.keys(sel).length; }
   function mark(el,on){ el.style.outline=on?'3px solid #ffd54f':''; el.style.outlineOffset=on?'-1px':''; }
@@ -6946,7 +6946,7 @@ app.get('/dashboard', async (req, res) => {
     t.textContent=msg; t.style.opacity='1'; clearTimeout(t._h); t._h=setTimeout(function(){ t.style.opacity='0'; },2200);
   }
 
-  // ====== Swap board (zadosti o vymenu smen) ======
+  // ====== Swap board (shift swap requests) ======
   window.__swapOpen = false;
   function openSwapBoard(){
     var ov = document.getElementById('swapOverlay');
@@ -7002,14 +7002,14 @@ app.get('/dashboard', async (req, res) => {
       toggleId(id, sheetTitle, name||'');
     } else {
       if(pill){ pill.style.outline='3px solid #e05260'; setTimeout(function(){ pill.style.outline=''; },500); }
-      toast('Hromadně mazat lze jen ručně přidané směny (ManualShifts).');
+      toast('Bulk delete is only possible for manually added shifts (ManualShifts).');
     }
   };
 })();
 </script>
 <script>
 (function(){
-  // Faze 4: per-uzivatel razeni timeline radku (localStorage ygg_order_*). Self-contained.
+  // Phase 4: per-user ordering of timeline rows (localStorage ygg_order_*). Self-contained.
   function getOrder(k){ try{ return (localStorage.getItem(k)||'').split('||').filter(Boolean);}catch(e){return [];} }
   function setOrder(k,a){ try{ localStorage.setItem(k,a.join('||'));}catch(e){} }
   function reorderBySaved(cur,saved){
@@ -7078,7 +7078,7 @@ app.get('/dashboard', async (req, res) => {
 
 // POST /api/commit-to-schedule
 // Body: { month: "July 2026", product: "Valhalla Cup A", shifts: [{date, slotIndex, person}, ...], overwrite: false }
-// Mirror logiky scripts/commit-to-schedule.js, ale jako endpoint pro UI.
+// Mirrors the logic of scripts/commit-to-schedule.js, but as a UI endpoint.
 app.post('/api/commit-to-schedule', async (req, res) => {
     if (!req.user || req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const { month: monthLabel, product, shifts, overwrite } = req.body || {};
