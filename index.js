@@ -268,6 +268,18 @@ async function sendPushToUser(jmeno, title, body, url) {
         }
     } catch (e) { console.error('push send failed:', e.message); }
 }
+// ===== In-app notifications (bell) — persistent per-user, shown when they next open the app =====
+async function getNotifSheet() {
+    await doc.loadInfo();
+    let sheet = doc.sheetsByTitle['Notifications'];
+    if (!sheet) sheet = await doc.addSheet({ title: 'Notifications', headerValues: ['Jmeno', 'Text', 'Url', 'CreatedAt', 'Read'] });
+    return sheet;
+}
+async function addNotification(jmeno, text, url) {
+    if (!jmeno || !text) return;
+    try { const sheet = await getNotifSheet(); await sheet.addRow({ Jmeno: jmeno, Text: text, Url: url || '/dashboard', CreatedAt: new Date().toISOString(), Read: 'false' }, { raw: true }); }
+    catch (e) { console.error('notification add failed:', e.message); }
+}
 
 // --- CACHE (platna 2 minuty) ---
 let _shiftsCache = null;
@@ -418,7 +430,7 @@ function withLimaSuffix(name, details, start, end) {
 
 async function notifyShiftChange(actionBy, targetName, verb, details, start, end) {
     // Web push to the affected person (independent of Slack)
-    try { if (targetName && targetName !== actionBy) sendPushToUser(targetName, actionBy + ' ' + verb + ' your shift', details + (start ? ' (' + start + '-' + end + ')' : ''), '/dashboard'); } catch (e) {}
+    try { if (targetName && targetName !== actionBy) addNotification(targetName, actionBy + ' ' + verb + ' your shift: ' + details + (start ? ' (' + start + '-' + end + ')' : ''), '/dashboard'); } catch (e) {}
     if (!SLACK_BOT_TOKEN) return;
     if (!_slackDataLoaded) await loadSlackData();
     const promises = [];
@@ -2533,6 +2545,7 @@ app.post('/add-shift', async (req, res) => {
         } catch(e) {}
         invalidateCache();
         sendSlackMessage(':heavy_plus_sign: *Shift added* by ' + req.user.jmeno + ': ' + req.body.name + ' - ' + req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + (limaSet.has(req.body.name) ? ' — Lima: ' + shiftLimaTime(req.body.start) + '-' + shiftLimaTime(req.body.end) : '') + ')');
+        try { if (req.body.name && req.body.name !== req.user.jmeno) addNotification(req.body.name, req.user.jmeno + ' added you a shift: ' + req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + ')', '/dashboard'); } catch (e) {}
         notifyShiftChange(req.user.jmeno, req.body.name, 'added', req.body.product + ' on ' + req.body.date + ' (' + req.body.start + '-' + req.body.end + ')', req.body.start, req.body.end);
         res.json({ success: true });
     } catch(e) { res.status(500).send(e.message); }
@@ -2884,6 +2897,27 @@ app.post('/api/push/test', async (req, res) => {
     if (!PUSH_ENABLED) return res.status(503).json({ error: 'Push not configured' });
     try { await sendPushToUser(req.user.jmeno, 'Drachir.gg', 'Test notification — push works! 🔔', '/dashboard'); res.json({ success: true }); }
     catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== In-app notifications endpoints =====
+app.get('/api/notifications', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const sheet = await getNotifSheet();
+        const rows = await sheet.getRows();
+        const mine = rows.filter(r => (r.get('Jmeno') || '') === req.user.jmeno).slice(-40).reverse();
+        const items = mine.map(r => ({ text: r.get('Text') || '', url: r.get('Url') || '/dashboard', createdAt: r.get('CreatedAt') || '', read: String(r.get('Read')) === 'true' }));
+        res.json({ items: items, unread: items.filter(i => !i.read).length });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/notifications/read', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const sheet = await getNotifSheet();
+        const rows = await sheet.getRows();
+        for (const r of rows) { if ((r.get('Jmeno') || '') === req.user.jmeno && String(r.get('Read')) !== 'true') { r.set('Read', 'true'); await r.save(); } }
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POINT 2: EXCHANGE SHIFT - swap names in two cells
@@ -4915,7 +4949,10 @@ app.get('/dashboard', async (req, res) => {
                 <button class="btn-swaps" onclick="openSwapBoard()" title="Shift swaps" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128260;</button>
                 <a href="/calendar" class="btn-ics" title="My calendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
-                <button class="btn-push" id="pushBtn" onclick="togglePush()" title="Browser notifications (this device)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;">&#128241;</button>
+                <span style="position:relative;display:inline-flex;">
+                    <button class="btn-bell" id="bellBtn" onclick="toggleBell()" title="Notifications" style="position:relative;padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;">&#128276;<span id="bellBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:#ef5350;color:#fff;border-radius:10px;font-size:0.58rem;min-width:15px;height:15px;line-height:15px;text-align:center;font-weight:700;padding:0 2px;">0</span></button>
+                    <div id="bellPanel" style="display:none;position:absolute;top:120%;right:0;width:300px;max-height:400px;overflow:auto;background:#13151e;border:1px solid #1e2030;border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,0.55);z-index:3000;padding:6px;"></div>
+                </span>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
                 <button id="themeToggle" class="btn-theme" onclick="toggleTheme()" title="Light / Dark theme" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;line-height:1;">&#9728;</button><script>if(document.documentElement.classList.contains('theme-light')){var _thBtn=document.getElementById('themeToggle');if(_thBtn)_thBtn.textContent='☾';}</script>
                 <!-- Uzivatel desktop -->
@@ -5320,32 +5357,39 @@ app.get('/dashboard', async (req, res) => {
         try{ localStorage.setItem('ygg_theme', isLight?'light':'dark'); }catch(e){}
         var b=document.getElementById('themeToggle'); if(b) b.textContent = isLight?'☾':'☀';
     }
-    // ===== Web Push (browser notifications) =====
-    function urlB64ToUint8(b){ var p='='.repeat((4-b.length%4)%4); var s=(b+p).replace(/-/g,'+').replace(/_/g,'/'); var raw=atob(s); var arr=new Uint8Array(raw.length); for(var i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i); return arr; }
-    function setPushIcon(on){ var b=document.getElementById('pushBtn'); if(b){ b.style.color=on?'#22d3ee':'#5b7fa6'; b.title=on?'Browser notifications: ON (click to turn off)':'Browser notifications (this device)'; } }
-    window.togglePush = function(){
-        if(!('serviceWorker' in navigator)||!('PushManager' in window)){ toast('Push not supported in this browser'); return; }
-        fetch('/api/push/key').then(function(r){return r.json();}).then(function(info){
-            if(!info.enabled){ toast('Push not set up on the server yet (VAPID keys missing)'); return; }
-            navigator.serviceWorker.ready.then(function(reg){
-                reg.pushManager.getSubscription().then(function(existing){
-                    if(existing){
-                        existing.unsubscribe();
-                        fetch('/api/push/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:existing.endpoint})});
-                        setPushIcon(false); toast('Notifications off'); return;
-                    }
-                    Notification.requestPermission().then(function(perm){
-                        if(perm!=='granted'){ toast('Notifications blocked in browser settings'); return; }
-                        reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(info.key)}).then(function(sub){
-                            return fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sub:sub})});
-                        }).then(function(){ setPushIcon(true); toast('Notifications on 🔔'); fetch('/api/push/test',{method:'POST'}); })
-                        .catch(function(e){ toast('Push error: '+e.message); });
-                    });
-                });
-            });
-        }).catch(function(e){ toast('Push error: '+e.message); });
+    // ===== In-app notification bell (persistent; shows what changed while you were away) =====
+    window._notifs = [];
+    function escapeHtmlN(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function notifAgo(iso){ try{ var ms=Date.now()-new Date(iso).getTime(); var m=Math.floor(ms/60000); if(m<1)return 'just now'; if(m<60)return m+'m ago'; var h=Math.floor(m/60); if(h<24)return h+'h ago'; return Math.floor(h/24)+'d ago'; }catch(e){ return ''; } }
+    function renderBellPanel(){
+        var p=document.getElementById('bellPanel'); if(!p) return;
+        var items=window._notifs||[];
+        if(!items.length){ p.innerHTML='<div style="padding:16px;color:#8892a4;font-size:0.8rem;text-align:center;">No notifications</div>'; return; }
+        var h='<div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:#8892a4;padding:6px 8px 8px;">Notifications</div>';
+        items.forEach(function(n){ h+='<div style="padding:8px 10px;border-radius:7px;margin-bottom:3px;background:'+(n.read?'transparent':'rgba(167,139,250,0.12)')+';font-size:0.76rem;color:#c8d0e0;line-height:1.3;">'+escapeHtmlN(n.text)+'<div style="font-size:0.6rem;color:#6b7585;margin-top:3px;">'+notifAgo(n.createdAt)+'</div></div>'; });
+        p.innerHTML=h;
+    }
+    function loadNotifs(){
+        fetch('/api/notifications').then(function(r){return r.json();}).then(function(d){
+            window._notifs=d.items||[];
+            var b=document.getElementById('bellBadge');
+            if(b){ if(d.unread>0){ b.textContent=d.unread>9?'9+':String(d.unread); b.style.display='block'; } else b.style.display='none'; }
+            renderBellPanel();
+        }).catch(function(){});
+    }
+    window.toggleBell=function(){
+        var p=document.getElementById('bellPanel'); if(!p) return;
+        if(p.style.display==='block'){ p.style.display='none'; return; }
+        p.style.display='block'; renderBellPanel();
+        if((window._notifs||[]).some(function(n){return !n.read;})){
+            fetch('/api/notifications/read',{method:'POST'}).then(function(){
+                var b=document.getElementById('bellBadge'); if(b) b.style.display='none';
+                (window._notifs||[]).forEach(function(n){ n.read=true; });
+            }).catch(function(){});
+        }
     };
-    (function(){ if('serviceWorker' in navigator && 'PushManager' in window){ navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(s){ setPushIcon(!!s); }).catch(function(){}); } })();
+    document.addEventListener('click',function(e){ var p=document.getElementById('bellPanel'),b=document.getElementById('bellBtn'); if(p&&p.style.display==='block'&&!p.contains(e.target)&&b&&!b.contains(e.target)) p.style.display='none'; });
+    loadNotifs(); setInterval(loadNotifs, 90000);
     // Zebra striping over VISIBLE rows only (so it stays alternating after sidebar filtering)
     function restripeRows() {
         let vis = 0;
