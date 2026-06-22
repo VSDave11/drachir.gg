@@ -20,6 +20,10 @@ const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1); // Render reverse proxy
 
+// gzip all responses — the dashboard HTML is ~1.3 MB uncompressed; gzip cuts the transfer ~10x
+const compression = require('compression');
+app.use(compression());
+
 // --- Bezpecnostni hlavicky (na vsech odpovedich) ---
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
