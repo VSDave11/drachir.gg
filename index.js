@@ -4756,7 +4756,7 @@ app.get('/dashboard', async (req, res) => {
           --au1:#6d5bd6; --au2:#1f7fa8;
         }
         .theme-light body, .theme-light .main-content{ background:#eef1f6 !important; }
-        .theme-light .topbar-main{ background:#ffffff !important; border-bottom-color:var(--gborder) !important; }
+        .theme-light .topbar-main{ background:#e7eaf1 !important; border-bottom-color:var(--gborder) !important; }
         .theme-light .view-toggle-bar{ background:#eef1f6 !important; border-color:var(--gborder) !important; }
         .theme-light .sidebar{ background:#e7eaf1 !important; border-right-color:var(--gborder) !important; }
         .theme-light .mini-calendar{ background:#dfe3ec !important; border-radius:8px; padding:8px 8px 12px !important; }
