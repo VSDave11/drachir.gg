@@ -807,6 +807,7 @@ async function loadAllShifts(forceSync, opts) {
     }
 
     const allShifts = [];
+    const overrideKeys = new Set(); // a ManualShift override hides the matching Schedule slot shift (key: Name|Date|Product|Start|End)
 
     // 1. SYNC Z PLANNERU - cte vsechny listy "Schedule - *"
     const allSheetTitles = Object.keys(doc.sheetsByTitle);
@@ -892,8 +893,8 @@ async function loadAllShifts(forceSync, opts) {
         const manualSheet = doc.sheetsByTitle['ManualShifts'];
         if (manualSheet) {
             // bunky uz nactene v paralelnim batchi vyse
-            let mColDate=-1,mColName=-1,mColTrading=-1,mColProduct=-1,mColStart=-1,mColEnd=-1,mColNote=-1,mColId=-1;
-            for (let c = 0; c < 12; c++) {
+            let mColDate=-1,mColName=-1,mColTrading=-1,mColProduct=-1,mColStart=-1,mColEnd=-1,mColNote=-1,mColId=-1,mColOverride=-1;
+            for (let c = 0; c < 13; c++) {
                 const v = manualSheet.getCell(0, c).value?.toString().trim().toLowerCase();
                 if (v === 'date')    mColDate    = c;
                 if (v === 'name')    mColName    = c;
@@ -903,6 +904,7 @@ async function loadAllShifts(forceSync, opts) {
                 if (v === 'end')     mColEnd     = c;
                 if (v === 'note')    mColNote    = c;
                 if (v === 'id')      mColId      = c;
+                if (v === 'overridekey') mColOverride = c;
             }
             for (let r = 1; r < Math.min(manualSheet.rowCount, 500); r++) {
                 const rawD = mColDate >= 0 ? manualSheet.getCell(r, mColDate).value : null;
@@ -911,6 +913,8 @@ async function loadAllShifts(forceSync, opts) {
                 if (!d || !nRaw || nRaw === '') continue;
                 const normalizedNames = normalizePersonName(nRaw);
                 if (normalizedNames.length === 0) continue;
+                const ovKey = mColOverride >= 0 ? (manualSheet.getCell(r, mColOverride).value?.toString().trim() || '') : '';
+                if (ovKey) overrideKeys.add(ovKey);
                 normalizedNames.forEach(nname => {
                 allShifts.push({
                     Date:    d,
@@ -937,6 +941,11 @@ async function loadAllShifts(forceSync, opts) {
     const seen = new Set();
     const deduped = [];
     for (const s of allShifts) {
+        // Override: a ManualShift override replaces the matching Schedule slot shift -> hide the Schedule original
+        if (!s._manual && overrideKeys.size) {
+            const ok = (s.Name || '') + '|' + (s.Date || '') + '|' + (s.Product || '') + '|' + (s.Start || '') + '|' + (s.End || '');
+            if (overrideKeys.has(ok)) continue;
+        }
         const key = (s.Date || '') + '|' + (s.Name || '') + '|' + (s.Product || '') + '|' + (s.Start || '') + '|' + (s.End || '');
         if (seen.has(key)) continue;
         seen.add(key);
@@ -2606,14 +2615,18 @@ app.post('/api/reset-colors', async (req, res) => {
 
 app.post('/update-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
-    const { originalName, originalDate, originalStart, name, date, start, end, product, trading, note, id } = req.body;
+    const { originalName, originalDate, originalStart, name, date, start, end, product, trading, note, id, overrideKey } = req.body;
     const vErr = validateNoTemplateChars(name, product, trading, note, date);
     if (vErr) return res.status(400).json({ error: vErr });
+    let createdId = null;
     try {
         await doc.loadInfo();
 
         // Najdi a aktualizuj radek v ManualShifts
-        const manualSheet = doc.sheetsByTitle['ManualShifts'];
+        let manualSheet = doc.sheetsByTitle['ManualShifts'];
+        if (!manualSheet && overrideKey) {
+            manualSheet = await doc.addSheet({ title: 'ManualShifts', headerValues: ['Date','Name','Trading','Product','Start','End','Note','AddedBy','Id','OverrideKey'] });
+        }
         if (manualSheet) {
             const rows = await manualSheet.getRows();
             // Najdi shodny radek podle originalName + originalDate + originalStart
@@ -2634,10 +2647,18 @@ app.post('/update-shift', async (req, res) => {
                 target.set('Trading', trading);
                 target.set('Note',    note || '');
                 await target.save();
+            } else if (overrideKey) {
+                // Editing a Schedule (non-manual) shift: create a ManualShift override that hides the Schedule slot
+                if (!manualSheet.headerValues.includes('OverrideKey')) { await manualSheet.setHeaderRow(manualSheet.headerValues.concat(['OverrideKey'])); }
+                createdId = crypto.randomUUID();
+                await manualSheet.addRow({ Date: date || originalDate, Name: name || originalName, Trading: trading || 'Other', Product: product || '', Start: start, End: end, Note: note || '', AddedBy: req.user.jmeno, Id: createdId, OverrideKey: overrideKey }, { raw: true });
             } else {
                 invalidateCache();
                 return res.json({ success: true, found: false });
             }
+        } else {
+            invalidateCache();
+            return res.json({ success: true, found: false });
         }
 
         // AuditLog
@@ -2650,8 +2671,8 @@ app.post('/update-shift', async (req, res) => {
 
         invalidateCache();
         sendSlackMessage(':pencil2: *Shift edited* by ' + req.user.jmeno + ': ' + (name || originalName) + ' - ' + (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + (limaSet.has(name || originalName) ? ' — Lima: ' + shiftLimaTime(start) + '-' + shiftLimaTime(end) : '') + ')');
-        notifyShiftChange(req.user.jmeno, name || originalName, 'edited', (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + ')', start, end);
-        res.json({ success: true, found: true });
+        notifyShiftChange(req.user.jmeno, name || originalName, createdId ? 'rescheduled' : 'edited', (product || '') + ' on ' + (date || originalDate) + ' (' + start + '-' + end + ')', start, end);
+        res.json({ success: true, found: true, created: !!createdId, id: createdId || id || null });
     } catch(e) { res.status(500).send(e.message); }
 });
 
@@ -5404,7 +5425,7 @@ app.get('/dashboard', async (req, res) => {
         function toH(t){ var a=(t||'0:0').split(':'); return (+a[0])+(+a[1])/60; }
         function hhmm(h){ var H=Math.floor(h+1e-9), M=Math.round((h-H)*60); if(M===60){H++;M=0;} return (H<10?'0':'')+H+':'+(M<10?'0':'')+M; }
         function tzEurope(){ var el=document.getElementById('tzLabel'); return !el || (el.textContent||'').trim().toUpperCase()==='EUROPE'; }
-        function eligible(p){ return p && p.classList && p.classList.contains('shift-pill') && (p.dataset.sht||'')==='ManualShifts' && (p.dataset.pillPart||'0')==='0' && p.dataset.tooltipProduct!=='Vacation' && p.dataset.tooltipProduct!=='RIP' && p.closest('.user-row') && p.closest('.row-grid-bg'); }
+        function eligible(p){ return p && p.classList && p.classList.contains('shift-pill') && (p.dataset.sht||'')!=='' && (p.dataset.pillPart||'0')==='0' && p.dataset.tooltipProduct!=='Vacation' && p.dataset.tooltipProduct!=='RIP' && p.closest('.user-row') && p.closest('.row-grid-bg'); }
         function setUndoBtns(){ var u=document.getElementById('undoBtn'),r=document.getElementById('redoBtn'); if(u){ u.style.display=moveMode?'inline-block':'none'; u.style.opacity=undoStack.length?'1':'0.4'; } if(r){ r.style.display=moveMode?'inline-block':'none'; r.style.opacity=redoStack.length?'1':'0.4'; } }
         window.toggleMoveMode=function(){ moveMode=!moveMode; document.body.classList.toggle('move-mode',moveMode); var b=document.getElementById('moveModeBtn'); if(b) b.style.color=moveMode?'#22d3ee':'#5b7fa6'; setUndoBtns(); if(moveMode) toast('Move mode ON — drag your shifts to reschedule within the day. Ctrl+Z = undo. Click again on ✥ to exit.'); };
         document.addEventListener('mousedown',function(e){
@@ -5436,10 +5457,14 @@ app.get('/dashboard', async (req, res) => {
             applyMove(d.p,before,after,true);
         });
         function applyMove(p,before,after,push){
-            var body={ id:p.dataset.sid||'', originalName:p.dataset.snm||p.dataset.person||'', originalDate:p.dataset.shiftDate, originalStart:before.start, name:p.dataset.snm||p.dataset.person||'', date:p.dataset.shiftDate, start:after.start, end:after.end, product:p.dataset.tooltipProduct||'', trading:p.dataset.tooltipTrading||'', note:p.dataset.tooltipNote||'' };
+            var nm=p.dataset.snm||p.dataset.person||'';
+            var body={ id:p.dataset.sid||'', originalName:nm, originalDate:p.dataset.shiftDate, originalStart:before.start, name:nm, date:p.dataset.shiftDate, start:after.start, end:after.end, product:p.dataset.tooltipProduct||'', trading:p.dataset.tooltipTrading||'', note:p.dataset.tooltipNote||'' };
+            // Editing a Schedule (non-manual) shift -> send override key so the server creates a ManualShift override hiding the Schedule slot
+            if((p.dataset.sht||'')!=='ManualShifts'){ body.overrideKey = nm+'|'+p.dataset.shiftDate+'|'+(p.dataset.tooltipProduct||'')+'|'+before.start+'|'+before.end; }
             fetch('/update-shift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(x){
                 if(!x.ok||(x.j&&x.j.error)){ p.style.left=before.left+'px'; toast('Move failed: '+((x.j&&x.j.error)||'?')); return; }
                 p.dataset.origStart=after.start; p.dataset.origEnd=after.end;
+                if(x.j && x.j.created && x.j.id){ p.dataset.sht='ManualShifts'; p.dataset.sid=x.j.id; } // now a manual override; further moves go by id
                 var t=p.querySelector('.pill-time'); if(t) t.textContent=after.start+' - '+after.end;
                 if(push){ undoStack.push({p:p,before:before,after:after}); redoStack=[]; }
                 setUndoBtns(); toast('Moved to '+after.start+'–'+after.end);
@@ -6048,6 +6073,10 @@ app.get('/dashboard', async (req, res) => {
                 }
             }
         } else {
+            // Editing a Schedule (non-manual) shift -> send override key so the server creates a ManualShift override hiding the Schedule slot
+            if (mode==='edit' && _currentShiftSource && (_currentShiftSource.sheetTitle||'') && (_currentShiftSource.sheetTitle||'') !== 'ManualShifts') {
+                data.overrideKey = (_currentShiftSource.name||'')+'|'+(_currentShiftSource.date||'')+'|'+(_currentShiftSource.product||'')+'|'+(_currentShiftSource.start||'')+'|'+(_currentShiftSource.end||'');
+            }
             const resp = await fetch(mode==='add'?'/add-shift':'/update-shift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
             if (!resp.ok) { alert('Error saving shift'); return; }
         }
