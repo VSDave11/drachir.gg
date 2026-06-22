@@ -4838,8 +4838,8 @@ app.get('/dashboard', async (req, res) => {
 
         <div class="item" id="showAllBtn" onclick="showAllRows(this)" style="border-left-color:rgba(255,255,255,0.2);color:#6b7585;font-size:0.72rem;letter-spacing:1px;">[ SHOW ALL ]</div>
         <div style="display:flex;gap:6px;margin:2px 0 6px;">
-            <button class="mine-btn" onclick="showMine(false)" title="Show only my shifts" style="flex:1;background:rgba(167,139,250,0.10);color:#a78bfa;border:1px solid rgba(167,139,250,0.30);border-radius:6px;padding:6px 4px;font-size:0.66rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;transition:0.15s;">&#9733; MY SHIFTS</button>
-            <button class="mine-btn" onclick="showMine(true)" title="My shifts + the products I work (see who is on after me)" style="flex:1;background:rgba(34,211,238,0.10);color:#22d3ee;border:1px solid rgba(34,211,238,0.30);border-radius:6px;padding:6px 4px;font-size:0.66rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;transition:0.15s;">&#9733; MY + PRODUCTS</button>
+            <button class="mine-btn" id="mineBtn" onclick="showMine(false)" title="Show only my shifts (click again to hide)" style="flex:1;background:rgba(167,139,250,0.10);color:#a78bfa;border:1px solid rgba(167,139,250,0.30);border-radius:6px;padding:6px 4px;font-size:0.66rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;transition:0.15s;">&#9733; MY SHIFTS</button>
+            <button class="mine-btn" id="minePlusBtn" onclick="showMine(true)" title="My shifts + the products I work — see who is on after me (click again to hide)" style="flex:1;background:rgba(34,211,238,0.10);color:#22d3ee;border:1px solid rgba(34,211,238,0.30);border-radius:6px;padding:6px 4px;font-size:0.66rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;transition:0.15s;">&#9733; MY + PRODUCTS</button>
         </div>
 
         <div class="sidebar-list">
@@ -5272,14 +5272,31 @@ app.get('/dashboard', async (req, res) => {
     window._myProducts = ${JSON.stringify([...new Set(allShifts.filter(s => s.Name === req.user.jmeno).map(s => s.Product).filter(Boolean))])};
 
     // SHOW ALL
-    // My-shifts presets: show only me (+ optionally the products I work, so I see who is on after me)
+    // My-shifts presets — TOGGLE: click shows, click again hides (clears the preset)
+    function _mineState(){
+        var an=Array.from(document.querySelectorAll('.user-item.active')).map(function(e){return (e.dataset.name||'').trim();});
+        var ap=Array.from(document.querySelectorAll('.product-selector.active')).map(function(e){return (e.dataset.productName||'').trim();});
+        var mp=window._myProducts||[];
+        var meOnly = an.length===1 && an[0]===window._me;
+        return { mineOn: meOnly && ap.length===0,
+                 plusOn: meOnly && mp.length>0 && ap.length===mp.length && mp.every(function(p){return ap.indexOf(p)>=0;}) };
+    }
+    function refreshMineBtns(){
+        var s=_mineState();
+        var b1=document.getElementById('mineBtn'); if(b1) b1.style.background = s.mineOn?'rgba(167,139,250,0.34)':'rgba(167,139,250,0.10)';
+        var b2=document.getElementById('minePlusBtn'); if(b2) b2.style.background = s.plusOn?'rgba(34,211,238,0.34)':'rgba(34,211,238,0.10)';
+    }
     function showMine(withProducts){
+        var st=_mineState();
+        var already = withProducts ? st.plusOn : st.mineOn;
         var sb=document.getElementById('showAllBtn'); if(sb) sb.classList.remove('active');
         document.querySelectorAll('.user-item.active,.product-selector.active,.trading-cat-item.active').forEach(function(i){ i.classList.remove('active'); });
-        document.querySelectorAll('.user-item').forEach(function(i){ if((i.dataset.name||'').trim()===window._me) i.classList.add('active'); });
-        if(withProducts){
-            var mp=window._myProducts||[];
-            document.querySelectorAll('.product-selector').forEach(function(s){ if(mp.indexOf((s.dataset.productName||'').trim())>=0) s.classList.add('active'); });
+        if(!already){
+            document.querySelectorAll('.user-item').forEach(function(i){ if((i.dataset.name||'').trim()===window._me) i.classList.add('active'); });
+            if(withProducts){
+                var mp=window._myProducts||[];
+                document.querySelectorAll('.product-selector').forEach(function(s){ if(mp.indexOf((s.dataset.productName||'').trim())>=0) s.classList.add('active'); });
+            }
         }
         applyAllFilters(); saveSelection();
     }
@@ -5295,7 +5312,7 @@ app.get('/dashboard', async (req, res) => {
         } else {
             document.querySelectorAll('.user-row,.product-row').forEach(r => r.classList.add('hidden-row'));
         }
-        restripeRows();
+        restripeRows(); if(typeof refreshMineBtns==='function') refreshMineBtns();
     }
 
     function toggleTheme(){
@@ -5345,7 +5362,7 @@ app.get('/dashboard', async (req, res) => {
         // Pokud neni nic vybrano, schovej vse
         if (aN.length === 0 && aP.length === 0) {
             document.querySelectorAll('.user-row, .product-row').forEach(r => r.classList.add('hidden-row'));
-            restripeRows();
+            restripeRows(); if(typeof refreshMineBtns==='function') refreshMineBtns();
             return;
         }
 
@@ -5365,7 +5382,7 @@ app.get('/dashboard', async (req, res) => {
             r.classList.toggle('hidden-row', !show);
             if (wasH && show) { r.classList.add('row-appearing'); setTimeout(() => r.classList.remove('row-appearing'), 300); }
         });
-        restripeRows();
+        restripeRows(); if(typeof refreshMineBtns==='function') refreshMineBtns();
     }
 
     function saveSelection() {
