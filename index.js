@@ -3812,7 +3812,7 @@ app.get('/dashboard', async (req, res) => {
         const _covProfiles = productMapping.map(p => { const c = getCoverageProfile(p.name); return { name: p.name, slots: c.slots, days: c.days }; });
         const weekCov = buildCoverage(allShifts.filter(s => _covSet.has(s.Date)), _covProfiles, _covDates);
         const _covGaps = weekCov.totalExpected - weekCov.totalCovered;
-        const _covColor = weekCov.pct >= 95 ? '#4caf50' : (weekCov.pct >= 80 ? '#fbc02d' : '#e05260');
+        const _covColor = weekCov.pct >= 95 ? '#4caf50' : (weekCov.pct >= 80 ? '#a78bfa' : '#e05260');
         const _covWorst = weekCov.products.filter(p => p.gaps > 0).slice(0, 6).map(p => p.product + ' ' + p.pct + '%').join(', ');
         const _covTitle = _covGaps === 0 ? 'Tento tyden je plne pokryto' : ('Nepokryto tento tyden (' + _covGaps + ' slotu). Nejhorsi: ' + _covWorst);
 
@@ -4428,7 +4428,7 @@ app.get('/dashboard', async (req, res) => {
             .shift-pill{font-size:0.55rem!important;padding:0 4px!important;}
             .mobile-user-compact span{display:none!important;}
         }
-        .mobile-menu-btn{display:none;background:#000;border:1px solid #333;color:#fbc02d;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:1.1rem;align-items:center;}
+        .mobile-menu-btn{display:none;background:#000;border:1px solid #333;color:#a78bfa;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:1.1rem;align-items:center;}
         .sidebar-logout-btn{display:none;}
         .sidebar-tz-toggle{display:none;}
         .mobile-user-compact{display:none!important;}
@@ -4440,35 +4440,35 @@ app.get('/dashboard', async (req, res) => {
         .sidebar-list{flex:1;overflow-y:auto;padding-right:2px;margin-top:4px;}
         .sidebar-list::-webkit-scrollbar{width:4px;}
         .sidebar-list::-webkit-scrollbar-track{background:#0a0b0f;border-radius:2px;}
-        .sidebar-list::-webkit-scrollbar-thumb{background:rgba(251,192,45,0.5);border-radius:2px;}
-        .sidebar-list::-webkit-scrollbar-thumb:hover{background:#fbc02d;}
-        .sidebar-list{scrollbar-width:thin;scrollbar-color:rgba(251,192,45,0.4) #0a0b0f;}
+        .sidebar-list::-webkit-scrollbar-thumb{background:rgba(167,139,250,0.5);border-radius:2px;}
+        .sidebar-list::-webkit-scrollbar-thumb:hover{background:#a78bfa;}
+        .sidebar-list{scrollbar-width:thin;scrollbar-color:rgba(167,139,250,0.4) #0a0b0f;}
 
         /* Logo area */
         .logo-area{display:flex;align-items:center;justify-content:center;padding:18px 0 14px;margin-bottom:4px;gap:10px;border-bottom:1px solid #1e2030;}
-        .logo-area img{height:44px;width:auto;filter:drop-shadow(0 0 8px rgba(251,192,45,0.3));}
-        .logo-fallback{font-family:'Oswald';font-size:1.25rem;background:linear-gradient(135deg,#fbc02d 0%,#fff8e1 50%,#fbc02d 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-transform:uppercase;letter-spacing:4px;font-weight:700;}
+        .logo-area img{height:44px;width:auto;filter:drop-shadow(0 0 8px rgba(167,139,250,0.3));}
+        .logo-fallback{font-family:'Oswald';font-size:1.25rem;background:linear-gradient(135deg,#a78bfa 0%,#fff8e1 50%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-transform:uppercase;letter-spacing:4px;font-weight:700;}
 
         /* Mini kalendář */
         .mini-calendar{background:transparent;border-radius:0;padding:8px 0 12px;margin-bottom:8px;border:none;border-bottom:1px solid #1e2030;}
         .mini-cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
         .mini-cal-nav button{background:none;border:none;color:#3a4050;cursor:pointer;font-size:0.9rem;padding:2px 6px;border-radius:4px;transition:0.15s;}
         .mini-cal-nav button:hover{color:#8892a4;}
-        .mini-cal-nav span{font-size:0.65rem;background:linear-gradient(90deg,#fbc02d,#ffe57f,#fbc02d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700;text-transform:uppercase;letter-spacing:2px;}
+        .mini-cal-nav span{font-size:0.65rem;background:linear-gradient(90deg,#a78bfa,#c4b5fd,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700;text-transform:uppercase;letter-spacing:2px;}
         .mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;font-size:0.6rem;}
         .m-date{padding:3px 1px;border-radius:4px;cursor:pointer;color:#3a4050;transition:0.12s;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:1px auto;font-variant-numeric:tabular-nums;}
-        .m-date:hover{background:rgba(251,192,45,0.08);color:#fbc02d;}
-        .m-date.today{background:rgba(251,192,45,0.12);color:#fbc02d!important;font-weight:bold;}
+        .m-date:hover{background:rgba(167,139,250,0.08);color:#a78bfa;}
+        .m-date.today{background:rgba(167,139,250,0.12);color:#a78bfa!important;font-weight:bold;}
         .m-date.cur-week{background:rgba(255,255,255,0.04);color:#6b7585;}
-        .m-date.cur-week:hover{background:rgba(251,192,45,0.08);color:#fbc02d;}
-        .m-date.cur-week.today{background:rgba(251,192,45,0.12);}
+        .m-date.cur-week:hover{background:rgba(167,139,250,0.08);color:#a78bfa;}
+        .m-date.cur-week.today{background:rgba(167,139,250,0.12);}
 
         .section-title{font-size:0.6rem;color:#5a6070;text-transform:uppercase;margin:18px 0 4px;font-weight:700;letter-spacing:2px;padding:0 2px;}
         .section-title-first{margin-top:10px!important;}
 
         .item{padding:7px 10px;font-size:0.82rem;cursor:pointer;color:#8892a4;transition:all 0.15s;background:transparent;margin-bottom:1px;border-left:3px solid transparent;position:relative;display:flex;align-items:center;flex-wrap:wrap;border-radius:0 6px 6px 0;}
         .item:hover{background:rgba(255,255,255,0.05);color:#d0d8e8;}
-        .item.active{background:rgba(255,255,255,0.07);color:#fff;border-left-color:#fbc02d !important;}
+        .item.active{background:rgba(255,255,255,0.07);color:#fff;border-left-color:#a78bfa !important;}
         .trading-cat-item{color:#aab3c0;font-size:0.75rem!important;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;}
         .trading-cat-item:hover{background:rgba(255,255,255,0.04);color:#fff;}
         .sub-item{padding:6px 10px 6px 24px!important;font-size:0.81rem!important;color:#6b7585;margin-bottom:1px;border-left:3px solid transparent!important;border-radius:0 6px 6px 0;}
@@ -4477,11 +4477,11 @@ app.get('/dashboard', async (req, res) => {
 
         .item-name{flex:1;}
         .progress-container{width:100%;height:2px;background:#1e2030;margin-top:5px;border-radius:2px;overflow:hidden;}
-        .progress-bar{height:100%;background:#fbc02d;transition:width 0.4s cubic-bezier(0.4,0,0.2,1);}
+        .progress-bar{height:100%;background:#a78bfa;transition:width 0.4s cubic-bezier(0.4,0,0.2,1);}
         .status-dot{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:7px;height:7px;background:#4caf50;border-radius:50%;box-shadow:0 0 6px #4caf50;animation:blink 2s infinite;}
         @keyframes blink{0%{opacity:1;transform:translateY(-50%) scale(1);}50%{opacity:0.35;transform:translateY(-50%) scale(0.75);}100%{opacity:1;transform:translateY(-50%) scale(1);}}
-        .add-btn{background:linear-gradient(135deg,#fbc02d,#f9a825);border:none;padding:11px;font-weight:700;cursor:pointer;width:100%;border-radius:6px;margin-bottom:8px;font-family:'Oswald';color:#000;font-size:0.85rem;letter-spacing:1px;transition:0.15s;box-shadow:0 2px 8px rgba(251,192,45,0.25);}
-        .add-btn:hover{background:linear-gradient(135deg,#fdd835,#fbc02d);box-shadow:0 4px 14px rgba(251,192,45,0.4);}
+        .add-btn{background:linear-gradient(135deg,#a78bfa,#8b7ff0);border:none;padding:11px;font-weight:700;cursor:pointer;width:100%;border-radius:6px;margin-bottom:8px;font-family:'Oswald';color:#000;font-size:0.85rem;letter-spacing:1px;transition:0.15s;box-shadow:0 2px 8px rgba(167,139,250,0.25);}
+        .add-btn:hover{background:linear-gradient(135deg,#b9a7f5,#a78bfa);box-shadow:0 4px 14px rgba(167,139,250,0.4);}
 
         /* Timeline */
         .timeline-viewport{flex-grow:1;overflow:auto;display:flex;flex-direction:column;}
@@ -4489,8 +4489,8 @@ app.get('/dashboard', async (req, res) => {
         /* BOD 7: day-block stále 960px, ale 48 sloupců po 20px */
         .day-block{width:960px;border-right:2px solid #ccc;flex-shrink:0;}
         .today-block .day-label-top{background:#fff8e1!important;}
-        .today-block{border-left:3px solid #fbc02d;border-right:3px solid #fbc02d!important;}
-        .today-label{color:#fbc02d!important;}
+        .today-block{border-left:3px solid #a78bfa;border-right:3px solid #a78bfa!important;}
+        .today-label{color:#a78bfa!important;}
         .weekend-block .day-label-top{background:#e8f1ff!important;}
         .weekend-block .hours-row{background:#eef4ff;}
         .day-label-top{background:#f4f4f4;padding:8px;font-weight:bold;text-align:center;border-bottom:1px solid #ddd;font-size:0.85rem;}
@@ -4520,15 +4520,15 @@ app.get('/dashboard', async (req, res) => {
         /* BOD 1: Redesign modal – TeamUp styl s tmavým tématem */
         /* === Shift Modal — Drachir dark theme === */
         #modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(5,5,12,0.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
-        .modal-outer{background:#0d0e14;margin:3% auto;border-radius:16px;width:560px;max-width:96vw;overflow:hidden;color:#e0e0e0;box-shadow:0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(251,192,45,0.08);border:1px solid #1e2030;animation:modalSlideIn 0.25s cubic-bezier(0.16,1,0.3,1);}
+        .modal-outer{background:#0d0e14;margin:3% auto;border-radius:16px;width:560px;max-width:96vw;overflow:hidden;color:#e0e0e0;box-shadow:0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(167,139,250,0.08);border:1px solid #1e2030;animation:modalSlideIn 0.25s cubic-bezier(0.16,1,0.3,1);}
         @keyframes modalSlideIn{0%{opacity:0;transform:translateY(16px) scale(0.97);}100%{opacity:1;transform:translateY(0) scale(1);}}
-        .modal-header{padding:22px 24px 16px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid rgba(251,192,45,0.15);position:relative;overflow:hidden;}
-        .modal-header::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(251,192,45,0.06) 0%,transparent 60%);pointer-events:none;}
-        .modal-product-title{font-family:'Oswald',sans-serif;font-size:1.5rem;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;margin-bottom:5px;background:linear-gradient(135deg,#fbc02d 0%,#fff8e1 50%,#fbc02d 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .modal-header{padding:22px 24px 16px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid rgba(167,139,250,0.15);position:relative;overflow:hidden;}
+        .modal-header::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(167,139,250,0.06) 0%,transparent 60%);pointer-events:none;}
+        .modal-product-title{font-family:'Oswald',sans-serif;font-size:1.5rem;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;margin-bottom:5px;background:linear-gradient(135deg,#a78bfa 0%,#fff8e1 50%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
         .modal-person-row{font-size:0.8rem;color:rgba(255,255,255,0.5);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
         .modal-role-badge{font-size:0.6rem;padding:3px 10px;border-radius:12px;font-weight:600;letter-spacing:0.5px;border:1px solid rgba(255,255,255,0.1);}
         .modal-close-x{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#555;font-size:1.3rem;cursor:pointer;padding:4px 10px;border-radius:8px;transition:all 0.2s;flex-shrink:0;margin-left:10px;}
-        .modal-close-x:hover{background:rgba(251,192,45,0.1);border-color:rgba(251,192,45,0.2);color:#fbc02d;}
+        .modal-close-x:hover{background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.2);color:#a78bfa;}
         .modal-info-strip{background:rgba(0,0,0,0.3);padding:14px 24px;display:flex;gap:24px;border-bottom:1px solid #1e2030;}
         .modal-info-item{display:flex;align-items:center;gap:8px;font-size:0.82rem;color:rgba(255,255,255,0.4);}
         .modal-info-icon{font-size:1rem;opacity:0.7;}
@@ -4536,38 +4536,38 @@ app.get('/dashboard', async (req, res) => {
         .modal-tags-row{padding:12px 24px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #1e2030;min-height:44px;}
         .modal-tag{font-size:0.65rem;padding:5px 14px;border-radius:20px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border:1px solid rgba(255,255,255,0.06);}
         .modal-form-section{padding:18px 24px 14px;}
-        .modal-form-section label{font-size:0.65rem;color:rgba(251,192,45,0.6);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px;margin-top:14px;font-weight:600;}
+        .modal-form-section label{font-size:0.65rem;color:rgba(167,139,250,0.6);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px;margin-top:14px;font-weight:600;}
         .modal-form-section label:first-child{margin-top:0;}
         .modal-input{width:100%;padding:10px 14px;background:rgba(0,0,0,0.4);border:1px solid #1e2030;border-radius:8px;color:#fff;font-family:'Montserrat',sans-serif;font-size:0.85rem;box-sizing:border-box;transition:all 0.2s;color-scheme:dark;}
-        .modal-input:focus{outline:none;border-color:rgba(251,192,45,0.5);background:rgba(0,0,0,0.6);box-shadow:0 0 0 3px rgba(251,192,45,0.08),0 0 16px rgba(251,192,45,0.06);}
+        .modal-input:focus{outline:none;border-color:rgba(167,139,250,0.5);background:rgba(0,0,0,0.6);box-shadow:0 0 0 3px rgba(167,139,250,0.08),0 0 16px rgba(167,139,250,0.06);}
         .modal-input:hover:not(:focus){border-color:#2a2d3a;}
         .date-pick-wrap{position:relative;flex:1;}
         .date-pick-display{width:100%;padding:10px 14px;background:rgba(0,0,0,0.4);border:1px solid #1e2030;border-radius:8px;color:#e8eaf0;font-family:'Montserrat',sans-serif;font-size:0.85rem;box-sizing:border-box;transition:all 0.2s;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;}
         .date-pick-display:hover{border-color:#2a2d3a;}
-        .date-pick-display.open{border-color:rgba(251,192,45,0.5);background:rgba(0,0,0,0.6);box-shadow:0 0 0 3px rgba(251,192,45,0.08);}
-        .date-pick-display .dp-icon{font-size:0.75rem;color:rgba(251,192,45,0.5);transition:color 0.2s;}
-        .date-pick-display:hover .dp-icon,.date-pick-display.open .dp-icon{color:#fbc02d;}
-        .dp-popup{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:1000;background:#12131a;border:1px solid #1e2030;border-radius:10px;padding:12px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.6),0 0 0 1px rgba(251,192,45,0.06);min-width:240px;}
+        .date-pick-display.open{border-color:rgba(167,139,250,0.5);background:rgba(0,0,0,0.6);box-shadow:0 0 0 3px rgba(167,139,250,0.08);}
+        .date-pick-display .dp-icon{font-size:0.75rem;color:rgba(167,139,250,0.5);transition:color 0.2s;}
+        .date-pick-display:hover .dp-icon,.date-pick-display.open .dp-icon{color:#a78bfa;}
+        .dp-popup{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:1000;background:#12131a;border:1px solid #1e2030;border-radius:10px;padding:12px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.6),0 0 0 1px rgba(167,139,250,0.06);min-width:240px;}
         .dp-popup.show{display:block;}
         .dp-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
         .dp-nav button{background:none;border:none;color:#3a4050;cursor:pointer;font-size:0.85rem;padding:4px 8px;border-radius:4px;transition:0.15s;}
-        .dp-nav button:hover{color:#fbc02d;background:rgba(251,192,45,0.08);}
-        .dp-nav span{font-size:0.7rem;background:linear-gradient(90deg,#fbc02d,#ffe57f,#fbc02d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;}
+        .dp-nav button:hover{color:#a78bfa;background:rgba(167,139,250,0.08);}
+        .dp-nav span{font-size:0.7rem;background:linear-gradient(90deg,#a78bfa,#c4b5fd,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;}
         .dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
         .dp-hdr{font-size:0.55rem;color:#3a4050;font-weight:600;padding:4px 0;text-transform:uppercase;letter-spacing:0.5px;}
         .dp-day{font-size:0.72rem;padding:6px 2px;border-radius:6px;cursor:pointer;color:#6b7585;transition:all 0.12s;font-variant-numeric:tabular-nums;}
-        .dp-day:hover{background:rgba(251,192,45,0.1);color:#fbc02d;}
+        .dp-day:hover{background:rgba(167,139,250,0.1);color:#a78bfa;}
         .dp-day.other{color:#252730;cursor:default;}
         .dp-day.other:hover{background:none;color:#252730;}
-        .dp-day.today{color:#fbc02d;font-weight:700;background:rgba(251,192,45,0.08);}
-        .dp-day.selected{background:rgba(251,192,45,0.2);color:#fbc02d;font-weight:700;box-shadow:0 0 8px rgba(251,192,45,0.15);}
+        .dp-day.today{color:#a78bfa;font-weight:700;background:rgba(167,139,250,0.08);}
+        .dp-day.selected{background:rgba(167,139,250,0.2);color:#a78bfa;font-weight:700;box-shadow:0 0 8px rgba(167,139,250,0.15);}
         .dp-today-btn{display:block;width:100%;margin-top:8px;padding:5px 0;background:none;border:1px solid #1e2030;border-radius:6px;color:#3a4050;font-size:0.6rem;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:1px;transition:all 0.15s;font-family:'Montserrat',sans-serif;}
-        .dp-today-btn:hover{border-color:rgba(251,192,45,0.3);color:#fbc02d;background:rgba(251,192,45,0.05);}
+        .dp-today-btn:hover{border-color:rgba(167,139,250,0.3);color:#a78bfa;background:rgba(167,139,250,0.05);}
         .modal-row2{display:flex;gap:12px;}
         .modal-row2>div{flex:1;}
         .modal-actions{padding:18px 24px 22px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #1e2030;background:rgba(0,0,0,0.15);}
-        .modal-btn-confirm{flex:1;padding:12px;background:linear-gradient(135deg,#fbc02d 0%,#f9a825 100%);color:#000;border:none;border-radius:8px;font-weight:700;font-family:'Oswald',sans-serif;font-size:1rem;cursor:pointer;text-transform:uppercase;letter-spacing:1.5px;transition:all 0.2s;box-shadow:0 2px 12px rgba(251,192,45,0.2);}
-        .modal-btn-confirm:hover{background:linear-gradient(135deg,#ffe082 0%,#fbc02d 100%);box-shadow:0 4px 20px rgba(251,192,45,0.35);transform:translateY(-1px);}
+        .modal-btn-confirm{flex:1;padding:12px;background:linear-gradient(135deg,#a78bfa 0%,#8b7ff0 100%);color:#000;border:none;border-radius:8px;font-weight:700;font-family:'Oswald',sans-serif;font-size:1rem;cursor:pointer;text-transform:uppercase;letter-spacing:1.5px;transition:all 0.2s;box-shadow:0 2px 12px rgba(167,139,250,0.2);}
+        .modal-btn-confirm:hover{background:linear-gradient(135deg,#c4b5fd 0%,#a78bfa 100%);box-shadow:0 4px 20px rgba(167,139,250,0.35);transform:translateY(-1px);}
         .modal-btn-cancel{padding:12px 20px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:0.85rem;transition:all 0.2s;}
         .modal-btn-cancel:hover{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.12);}
         .modal-btn-delete{padding:12px 16px;background:rgba(255,68,68,0.06);color:#ff5252;border:1px solid rgba(255,68,68,0.25);border-radius:8px;cursor:pointer;font-size:0.85rem;font-weight:700;transition:all 0.2s;letter-spacing:0.5px;}
@@ -4580,18 +4580,18 @@ app.get('/dashboard', async (req, res) => {
         #exchangeModal.picking-mode .exchange-outer{pointer-events:all;margin:0 auto 0;border-radius:14px 14px 0 0;box-shadow:0 -4px 32px rgba(0,0,0,0.8);}
         .exchange-outer{background:#111;margin:3% auto;border-radius:14px;width:820px;max-width:95vw;overflow:hidden;color:#eee;box-shadow:0 24px 64px rgba(0,0,0,0.8);}
         .exchange-header{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #222;}
-        .exchange-header h2{font-family:'Oswald';color:#fbc02d;font-size:1.3rem;letter-spacing:2px;}
+        .exchange-header h2{font-family:'Oswald';color:#a78bfa;font-size:1.3rem;letter-spacing:2px;}
         .exchange-body{display:flex;gap:0;}
         .exchange-side{flex:1;padding:20px 24px;border-right:1px solid #222;}
         .exchange-side:last-child{border-right:none;}
         .exchange-side h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:#666;margin-bottom:12px;}
         .exchange-card{background:#1a1a1a;border-radius:8px;padding:14px;border:2px solid #333;margin-bottom:12px;}
-        .exchange-card.selected{border-color:#fbc02d;}
+        .exchange-card.selected{border-color:#a78bfa;}
         .exchange-card-title{font-family:'Oswald';font-size:1.1rem;color:#fff;margin-bottom:4px;}
         .exchange-card-sub{font-size:0.75rem;color:#aaa;}
-        .exchange-card-time{font-size:0.8rem;color:#fbc02d;font-weight:700;margin-top:6px;}
+        .exchange-card-time{font-size:0.8rem;color:#a78bfa;font-weight:700;margin-top:6px;}
         .exchange-footer{padding:16px 24px;border-top:1px solid #222;display:flex;gap:10px;justify-content:flex-end;}
-        .exchange-confirm-btn{padding:11px 28px;background:#fbc02d;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';cursor:pointer;font-size:1rem;}
+        .exchange-confirm-btn{padding:11px 28px;background:#a78bfa;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';cursor:pointer;font-size:1rem;}
         .exchange-confirm-btn:hover{background:#fff;}
         .exchange-cancel-btn{padding:11px 20px;background:#222;color:#aaa;border:none;border-radius:6px;cursor:pointer;}
         /* Picking mode - cursor crosshair na pills */
@@ -4611,7 +4611,7 @@ app.get('/dashboard', async (req, res) => {
         .confirm-no:hover{background:#444;color:#fff;}
 
         /* Loading spinner */
-        .sync-spinner{display:inline-block;width:14px;height:14px;border:2px solid #fbc02d;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
+        .sync-spinner{display:inline-block;width:14px;height:14px;border:2px solid #a78bfa;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
         @keyframes spin{to{transform:rotate(360deg);}}
 
         /* Timezone toggle */
@@ -4701,7 +4701,7 @@ app.get('/dashboard', async (req, res) => {
             <span class="logo-fallback">DRACHIR.GG</span>
         </div>
         <div class="sidebar-inner">
-        <input type="text" id="warriorSearch" placeholder="&#128269; Search traders..." onkeyup="filterWarriors()" style="width:100%;padding:8px 10px;background:#13151e;border:1px solid #1e2030;color:#8892a4;border-radius:6px;margin-bottom:12px;box-sizing:border-box;font-size:0.8rem;outline:none;transition:0.15s;" onfocus="this.style.borderColor='rgba(251,192,45,0.4)';this.style.color='#d0d8e8'" onblur="this.style.borderColor='#1e2030';this.style.color='#8892a4'">
+        <input type="text" id="warriorSearch" placeholder="&#128269; Search traders..." onkeyup="filterWarriors()" style="width:100%;padding:8px 10px;background:#13151e;border:1px solid #1e2030;color:#8892a4;border-radius:6px;margin-bottom:12px;box-sizing:border-box;font-size:0.8rem;outline:none;transition:0.15s;" onfocus="this.style.borderColor='rgba(167,139,250,0.4)';this.style.color='#d0d8e8'" onblur="this.style.borderColor='#1e2030';this.style.color='#8892a4'">
 
         <div class="mini-calendar" id="miniCal"></div>
 
@@ -4709,7 +4709,7 @@ app.get('/dashboard', async (req, res) => {
         ${(['David Winkler','Ondřej Merxbauer'].includes(req.user.jmeno) || req.user.role === 'Admin' || ['Lukáš Novotný', 'Filip Sklenička', 'Jindřich Lacina', 'David Trocino', 'David Lamač', 'Tomáš Komenda', 'Dominik Chvátal', 'Marcelo Goto'].includes(req.user.jmeno)) ? '<button onclick="openExportModal()" style="background:rgba(76,175,80,0.1);color:#66bb6a;border:1px solid rgba(76,175,80,0.3);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background=\'rgba(76,175,80,0.2)\'" onmouseout="this.style.background=\'rgba(76,175,80,0.1)\'">&#128190; EXPORT CSV</button>' : ''}
         ${req.user && req.user.role === 'Admin' ? `
         <button onclick="openAIGenModal()" style="background:rgba(91,127,166,0.08);color:#7ba3cc;border:1px solid rgba(91,127,166,0.3);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(91,127,166,0.18)'" onmouseout="this.style.background='rgba(91,127,166,0.08)'">&#129302; AI GENERATE</button>
-        <button onclick="openSyncModal()" style="background:rgba(251,192,45,0.08);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.15)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'" id="syncBtn">SYNC WITH SCHEDULE</button>
+        <button onclick="openSyncModal()" style="background:rgba(167,139,250,0.08);color:#a78bfa;border:1px solid rgba(167,139,250,0.25);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(167,139,250,0.15)'" onmouseout="this.style.background='rgba(167,139,250,0.08)'" id="syncBtn">SYNC WITH SCHEDULE</button>
         <a href="/admin/audit-log" style="display:block;box-sizing:border-box;text-align:center;text-decoration:none;background:rgba(120,144,156,0.08);color:#90a4ae;border:1px solid rgba(120,144,156,0.3);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(120,144,156,0.18)'" onmouseout="this.style.background='rgba(120,144,156,0.08)'">&#128203; AUDIT LOG</a>
         <button onclick="openPeopleAdmin()" style="display:block;box-sizing:border-box;text-align:center;background:rgba(126,87,194,0.1);color:#b39ddb;border:1px solid rgba(126,87,194,0.35);padding:9px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:6px;border-radius:6px;font-size:0.75rem;transition:0.15s;" onmouseover="this.style.background='rgba(126,87,194,0.2)'" onmouseout="this.style.background='rgba(126,87,194,0.1)'">&#128101; MANAGE PEOPLE</button>
         <button onclick="openDeleteMonth()" style="background:rgba(255,68,68,0.06);color:#ff6b6b;border:1px solid rgba(255,68,68,0.2);padding:7px;width:100%;cursor:pointer;font-weight:bold;margin-bottom:16px;border-radius:6px;font-size:0.72rem;transition:0.15s;" onmouseover="this.style.background='rgba(255,68,68,0.15)'" onmouseout="this.style.background='rgba(255,68,68,0.06)'">DELETE ALL SHIFTS THIS MONTH</button>
@@ -4759,13 +4759,13 @@ app.get('/dashboard', async (req, res) => {
             <button class="sidebar-tz-toggle" onclick="toggleTimezone()" style="width:100%;padding:9px;background:#0e1621;border:1px solid #2a4060;border-radius:8px;color:#c0d4e8;cursor:pointer;font-size:0.72rem;font-weight:700;letter-spacing:1px;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;margin-bottom:8px;font-family:'Montserrat',sans-serif;">&#127757; <span class="sidebar-tz-label">EUROPE</span> <span class="tz-badge" style="font-size:0.6rem;background:#0a1018;color:#6090b8;padding:2px 7px;border-radius:4px;letter-spacing:1px;border:1px solid #2a4060;">-&gt; LIMA</span></button>
             <div class="sidebar-logout-btn">
                 <div style="display:flex;align-items:center;gap:10px;padding:8px 0 10px;">
-                    <div style="width:32px;height:32px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(251,192,45,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#fbc02d;font-size:0.9rem;flex-shrink:0;">${req.user.jmeno ? req.user.jmeno.charAt(0).toUpperCase() : '?'}</div>
+                    <div style="width:32px;height:32px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(167,139,250,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#a78bfa;font-size:0.9rem;flex-shrink:0;">${req.user.jmeno ? req.user.jmeno.charAt(0).toUpperCase() : '?'}</div>
                     <div>
                         <div style="font-weight:700;font-size:0.85rem;color:#c8d0e0;">${req.user.jmeno || ''}</div>
-                        <span style="font-size:0.6rem;padding:1px 7px;border-radius:10px;font-weight:700;${req.user.role === 'Admin' ? 'background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.22);' : 'background:rgba(33,150,243,0.1);color:#64b5f6;border:1px solid rgba(33,150,243,0.22);'}">${req.user.role || 'User'}</span>
+                        <span style="font-size:0.6rem;padding:1px 7px;border-radius:10px;font-weight:700;${req.user.role === 'Admin' ? 'background:rgba(167,139,250,0.1);color:#a78bfa;border:1px solid rgba(167,139,250,0.22);' : 'background:rgba(33,150,243,0.1);color:#64b5f6;border:1px solid rgba(33,150,243,0.22);'}">${req.user.role || 'User'}</span>
                     </div>
                 </div>
-                <a href="/logout" style="display:block;width:100%;padding:10px;background:rgba(251,192,45,0.08);border:1px solid rgba(251,192,45,0.2);border-radius:8px;color:#fbc02d;font-size:0.75rem;font-weight:700;font-family:'Oswald',sans-serif;letter-spacing:1.5px;text-transform:uppercase;text-align:center;text-decoration:none;transition:all 0.2s;box-sizing:border-box;" onmouseover="this.style.background='rgba(251,192,45,0.18)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'">&#10151; LOGOUT</a>
+                <a href="/logout" style="display:block;width:100%;padding:10px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:8px;color:#a78bfa;font-size:0.75rem;font-weight:700;font-family:'Oswald',sans-serif;letter-spacing:1.5px;text-transform:uppercase;text-align:center;text-decoration:none;transition:all 0.2s;box-sizing:border-box;" onmouseover="this.style.background='rgba(167,139,250,0.18)'" onmouseout="this.style.background='rgba(167,139,250,0.08)'">&#10151; LOGOUT</a>
             </div>
         </div>
         </div>
@@ -4795,28 +4795,28 @@ app.get('/dashboard', async (req, res) => {
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
                 <!-- Uzivatel desktop -->
                 <div class="user-box" style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#13151e;border-radius:10px;border:1px solid #1e2030;">
-                    <div style="width:36px;height:36px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(251,192,45,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#fbc02d;font-size:1rem;flex-shrink:0;">
+                    <div style="width:36px;height:36px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(167,139,250,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#a78bfa;font-size:1rem;flex-shrink:0;">
                         ${req.user.jmeno ? req.user.jmeno.charAt(0).toUpperCase() : '?'}
                     </div>
                     <div style="line-height:1.4;">
                         <div style="font-weight:700;font-size:0.88rem;color:#c8d0e0;">${req.user.jmeno || ''}</div>
                         <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
-                            <span style="font-size:0.65rem;padding:1px 7px;border-radius:10px;font-weight:700;${req.user.role === 'Admin' ? 'background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.22);' : 'background:rgba(33,150,243,0.1);color:#64b5f6;border:1px solid rgba(33,150,243,0.22);'}">${req.user.role || 'User'}</span>
+                            <span style="font-size:0.65rem;padding:1px 7px;border-radius:10px;font-weight:700;${req.user.role === 'Admin' ? 'background:rgba(167,139,250,0.1);color:#a78bfa;border:1px solid rgba(167,139,250,0.22);' : 'background:rgba(33,150,243,0.1);color:#64b5f6;border:1px solid rgba(33,150,243,0.22);'}">${req.user.role || 'User'}</span>
                             ${req.user.location ? '<span style="font-size:0.65rem;color:#2e3348;">· ' + req.user.location + '</span>' : ''}
                         </div>
                     </div>
                     <a href="/change-password" style="padding:6px 11px;background:#0a0b0f;color:#3a4050;border-radius:6px;text-decoration:none;font-size:0.68rem;border:1px solid #1e2030;transition:0.15s;" onmouseover="this.style.color='#8892a4';this.style.borderColor='#2e3348'" onmouseout="this.style.color='#3a4050';this.style.borderColor='#1e2030'" title="Change Password">&#128274; PWD</a>
-                    <a href="/logout" style="padding:6px 14px;background:rgba(251,192,45,0.08);color:#fbc02d;border-radius:6px;text-decoration:none;font-size:0.75rem;font-weight:700;font-family:'Oswald';letter-spacing:1px;border:1px solid rgba(251,192,45,0.2);transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.18)'" onmouseout="this.style.background='rgba(251,192,45,0.08)'">LOGOUT</a>
+                    <a href="/logout" style="padding:6px 14px;background:rgba(167,139,250,0.08);color:#a78bfa;border-radius:6px;text-decoration:none;font-size:0.75rem;font-weight:700;font-family:'Oswald';letter-spacing:1px;border:1px solid rgba(167,139,250,0.2);transition:0.15s;" onmouseover="this.style.background='rgba(167,139,250,0.18)'" onmouseout="this.style.background='rgba(167,139,250,0.08)'">LOGOUT</a>
                 </div>
                 <!-- Uzivatel mobile - compact -->
                 <div class="mobile-user-compact" style="align-items:center;gap:5px;padding:4px 8px;background:#13151e;border-radius:8px;border:1px solid #1e2030;cursor:pointer;position:relative;" onclick="var m=document.getElementById('mobileUserMenu');m.style.display=m.style.display==='block'?'none':'block';">
-                    <div style="width:24px;height:24px;border-radius:50%;background:#0a0b0f;border:1.5px solid rgba(251,192,45,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#fbc02d;font-size:0.7rem;flex-shrink:0;">
+                    <div style="width:24px;height:24px;border-radius:50%;background:#0a0b0f;border:1.5px solid rgba(167,139,250,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#a78bfa;font-size:0.7rem;flex-shrink:0;">
                         ${req.user.jmeno ? req.user.jmeno.charAt(0).toUpperCase() : '?'}
                     </div>
                     <span style="color:#c8d0e0;font-size:0.65rem;font-weight:600;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${req.user.jmeno || ''}</span>
                     <div id="mobileUserMenu" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:#13151e;border:1px solid #1e2030;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.6);min-width:140px;z-index:999;overflow:hidden;">
                         <a href="/change-password" style="display:block;padding:10px 14px;color:#8892a4;text-decoration:none;font-size:0.72rem;border-bottom:1px solid #1e2030;transition:0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">&#128274; Change Password</a>
-                        <a href="/logout" style="display:block;padding:10px 14px;color:#fbc02d;text-decoration:none;font-size:0.72rem;font-weight:700;transition:0.15s;" onmouseover="this.style.background='rgba(251,192,45,0.08)'" onmouseout="this.style.background='transparent'">&#10151; Logout</a>
+                        <a href="/logout" style="display:block;padding:10px 14px;color:#a78bfa;text-decoration:none;font-size:0.72rem;font-weight:700;transition:0.15s;" onmouseover="this.style.background='rgba(167,139,250,0.08)'" onmouseout="this.style.background='transparent'">&#10151; Logout</a>
                     </div>
                 </div>
             </div>
@@ -4868,7 +4868,7 @@ app.get('/dashboard', async (req, res) => {
                     <div class="date-pick-display" onclick="dpToggle('dp1')"><span id="dp1Text">--.--.----</span><span class="dp-icon">&#128197;</span></div>
                     <div class="dp-popup" id="dp1"></div>
                 </div>
-                <span id="mDateToLabel" style="display:none;font-size:0.7rem;color:rgba(251,192,45,0.6);font-weight:600;white-space:nowrap;">to</span>
+                <span id="mDateToLabel" style="display:none;font-size:0.7rem;color:rgba(167,139,250,0.6);font-weight:600;white-space:nowrap;">to</span>
                 <input type="hidden" id="mDateTo">
                 <div class="date-pick-wrap" id="dpWrap2" style="display:none;">
                     <div class="date-pick-display" onclick="dpToggle('dp2')"><span id="dp2Text">--.--.----</span><span class="dp-icon">&#128197;</span></div>
@@ -4887,7 +4887,7 @@ app.get('/dashboard', async (req, res) => {
                 <div><label>End</label><input type="text" id="mEnd" class="modal-input" placeholder="15:00"></div>
             </div>
             <div style="margin-top:10px;">
-                <button type="button" id="mAllDayBtn" onclick="toggleAllDay()" style="padding:7px 18px;background:rgba(251,192,45,0.08);color:rgba(251,192,45,0.7);border:1px solid rgba(251,192,45,0.2);border-radius:8px;cursor:pointer;font-size:0.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(251,192,45,0.15)';this.style.borderColor='rgba(251,192,45,0.4)';this.style.color='#fbc02d'" onmouseout="if(!this.classList.contains('active')){this.style.background='rgba(251,192,45,0.08)';this.style.borderColor='rgba(251,192,45,0.2)';this.style.color='rgba(251,192,45,0.7)'}">All Day</button>
+                <button type="button" id="mAllDayBtn" onclick="toggleAllDay()" style="padding:7px 18px;background:rgba(167,139,250,0.08);color:rgba(167,139,250,0.7);border:1px solid rgba(167,139,250,0.2);border-radius:8px;cursor:pointer;font-size:0.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(167,139,250,0.15)';this.style.borderColor='rgba(167,139,250,0.4)';this.style.color='#a78bfa'" onmouseout="if(!this.classList.contains('active')){this.style.background='rgba(167,139,250,0.08)';this.style.borderColor='rgba(167,139,250,0.2)';this.style.color='rgba(167,139,250,0.7)'}">All Day</button>
             </div>
             <label>Note</label>
             <input type="text" id="mNote" class="modal-input" placeholder="Optional note...">
@@ -4903,11 +4903,11 @@ app.get('/dashboard', async (req, res) => {
         <!-- DoubleShift split section -->
         <div id="mSplitSection" style="display:none;padding:14px 24px 18px;border-top:1px solid #1e2030;background:rgba(91,127,166,0.04);">
             <div style="font-size:0.6rem;color:rgba(91,127,166,0.7);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:600;">&#9135; Split Shift — Double Coverage</div>
-            <label style="font-size:0.62rem;color:rgba(251,192,45,0.6);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;font-weight:600;">Second Trader</label>
+            <label style="font-size:0.62rem;color:rgba(167,139,250,0.6);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;font-weight:600;">Second Trader</label>
             <select id="mSplitName" class="modal-input" style="margin-bottom:10px;" onchange="_updateSplitPreview()">${allNames.map(n => '<option value="' + n + '">' + n + '</option>').join('')}</select>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                 <div style="flex:1;font-size:0.68rem;color:rgba(255,255,255,0.3);line-height:1.7;">
-                    <span id="splitName1" style="color:rgba(251,192,45,0.7);font-weight:600;"></span> takes <strong id="splitHalf1" style="color:rgba(251,192,45,0.7);">--</strong><br>
+                    <span id="splitName1" style="color:rgba(167,139,250,0.7);font-weight:600;"></span> takes <strong id="splitHalf1" style="color:rgba(167,139,250,0.7);">--</strong><br>
                     <span id="splitName2" style="color:rgba(91,127,166,0.7);font-weight:600;"></span> takes <strong id="splitHalf2" style="color:rgba(91,127,166,0.7);">--</strong>
                 </div>
                 <button type="button" id="mSplitSwapBtn" onclick="toggleSplitOrder()" style="padding:6px 12px;background:rgba(91,127,166,0.1);color:#7ba3cc;border:1px solid rgba(91,127,166,0.3);border-radius:6px;cursor:pointer;font-size:0.7rem;font-weight:600;" onmouseover="this.style.background='rgba(91,127,166,0.2)'" onmouseout="this.style.background='rgba(91,127,166,0.1)'">&#8645; Swap</button>
@@ -4915,7 +4915,7 @@ app.get('/dashboard', async (req, res) => {
         </div>
         <!-- BOD 5: History / last edit -->
         <div id="mHistorySection" style="padding:0 24px 18px;border-top:1px solid #1e2030;background:rgba(0,0,0,0.15);">
-            <div style="font-size:0.6rem;color:rgba(251,192,45,0.4);text-transform:uppercase;letter-spacing:1.5px;margin-top:14px;margin-bottom:8px;font-weight:600;">Recent Activity</div>
+            <div style="font-size:0.6rem;color:rgba(167,139,250,0.4);text-transform:uppercase;letter-spacing:1.5px;margin-top:14px;margin-bottom:8px;font-weight:600;">Recent Activity</div>
             <div id="mHistoryList" style="font-size:0.72rem;color:rgba(255,255,255,0.35);line-height:1.9;">
                 <span style="color:rgba(255,255,255,0.15);">Loading...</span>
             </div>
@@ -4965,7 +4965,7 @@ app.get('/dashboard', async (req, res) => {
 <div id="syncModal" style="display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(3px);">
     <div style="background:#1a1a1a;margin:8% auto;border-radius:12px;width:420px;color:#eee;box-shadow:0 24px 64px rgba(0,0,0,0.7);border:1px solid #333;overflow:hidden;">
         <div style="padding:20px 24px 14px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-family:'Oswald';font-size:1.1rem;color:#fbc02d;letter-spacing:1px;">&#128260; SYNC WITH SCHEDULE</span>
+            <span style="font-family:'Oswald';font-size:1.1rem;color:#a78bfa;letter-spacing:1px;">&#128260; SYNC WITH SCHEDULE</span>
             <button onclick="closeSyncModal()" style="background:none;border:none;color:#666;font-size:1.3rem;cursor:pointer;">&#10005;</button>
         </div>
         <div style="padding:20px 24px;">
@@ -4974,7 +4974,7 @@ app.get('/dashboard', async (req, res) => {
                 <option value="">Loading...</option>
             </select>
             <div style="display:flex;gap:10px;">
-                <button onclick="confirmSync()" style="flex:1;padding:12px;background:#fbc02d;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';font-size:1rem;cursor:pointer;letter-spacing:1px;">SYNC</button>
+                <button onclick="confirmSync()" style="flex:1;padding:12px;background:#a78bfa;color:#000;border:none;border-radius:6px;font-weight:700;font-family:'Oswald';font-size:1rem;cursor:pointer;letter-spacing:1px;">SYNC</button>
                 <button onclick="closeSyncModal()" style="padding:12px 20px;background:#222;color:#888;border:none;border-radius:6px;cursor:pointer;">Cancel</button>
             </div>
         </div>
@@ -5090,7 +5090,7 @@ app.get('/dashboard', async (req, res) => {
         </div>
         <div id="slackSubsList" style="padding:12px 24px;max-height:55vh;overflow-y:auto;"></div>
         <div style="padding:12px 24px 18px;border-top:1px solid #1e2030;text-align:right;">
-            <button onclick="closeSlackSettings()" style="padding:8px 20px;background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);border-radius:8px;cursor:pointer;font-size:0.75rem;font-weight:700;letter-spacing:0.5px;">DONE</button>
+            <button onclick="closeSlackSettings()" style="padding:8px 20px;background:rgba(167,139,250,0.1);color:#a78bfa;border:1px solid rgba(167,139,250,0.25);border-radius:8px;cursor:pointer;font-size:0.75rem;font-weight:700;letter-spacing:0.5px;">DONE</button>
         </div>
     </div>
 </div>
@@ -5115,7 +5115,7 @@ app.get('/dashboard', async (req, res) => {
 <div id="colorPickerModal" style="display:none;position:fixed;z-index:2100;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);">
     <div style="background:#12131a;margin:4% auto;border-radius:14px;width:480px;max-width:96vw;color:#eee;box-shadow:0 32px 80px rgba(0,0,0,0.8);border:1px solid #1e2030;overflow:hidden;">
         <div style="padding:20px 24px 14px;border-bottom:1px solid #1e2030;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-family:'Oswald';font-size:1.1rem;color:#fbc02d;letter-spacing:1px;">&#127912; COLOR SETTINGS</span>
+            <span style="font-family:'Oswald';font-size:1.1rem;color:#a78bfa;letter-spacing:1px;">&#127912; COLOR SETTINGS</span>
             <button onclick="closeColorPicker()" style="background:none;border:none;color:#666;font-size:1.3rem;cursor:pointer;">&#10005;</button>
         </div>
         <div style="padding:16px 24px;">
@@ -5123,7 +5123,7 @@ app.get('/dashboard', async (req, res) => {
             <div id="colorList" style="max-height:400px;overflow-y:auto;"></div>
             <div style="display:flex;gap:10px;margin-top:14px;">
                 <button onclick="resetAllColors()" style="padding:8px 16px;background:rgba(244,67,54,0.08);color:#e57373;border:1px solid rgba(244,67,54,0.2);border-radius:6px;cursor:pointer;font-size:0.72rem;font-weight:600;">RESET ALL</button>
-                <button onclick="closeColorPicker()" style="flex:1;padding:8px;background:rgba(251,192,45,0.1);color:#fbc02d;border:1px solid rgba(251,192,45,0.25);border-radius:6px;cursor:pointer;font-weight:700;font-family:'Oswald';letter-spacing:1px;">DONE</button>
+                <button onclick="closeColorPicker()" style="flex:1;padding:8px;background:rgba(167,139,250,0.1);color:#a78bfa;border:1px solid rgba(167,139,250,0.25);border-radius:6px;cursor:pointer;font-weight:700;font-family:'Oswald';letter-spacing:1px;">DONE</button>
             </div>
         </div>
     </div>
@@ -5354,9 +5354,9 @@ app.get('/dashboard', async (req, res) => {
         // Reset All Day button
         const adBtn=document.getElementById('mAllDayBtn');
         adBtn.classList.remove('active');
-        adBtn.style.background='rgba(251,192,45,0.08)';
-        adBtn.style.borderColor='rgba(251,192,45,0.2)';
-        adBtn.style.color='rgba(251,192,45,0.7)';
+        adBtn.style.background='rgba(167,139,250,0.08)';
+        adBtn.style.borderColor='rgba(167,139,250,0.2)';
+        adBtn.style.color='rgba(167,139,250,0.7)';
         document.getElementById('mStart').readOnly=false;
         document.getElementById('mStart').style.opacity='1';
         document.getElementById('mEnd').readOnly=false;
@@ -5368,9 +5368,9 @@ app.get('/dashboard', async (req, res) => {
         // Auto-detect all-day shifts
         if(start==='00:00' && (end==='23:59'||end==='24:00')){
             adBtn.classList.add('active');
-            adBtn.style.background='rgba(251,192,45,0.2)';
-            adBtn.style.borderColor='rgba(251,192,45,0.5)';
-            adBtn.style.color='#fbc02d';
+            adBtn.style.background='rgba(167,139,250,0.2)';
+            adBtn.style.borderColor='rgba(167,139,250,0.5)';
+            adBtn.style.color='#a78bfa';
             document.getElementById('mStart').readOnly=true;
             document.getElementById('mStart').style.opacity='0.5';
             document.getElementById('mEnd').readOnly=true;
@@ -5396,7 +5396,7 @@ app.get('/dashboard', async (req, res) => {
                 if (data.created) {
                     html += '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">'
                         + '<span style="color:#555;font-size:0.68rem;">Created by</span>'
-                        + '<span style="color:#fbc02d;font-weight:600;font-size:0.72rem;">' + data.created.by + '</span>'
+                        + '<span style="color:#a78bfa;font-weight:600;font-size:0.72rem;">' + data.created.by + '</span>'
                         + '<span style="color:#444;font-size:0.65rem;">' + timeAgo(data.created.at) + '</span>'
                         + '</div>';
                 } else {
@@ -5419,9 +5419,9 @@ app.get('/dashboard', async (req, res) => {
     function openAddModal(){
         const hdr = document.getElementById('mHeader');
         hdr.style.background='#111';
-        hdr.style.borderBottomColor='#fbc02d';
+        hdr.style.borderBottomColor='#a78bfa';
         document.getElementById('mProductDisplay').textContent='New Shift';
-        document.getElementById('mProductDisplay').style.color='#fbc02d';
+        document.getElementById('mProductDisplay').style.color='#a78bfa';
         document.getElementById('mPersonDisplay').textContent='';
         document.getElementById('mRoleBadge').textContent='';
         document.getElementById('mDateDisplay').textContent='-';
@@ -5447,9 +5447,9 @@ app.get('/dashboard', async (req, res) => {
         // Reset All Day
         const adBtn=document.getElementById('mAllDayBtn');
         adBtn.classList.remove('active');
-        adBtn.style.background='rgba(251,192,45,0.08)';
-        adBtn.style.borderColor='rgba(251,192,45,0.2)';
-        adBtn.style.color='rgba(251,192,45,0.7)';
+        adBtn.style.background='rgba(167,139,250,0.08)';
+        adBtn.style.borderColor='rgba(167,139,250,0.2)';
+        adBtn.style.color='rgba(167,139,250,0.7)';
         document.getElementById('mStart').readOnly=false;
         document.getElementById('mStart').style.opacity='1';
         document.getElementById('mEnd').readOnly=false;
@@ -5592,9 +5592,9 @@ app.get('/dashboard', async (req, res) => {
         const endEl = document.getElementById('mEnd');
         const isActive = btn.classList.toggle('active');
         if(isActive){
-            btn.style.background='rgba(251,192,45,0.2)';
-            btn.style.borderColor='rgba(251,192,45,0.5)';
-            btn.style.color='#fbc02d';
+            btn.style.background='rgba(167,139,250,0.2)';
+            btn.style.borderColor='rgba(167,139,250,0.5)';
+            btn.style.color='#a78bfa';
             startEl.value='00:00';
             endEl.value='23:59';
             startEl.readOnly=true;
@@ -5602,9 +5602,9 @@ app.get('/dashboard', async (req, res) => {
             startEl.style.opacity='0.5';
             endEl.style.opacity='0.5';
         } else {
-            btn.style.background='rgba(251,192,45,0.08)';
-            btn.style.borderColor='rgba(251,192,45,0.2)';
-            btn.style.color='rgba(251,192,45,0.7)';
+            btn.style.background='rgba(167,139,250,0.08)';
+            btn.style.borderColor='rgba(167,139,250,0.2)';
+            btn.style.color='rgba(167,139,250,0.7)';
             startEl.value='';
             endEl.value='';
             startEl.readOnly=false;
@@ -5999,8 +5999,8 @@ app.get('/dashboard', async (req, res) => {
         const list = document.getElementById('slackSubsList');
         list.innerHTML = _allTraderNames.map(function(name) {
             const checked = _mySlackSubs.includes(name);
-            return '<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-bottom:1px solid #0e0f16;transition:background 0.1s;" onmouseover="this.style.background=\\'rgba(251,192,45,0.03)\\'" onmouseout="this.style.background=\\'transparent\\'">'
-                + '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="toggleSlackSub(\\'' + name.replace(/'/g,'') + '\\',this.checked)" style="accent-color:#fbc02d;width:16px;height:16px;cursor:pointer;">'
+            return '<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-bottom:1px solid #0e0f16;transition:background 0.1s;" onmouseover="this.style.background=\\'rgba(167,139,250,0.03)\\'" onmouseout="this.style.background=\\'transparent\\'">'
+                + '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="toggleSlackSub(\\'' + name.replace(/'/g,'') + '\\',this.checked)" style="accent-color:#a78bfa;width:16px;height:16px;cursor:pointer;">'
                 + '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (pColors[name] || '#555') + ';flex-shrink:0;"></span>'
                 + '<span style="font-size:0.78rem;color:' + (checked ? '#e8eaf0' : '#4a5060') + ';font-weight:' + (checked ? '600' : '400') + ';">' + name + '</span>'
                 + '</label>';
@@ -6978,7 +6978,7 @@ app.get('/dashboard', async (req, res) => {
       ov.addEventListener('click', function(e){ if(e.target===ov) closeSwapBoard(); });
       var box=document.createElement('div'); box.style.cssText='max-width:720px;width:100%;background:#13151e;border:1px solid #1e2030;border-radius:14px;padding:22px;';
       var head=document.createElement('div'); head.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;';
-      var h2=document.createElement('h2'); h2.style.cssText='margin:0;color:#fbc02d;font-size:1.2rem;'; h2.textContent='🔄 Žádosti o výměnu';
+      var h2=document.createElement('h2'); h2.style.cssText='margin:0;color:#a78bfa;font-size:1.2rem;'; h2.textContent='🔄 Žádosti o výměnu';
       var xb=document.createElement('button'); xb.textContent='×'; xb.style.cssText='background:none;border:none;color:#8892a4;font-size:1.4rem;cursor:pointer;'; xb.addEventListener('click', closeSwapBoard);
       head.appendChild(h2); head.appendChild(xb);
       var bodyD=document.createElement('div'); bodyD.id='swapBody'; bodyD.style.cssText='color:#c8d0e0;'; bodyD.textContent='Načítám…';
@@ -6994,7 +6994,7 @@ app.get('/dashboard', async (req, res) => {
       function makeCard(r,btns){ var c=document.createElement('div'); c.style.cssText='border:1px solid #1e2030;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#0e1621;'; var t=document.createElement('div'); t.style.cssText='font-weight:700;color:#e8eaf0;'; t.textContent=r.ShiftProduct+' · '+r.ShiftDate+' · '+r.ShiftStart+'-'+r.ShiftEnd; var sub=document.createElement('div'); sub.style.cssText='font-size:0.8rem;color:#8892a4;margin:3px 0;'; sub.textContent='Nabízí: '+r.RequesterName+(r.ClaimedBy?(' → '+r.ClaimedBy):'')+(r.Note?(' · '+r.Note):''); var ba=document.createElement('div'); btns.forEach(function(x){ba.appendChild(x);}); c.appendChild(t); c.appendChild(sub); c.appendChild(ba); return c; }
       function section(title,color){ var h=document.createElement('div'); h.style.cssText='font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:'+color+';margin:12px 0 6px;'; h.textContent=title; body.appendChild(h); }
       var toApprove=b.toApprove||[],open=b.open||[],mine=b.mine||[];
-      if(toApprove.length){ section('Ke schválení','#fbc02d'); toApprove.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('✓ Schválit','#4caf50',function(){swapAction(r.Id,'approve');}),makeBtn('Zrušit','#e05260',function(){swapAction(r.Id,'cancel');})])); }); }
+      if(toApprove.length){ section('Ke schválení','#a78bfa'); toApprove.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('✓ Schválit','#4caf50',function(){swapAction(r.Id,'approve');}),makeBtn('Zrušit','#e05260',function(){swapAction(r.Id,'cancel');})])); }); }
       section('Otevřené nabídky ('+open.length+')','#5b7fa6');
       if(open.length){ open.forEach(function(r){ body.appendChild(makeCard(r,[makeBtn('✋ Převzít','#64b5f6',function(){swapAction(r.Id,'claim');})])); }); }
       else { var em=document.createElement('div'); em.style.cssText='color:#5b6478;font-size:0.85rem;'; em.textContent='Žádné otevřené nabídky.'; body.appendChild(em); }
@@ -7025,7 +7025,7 @@ app.get('/dashboard', async (req, res) => {
       ov.style.cssText='position:fixed;inset:0;z-index:4200;background:rgba(0,0,0,0.6);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;';
       ov.addEventListener('click',function(e){ if(e.target===ov) ov.style.display='none'; });
       var box=document.createElement('div'); box.style.cssText='max-width:760px;width:100%;background:#13151e;border:1px solid #1e2030;border-radius:14px;padding:22px;';
-      var h2=document.createElement('h2'); h2.style.cssText='margin:0 0 6px;color:#fbc02d;font-size:1.2rem;'; h2.textContent='📥 Import směn z CSV';
+      var h2=document.createElement('h2'); h2.style.cssText='margin:0 0 6px;color:#a78bfa;font-size:1.2rem;'; h2.textContent='📥 Import směn z CSV';
       var hint=document.createElement('div'); hint.style.cssText='font-size:0.8rem;color:#8892a4;margin-bottom:10px;'; hint.textContent='Sloupce: Date, Name, Start, End (povinné) + Product, Trading, Note. Datum YYYY-MM-DD nebo D.M.YYYY, čas HH:MM. Oddělovač , nebo ;';
       var ta=document.createElement('textarea'); ta.id='importCsv'; ta.placeholder='Date,Name,Trading,Product,Start,End,Note'; ta.style.cssText='width:100%;height:140px;background:#0a0b0f;border:1px solid #2a4060;border-radius:8px;color:#c0d4e8;padding:10px;font-family:monospace;font-size:0.78rem;box-sizing:border-box;';
       var file=document.createElement('input'); file.type='file'; file.accept='.csv,text/csv'; file.style.cssText='margin:8px 0;color:#8892a4;font-size:0.8rem;display:block;';
