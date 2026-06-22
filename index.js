@@ -4484,7 +4484,8 @@ app.get('/dashboard', async (req, res) => {
             display:flex;position:relative;height:66px;
             background-image:
                 repeating-linear-gradient(to right, rgba(150,175,210,0.06) 0px, rgba(150,175,210,0.06) 1px, transparent 1px, transparent 40px),
-                repeating-linear-gradient(to right, transparent 0px, transparent 960px, rgba(150,175,210,0.022) 960px, rgba(150,175,210,0.022) 1920px);
+                repeating-linear-gradient(to right, transparent 0px, transparent 960px, rgba(150,175,210,0.022) 960px, rgba(150,175,210,0.022) 1920px),
+                linear-gradient(to right, transparent 4800px, rgba(110,160,230,0.07) 4800px, rgba(110,160,230,0.07) 6720px);
             width:6720px;
         }
 
