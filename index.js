@@ -4777,10 +4777,10 @@ app.get('/dashboard', async (req, res) => {
           --au1:#6d5bd6; --au2:#1f7fa8;
         }
         .theme-light body, .theme-light .main-content{ background:#eef1f6 !important; }
-        .theme-light .topbar-main[style]{ background:#e7eaf1 !important; border-bottom-color:var(--gborder) !important; }
+        .theme-light .topbar-main[style]{ background:#d7dce7 !important; border-bottom-color:var(--gborder) !important; }
         .theme-light .view-toggle-bar{ background:#eef1f6 !important; border-color:var(--gborder) !important; }
-        .theme-light .sidebar{ background:#e7eaf1 !important; border-right-color:var(--gborder) !important; }
-        .theme-light .mini-calendar{ background:#dfe3ec !important; border-radius:8px; padding:8px 8px 12px !important; }
+        .theme-light .sidebar{ background:#d7dce7 !important; border-right-color:var(--gborder) !important; }
+        .theme-light .mini-calendar{ background:#cdd3e0 !important; border-radius:8px; padding:8px 8px 12px !important; }
         .theme-light #warriorSearch{ background:#f4f6fa !important; color:#1b2230 !important; border-color:var(--gborder) !important; }
         .theme-light .section-title{ color:#6e7a96 !important; }
         .theme-light .item{ color:#3c4860 !important; }
@@ -5424,12 +5424,26 @@ app.get('/dashboard', async (req, res) => {
         var st=document.createElement('style'); st.textContent='body.move-mode .shift-pill{cursor:grab;} body.move-mode .shift-pill:active{cursor:grabbing;}'; document.head.appendChild(st);
         function toH(t){ var a=(t||'0:0').split(':'); return (+a[0])+(+a[1])/60; }
         function hhmm(h){ var H=Math.floor(h+1e-9), M=Math.round((h-H)*60); if(M===60){H++;M=0;} return (H<10?'0':'')+H+':'+(M<10?'0':'')+M; }
-        function tzEurope(){ var el=document.getElementById('tzLabel'); return !el || (el.textContent||'').trim().toUpperCase()==='EUROPE'; }
+        function tzOff(){ try{ return localStorage.getItem('ygg_tz')==='lima'?-6:0; }catch(e){ return 0; } }   // display offset: CET=0, Lima=-6
+        function m2hhmm(mins){ mins=((Math.round(mins)%1440)+1440)%1440; var H=Math.floor(mins/60),M=mins%60; return (H<10?'0':'')+H+':'+(M<10?'0':'')+M; }
         function eligible(p){ return p && p.classList && p.classList.contains('shift-pill') && (p.dataset.sht||'')!=='' && (p.dataset.pillPart||'0')==='0' && p.dataset.tooltipProduct!=='Vacation' && p.dataset.tooltipProduct!=='RIP' && p.closest('.user-row') && p.closest('.row-grid-bg'); }
         function setUndoBtns(){ var u=document.getElementById('undoBtn'),r=document.getElementById('redoBtn'); if(u){ u.style.display=moveMode?'inline-block':'none'; u.style.opacity=undoStack.length?'1':'0.4'; } if(r){ r.style.display=moveMode?'inline-block':'none'; r.style.opacity=redoStack.length?'1':'0.4'; } }
+        // Position a timeline pill exactly like the server render + tz toggle would. data-orig-* are CET; the display applies the tz offset.
+        function placePill(p){
+            var off=tzOff(), od=parseInt(p.dataset.origDay||'0',10)||0;
+            var os=(p.dataset.origStart||'0:0').split(':'), oe=(p.dataset.origEnd||'0:0').split(':');
+            var sm=(+os[0])*60+(+os[1])+off*60, em=(+oe[0])*60+(+oe[1])+off*60;
+            var dOff=0; if(sm<0)dOff=-1; else if(sm>=1440)dOff=1;
+            sm=((sm%1440)+1440)%1440; em=((em%1440)+1440)%1440;
+            var nd=od+dOff; if(nd<0)nd=0; if(nd>6)nd=6;
+            var sp=(sm/1440)*100, ep=(em/1440)*100, eff=(em===0?100:ep);
+            var w=(eff>sp)?(eff-sp)/7:(100-sp)/7;
+            p.style.left=((nd*100/7)+(sp/7))+'%'; p.style.width=Math.max(w,0.3)+'%';
+            var t=p.querySelector('.pill-time'); if(t) t.textContent=m2hhmm(sm)+' - '+m2hhmm(em);
+        }
         window.toggleMoveMode=function(){ moveMode=!moveMode; try{localStorage.setItem('ygg_move',moveMode?'1':'0');}catch(e){} document.body.classList.toggle('move-mode',moveMode); var b=document.getElementById('moveModeBtn'); if(b) b.style.color=moveMode?'#22d3ee':'#5b7fa6'; setUndoBtns(); toast(moveMode?'Move mode ON — drag your shifts to reschedule. Ctrl+Z = undo.':'Move mode OFF'); };
         document.addEventListener('mousedown',function(e){
-            if(!moveMode||e.button!==0||!tzEurope()) return;
+            if(!moveMode||e.button!==0) return;
             var p=e.target.closest&&e.target.closest('.shift-pill'); if(!p||!eligible(p)) return;
             var dur=toH(p.dataset.origEnd)-toH(p.dataset.origStart); if(!(dur>0)) return;
             e.preventDefault();
@@ -5445,15 +5459,15 @@ app.get('/dashboard', async (req, res) => {
         document.addEventListener('mouseup',function(){
             if(!drag) return; var d=drag; drag=null;
             d.p.style.zIndex=''; d.p.style.opacity='';
-            if(!d.moved){ d.p.style.left=d.l0+'px'; return; }
+            if(!d.moved){ placePill(d.p); return; }
             justDragged=true; setTimeout(function(){justDragged=false;},60);
-            var nl=parseFloat(d.p.style.left)||d.l0;
-            var startH=Math.round(((nl-d.day*DAYPX)/HOURPX)/SNAP)*SNAP;
-            startH=Math.max(0,Math.min(24-d.dur,startH));
-            var finalLeft=d.day*DAYPX+startH*HOURPX; d.p.style.left=finalLeft+'px';
-            var before={start:d.p.dataset.origStart,end:d.p.dataset.origEnd,left:d.l0};
-            var after={start:hhmm(startH),end:hhmm(startH+d.dur),left:finalLeft};
-            if(after.start===before.start && after.end===before.end){ d.p.style.left=d.l0+'px'; return; }
+            var off=tzOff(), nl=parseFloat(d.p.style.left)||d.l0;
+            var dispMins=(nl-d.day*DAYPX)/HOURPX*60;                                    // displayed (current tz) start mins within the day-column
+            var storedMins=Math.round((dispMins-off*60)/(SNAP*60))*(SNAP*60);           // -> CET, snapped to 15 min
+            storedMins=Math.max(0, Math.min(1440-d.dur*60, storedMins));                // keep CET shift within the day (no overnight / no date cross)
+            var before={start:d.p.dataset.origStart,end:d.p.dataset.origEnd};
+            var after={start:m2hhmm(storedMins),end:m2hhmm(storedMins+d.dur*60)};
+            if(after.start===before.start && after.end===before.end){ placePill(d.p); return; }
             applyMove(d.p,before,after,true);
         });
         function applyMove(p,before,after,push){
@@ -5462,16 +5476,16 @@ app.get('/dashboard', async (req, res) => {
             // Editing a Schedule (non-manual) shift -> send override key so the server creates a ManualShift override hiding the Schedule slot
             if((p.dataset.sht||'')!=='ManualShifts'){ body.overrideKey = nm+'|'+p.dataset.shiftDate+'|'+(p.dataset.tooltipProduct||'')+'|'+before.start+'|'+before.end; }
             fetch('/update-shift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(x){
-                if(!x.ok||(x.j&&x.j.error)){ p.style.left=before.left+'px'; toast('Move failed: '+((x.j&&x.j.error)||'?')); return; }
+                if(!x.ok||(x.j&&x.j.error)){ placePill(p); toast('Move failed: '+((x.j&&x.j.error)||'?')); return; }
                 p.dataset.origStart=after.start; p.dataset.origEnd=after.end;
                 if(x.j && x.j.created && x.j.id){ p.dataset.sht='ManualShifts'; p.dataset.sid=x.j.id; } // now a manual override; further moves go by id
-                var t=p.querySelector('.pill-time'); if(t) t.textContent=after.start+' - '+after.end;
+                placePill(p);
                 if(push){ undoStack.push({p:p,before:before,after:after}); redoStack=[]; }
-                setUndoBtns(); toast('Moved to '+after.start+'–'+after.end);
-            }).catch(function(err){ p.style.left=before.left+'px'; toast('Move failed: '+err.message); });
+                setUndoBtns(); toast('Moved to '+after.start+'–'+after.end+' CET');
+            }).catch(function(err){ placePill(p); toast('Move failed: '+err.message); });
         }
-        window.dragUndo=function(){ var m=undoStack.pop(); if(!m){ toast('Nothing to undo'); return; } redoStack.push(m); m.p.style.left=m.before.left+'px'; applyMove(m.p,m.after,m.before,false); };
-        window.dragRedo=function(){ var m=redoStack.pop(); if(!m){ toast('Nothing to redo'); return; } undoStack.push(m); m.p.style.left=m.after.left+'px'; applyMove(m.p,m.before,m.after,false); };
+        window.dragUndo=function(){ var m=undoStack.pop(); if(!m){ toast('Nothing to undo'); return; } redoStack.push(m); applyMove(m.p,m.after,m.before,false); };
+        window.dragRedo=function(){ var m=redoStack.pop(); if(!m){ toast('Nothing to redo'); return; } undoStack.push(m); applyMove(m.p,m.before,m.after,false); };
         document.addEventListener('keydown',function(e){ if(!moveMode) return; var k=(e.key||'').toLowerCase(); if((e.ctrlKey||e.metaKey)&&k==='z'){ e.preventDefault(); dragUndo(); } else if((e.ctrlKey||e.metaKey)&&k==='y'){ e.preventDefault(); dragRedo(); } });
         document.addEventListener('click',function(e){ if(justDragged){ var p=e.target.closest&&e.target.closest('.shift-pill'); if(p){ e.stopPropagation(); e.preventDefault(); } } },true);
         // Move mode defaults ON + is remembered, so dragging works out of the box (✥ toggles it off)
