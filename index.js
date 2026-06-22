@@ -1542,6 +1542,16 @@ function convertCzechDate(dateVal) {
     return null;
 }
 
+// Soft·Glass: pastelizace barvy (smichani s bilou) pro svetle pilulky s tmavym textem (modulova uroven -> scope pro vsechny pohledy)
+function pastel(hex) {
+    if (!hex || hex.charAt(0) !== '#' || (hex.length !== 7 && hex.length !== 4)) return hex;
+    var r, g, b;
+    if (hex.length === 4) { r = parseInt(hex.charAt(1) + hex.charAt(1), 16); g = parseInt(hex.charAt(2) + hex.charAt(2), 16); b = parseInt(hex.charAt(3) + hex.charAt(3), 16); }
+    else { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16); }
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
+    var m = 0.60;
+    return 'rgb(' + Math.round(r + (255 - r) * m) + ',' + Math.round(g + (255 - g) * m) + ',' + Math.round(b + (255 - b) * m) + ')';
+}
 function timeToPercent(timeStr) {
     if (!timeStr) return 0;
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -3873,16 +3883,6 @@ app.get('/dashboard', async (req, res) => {
             }
 
             // Helper funkce pro pill
-            // Soft·Glass: pastelizace barvy (smíchání s bílou) pro světlé pilulky s tmavým textem
-            function pastel(hex) {
-                if (!hex || hex.charAt(0) !== '#' || (hex.length !== 7 && hex.length !== 4)) return hex;
-                var r, g, b;
-                if (hex.length === 4) { r = parseInt(hex.charAt(1) + hex.charAt(1), 16); g = parseInt(hex.charAt(2) + hex.charAt(2), 16); b = parseInt(hex.charAt(3) + hex.charAt(3), 16); }
-                else { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16); }
-                if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
-                var m = 0.60;
-                return 'rgb(' + Math.round(r + (255 - r) * m) + ',' + Math.round(g + (255 - g) * m) + ',' + Math.round(b + (255 - b) * m) + ')';
-            }
             function buildPersonPill(s, name, dStr, dayIdx, left, width, personColor, prodColor, pillPart) {
                 const pillBg = 'repeating-linear-gradient(135deg,' + pastel(personColor) + ' 0px,' + pastel(personColor) + ' 40px,' + pastel(prodColor) + ' 40px,' + pastel(prodColor) + ' 80px)';
                 const isOff = (s.Product === 'Vacation' || s.Product === 'RIP');
@@ -4108,13 +4108,13 @@ app.get('/dashboard', async (req, res) => {
         // WEEK ZOBRAZENÍ
         else if (view === 'week') {
             const daysArr = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            let weekHeader = '<div style="width:60px;flex-shrink:0;background:#fff;border-right:1px solid #ddd;border-bottom:1px solid #ddd;z-index:10;"></div>';
-            let weekGrid   = '<div style="width:60px;flex-shrink:0;background:#fff;border-right:1px solid #ddd;display:flex;flex-direction:column;">';
+            let weekHeader = '<div style="width:60px;flex-shrink:0;background:#131826;border-right:1px solid rgba(165,180,252,0.14);border-bottom:1px solid rgba(165,180,252,0.14);z-index:10;"></div>';
+            let weekGrid   = '<div style="width:60px;flex-shrink:0;background:#131826;border-right:1px solid rgba(165,180,252,0.14);display:flex;flex-direction:column;">';
 
             for(let h=0; h<24; h++) {
-                weekGrid += '<div style="height:40px;border-bottom:1px solid #eee;text-align:right;font-size:0.62rem;color:#888;display:flex;align-items:flex-start;justify-content:flex-end;font-weight:bold;padding:2px 6px 0 0;box-sizing:border-box;position:relative;">'
+                weekGrid += '<div style="height:40px;border-bottom:1px solid rgba(165,180,252,0.08);text-align:right;font-size:0.62rem;color:#8a93ab;display:flex;align-items:flex-start;justify-content:flex-end;font-weight:bold;padding:2px 6px 0 0;box-sizing:border-box;position:relative;">'
                           + h.toString().padStart(2,'0') + ':00'
-                          + '<div style="position:absolute;left:0;right:0;top:20px;border-top:1px dashed #ddd;"></div>'
+                          + '<div style="position:absolute;left:0;right:0;top:20px;border-top:1px dashed rgba(165,180,252,0.14);"></div>'
                           + '</div>';
             }
             weekGrid += '</div>';
@@ -4125,12 +4125,12 @@ app.get('/dashboard', async (req, res) => {
                 const isToday = dStr === todayStr;
 
                 const isWeekendW = d >= 5;
-                weekHeader += '<div style="flex:1;text-align:center;padding:10px 0;border-right:1px solid #ddd;border-bottom:1px solid #ddd;font-weight:bold;font-size:0.85rem;' + (isToday ? 'background:#fff8e1;color:#fbc02d;' : isWeekendW ? 'background:#e8f1ff;' : 'background:#fff;') + '">' + daysArr[d] + ' ' + date.getDate() + '.' + (date.getMonth()+1) + '.</div>';
+                weekHeader += '<div style="flex:1;text-align:center;padding:10px 0;border-right:1px solid rgba(165,180,252,0.14);border-bottom:1px solid rgba(165,180,252,0.14);font-weight:bold;font-size:0.85rem;' + (isToday ? 'background:rgba(167,139,250,0.16);color:#a78bfa;' : isWeekendW ? 'background:rgba(96,165,250,0.09);' : 'background:#131826;') + '">' + daysArr[d] + ' ' + date.getDate() + '.' + (date.getMonth()+1) + '.</div>';
 
-                let dayColumn = '<div style="flex:1;border-right:1px solid #ddd;position:relative;background:' + (isToday ? '#fafafa' : isWeekendW ? '#f0f6ff' : '#fff') + ';min-width:100px;overflow:hidden;">';
+                let dayColumn = '<div style="flex:1;border-right:1px solid rgba(165,180,252,0.14);position:relative;background:' + (isToday ? '#131826' : isWeekendW ? 'rgba(96,165,250,0.06)' : '#131826') + ';min-width:100px;overflow:hidden;">';
                 for(let h=0; h<24; h++) {
-                    dayColumn += '<div style="height:40px;border-bottom:1px solid #eee;box-sizing:border-box;position:relative;">'
-                               + '<div style="position:absolute;left:0;right:0;top:20px;border-top:1px dashed #ebebeb;"></div>'
+                    dayColumn += '<div style="height:40px;border-bottom:1px solid rgba(165,180,252,0.08);box-sizing:border-box;position:relative;">'
+                               + '<div style="position:absolute;left:0;right:0;top:20px;border-top:1px dashed rgba(165,180,252,0.06);"></div>'
                                + '</div>';
                 }
 
@@ -4178,8 +4178,8 @@ app.get('/dashboard', async (req, res) => {
                 dayColumn += '</div>'; weekGrid += dayColumn;
             }
 
-            mainContentHTML = '<div class="week-wrapper" style="display:flex;flex-direction:column;flex-grow:1;overflow:hidden;background:#f7f7f7;">'
-                            + '<div class="week-header-row" style="display:flex;background:#fff;position:sticky;top:0;z-index:10;min-width:760px;">' + weekHeader + '</div>'
+            mainContentHTML = '<div class="week-wrapper" style="display:flex;flex-direction:column;flex-grow:1;overflow:hidden;background:#0f1320;">'
+                            + '<div class="week-header-row" style="display:flex;background:#131826;position:sticky;top:0;z-index:10;min-width:760px;">' + weekHeader + '</div>'
                             + '<div class="week-grid-row" style="display:flex;flex-grow:1;overflow-y:auto;position:relative;min-width:760px;" id="weekViewport">' + weekGrid + '</div>'
                             + '</div>';
         }
@@ -4198,7 +4198,7 @@ app.get('/dashboard', async (req, res) => {
             const listStart = new Date(startOfWeek); listStart.setDate(listStart.getDate() - 14);
             const totalDays = 35;
 
-            let listHTML = '<div class="list-viewport" style="flex-grow:1;overflow-y:auto;background:#f7f7f7;" id="listViewport">';
+            let listHTML = '<div class="list-viewport" style="flex-grow:1;overflow-y:auto;background:#0f1320;" id="listViewport">';
 
             function buildListDay(date, dStr, isToday, dow, isWeekendL, dayShifts, showWeekHeader) {
                 let h = '';
@@ -4208,38 +4208,38 @@ app.get('/dashboard', async (req, res) => {
                     const wkEnd = new Date(wkStart); wkEnd.setDate(wkStart.getDate() + 6);
                     const wn = getISOWeek(date);
                     const isCurrentWeek = toISOLocal(wkStart) === toISOLocal(startOfWeek);
-                    h += '<div class="list-week-header" id="' + (isCurrentWeek ? 'listCurrentWeek' : '') + '" style="display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:#eef0f4;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5;">'
-                       + '<span style="font-size:0.8rem;font-weight:600;color:#666;">' + fmtD(wkStart) + ' &ndash; ' + fmtD(wkEnd) + '</span>'
-                       + '<span style="font-size:0.75rem;font-weight:700;color:#999;">Week ' + wn + '</span>'
+                    h += '<div class="list-week-header" id="' + (isCurrentWeek ? 'listCurrentWeek' : '') + '" style="display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:#161b2c;border-bottom:1px solid rgba(165,180,252,0.14);position:sticky;top:0;z-index:5;">'
+                       + '<span style="font-size:0.8rem;font-weight:600;color:#aab6cf;">' + fmtD(wkStart) + ' &ndash; ' + fmtD(wkEnd) + '</span>'
+                       + '<span style="font-size:0.75rem;font-weight:700;color:#7c87a3;">Week ' + wn + '</span>'
                        + '</div>';
                 }
-                h += '<div style="display:flex;min-height:58px;border-bottom:1px solid #e8e8e8;' + (isToday ? 'background:#fffde7;' : isWeekendL ? 'background:#f0f6ff;' : 'background:#fff;') + '" id="' + (isToday ? 'listToday' : '') + '">';
-                h += '<div style="width:52px;flex-shrink:0;padding:12px 0;text-align:center;' + (isToday ? 'border-left:3px solid #fbc02d;' : 'border-left:3px solid transparent;') + '">'
-                   + '<div style="font-size:1.5rem;font-weight:700;color:' + (isToday ? '#e6a800' : isWeekendL ? '#5b8dd9' : '#333') + ';line-height:1;">' + date.getDate() + '</div>'
-                   + '<div style="font-size:0.6rem;font-weight:600;color:' + (isToday ? '#e6a800' : isWeekendL ? '#7aabec' : '#999') + ';margin-top:2px;">' + daysShortL[dow] + '</div>'
+                h += '<div style="display:flex;min-height:58px;border-bottom:1px solid rgba(165,180,252,0.08);' + (isToday ? 'background:rgba(167,139,250,0.12);' : isWeekendL ? 'background:rgba(96,165,250,0.06);' : 'background:#131826;') + '" id="' + (isToday ? 'listToday' : '') + '">';
+                h += '<div style="width:52px;flex-shrink:0;padding:12px 0;text-align:center;' + (isToday ? 'border-left:3px solid #a78bfa;' : 'border-left:3px solid transparent;') + '">'
+                   + '<div style="font-size:1.5rem;font-weight:700;color:' + (isToday ? '#a78bfa' : isWeekendL ? '#7ba3cc' : '#e8ecf4') + ';line-height:1;">' + date.getDate() + '</div>'
+                   + '<div style="font-size:0.6rem;font-weight:600;color:' + (isToday ? '#a78bfa' : isWeekendL ? '#7ba3cc' : '#7c87a3') + ';margin-top:2px;">' + daysShortL[dow] + '</div>'
                    + '</div>';
                 h += '<div style="flex:1;padding:8px 12px 8px 8px;">';
                 if (dayShifts.length === 0) {
-                    h += '<div style="padding:8px 0;font-size:0.78rem;color:#bbb;font-style:italic;">No events</div>';
+                    h += '<div style="padding:8px 0;font-size:0.78rem;color:#6b768f;font-style:italic;">No events</div>';
                 } else {
                     dayShifts.forEach(s => {
                         const personColor = personColors[s.Name] || '#555';
                         const prodColor   = getProductColor(s.Trading, s.Product);
                         const dur = calculateDuration(s.Start, s.End);
                         h += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '"'
-                           + ' style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0f0f0;border-radius:10px;margin-bottom:5px;cursor:pointer;border-left:4px solid ' + prodColor + ';box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:box-shadow 0.15s;"'
+                           + ' style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#161b2c;border-radius:10px;margin-bottom:5px;cursor:pointer;border-left:4px solid ' + prodColor + ';box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:box-shadow 0.15s;"'
                            + ' onmouseover="this.style.boxShadow=\'0 3px 8px rgba(0,0,0,0.12)\'" onmouseout="this.style.boxShadow=\'0 1px 3px rgba(0,0,0,0.06)\'"'
                            + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\',event)">'
                            + '<div style="flex:1;min-width:0;">'
-                           + '<div style="font-weight:700;font-size:0.85rem;color:#222;display:flex;align-items:center;gap:6px;">'
+                           + '<div style="font-weight:700;font-size:0.85rem;color:#e8ecf4;display:flex;align-items:center;gap:6px;">'
                            + '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + prodColor + ';flex-shrink:0;"></span>'
                            + s.Product + '</div>'
-                           + '<div style="font-size:0.72rem;color:#888;margin-top:3px;">'
+                           + '<div style="font-size:0.72rem;color:#8a93ab;margin-top:3px;">'
                            + '<span class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '">' + s.Start + ' - ' + s.End + '</span>'
                            + ', ' + s.Trading + ' &gt; ' + s.Name
                            + '</div>'
                            + '</div>'
-                           + '<div style="text-align:right;flex-shrink:0;color:#aaa;font-size:0.68rem;">' + dur.toFixed(1) + 'h</div>'
+                           + '<div style="text-align:right;flex-shrink:0;color:#7c87a3;font-size:0.68rem;">' + dur.toFixed(1) + 'h</div>'
                            + '</div>';
                     });
                 }
@@ -4276,34 +4276,34 @@ app.get('/dashboard', async (req, res) => {
                 const isToday = dStr === todayStr;
                 const isWeekendA = d >= 5;
                 const dayShifts = allShifts.filter(s => s.Date === dStr).sort((a, b) => a.Start.localeCompare(b.Start));
-                agendaHTML += '<div style="display:flex;min-height:54px;border-bottom:1px solid #eee;background:' + (isWeekendA && !isToday ? '#f7f9ff' : '#fff') + ';" id="' + (isToday ? 'agendaToday' : '') + '">';
+                agendaHTML += '<div style="display:flex;min-height:54px;border-bottom:1px solid rgba(165,180,252,0.08);background:' + (isWeekendA && !isToday ? 'rgba(96,165,250,0.05)' : '#131826') + ';" id="' + (isToday ? 'agendaToday' : '') + '">';
                 // Date sidebar
-                agendaHTML += '<div style="width:68px;flex-shrink:0;padding:12px 8px;text-align:center;background:' + (isToday ? '#fff8e1' : isWeekendA ? '#e8f1ff' : '#fafafa') + ';border-right:1px solid #eee;position:sticky;left:0;">'
-                            + '<div style="font-size:1.5rem;font-weight:700;color:' + (isToday ? '#fbc02d' : isWeekendA ? '#5b8dd9' : '#333') + ';line-height:1;">' + date.getDate() + '</div>'
-                            + '<div style="font-size:0.65rem;font-weight:600;color:' + (isToday ? '#fbc02d' : isWeekendA ? '#7aabec' : '#888') + ';text-transform:uppercase;letter-spacing:0.5px;">' + daysShortArr[d] + '</div>'
-                            + (isToday ? '<div style="width:6px;height:6px;background:#fbc02d;border-radius:50%;margin:4px auto 0;"></div>' : '')
+                agendaHTML += '<div style="width:68px;flex-shrink:0;padding:12px 8px;text-align:center;background:' + (isToday ? 'rgba(167,139,250,0.16)' : isWeekendA ? 'rgba(96,165,250,0.09)' : '#131826') + ';border-right:1px solid rgba(165,180,252,0.08);position:sticky;left:0;">'
+                            + '<div style="font-size:1.5rem;font-weight:700;color:' + (isToday ? '#a78bfa' : isWeekendA ? '#7ba3cc' : '#e8ecf4') + ';line-height:1;">' + date.getDate() + '</div>'
+                            + '<div style="font-size:0.65rem;font-weight:600;color:' + (isToday ? '#a78bfa' : isWeekendA ? '#7ba3cc' : '#8a93ab') + ';text-transform:uppercase;letter-spacing:0.5px;">' + daysShortArr[d] + '</div>'
+                            + (isToday ? '<div style="width:6px;height:6px;background:#a78bfa;border-radius:50%;margin:4px auto 0;"></div>' : '')
                             + '</div>';
                 // Events
                 agendaHTML += '<div style="flex:1;padding:8px 14px;">';
                 if (dayShifts.length === 0) {
-                    agendaHTML += '<div style="padding:14px 0;font-size:0.78rem;color:#ccc;font-style:italic;">No shifts</div>';
+                    agendaHTML += '<div style="padding:14px 0;font-size:0.78rem;color:#6b768f;font-style:italic;">No shifts</div>';
                 } else {
                     dayShifts.forEach(s => {
                         const personColor = personColors[s.Name] || '#555';
                         const prodColor   = getProductColor(s.Trading, s.Product);
                         const dur = calculateDuration(s.Start, s.End);
                         agendaHTML += '<div class="user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '"'
-                                    + ' style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#fff;border-radius:7px;margin-bottom:5px;cursor:pointer;border-left:4px solid ' + prodColor + ';box-shadow:0 1px 4px rgba(0,0,0,0.08);transition:box-shadow 0.15s;"'
+                                    + ' style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#131826;border-radius:7px;margin-bottom:5px;cursor:pointer;border-left:4px solid ' + prodColor + ';box-shadow:0 1px 4px rgba(0,0,0,0.08);transition:box-shadow 0.15s;"'
                                     + ' onmouseover="this.style.boxShadow=\'0 3px 10px rgba(0,0,0,0.15)\'" onmouseout="this.style.boxShadow=\'0 1px 4px rgba(0,0,0,0.08)\'"'
                                     + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\',event)">'
                                     + '<div style="width:4px;align-self:stretch;background:' + personColor + ';border-radius:2px;flex-shrink:0;min-height:32px;"></div>'
                                     + '<div style="flex:1;min-width:0;">'
-                                    + '<div style="font-weight:700;font-size:0.85rem;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + s.Name + '</div>'
-                                    + '<div style="font-size:0.74rem;color:#777;margin-top:1px;">' + s.Product + (s.Note ? ' <span style="color:#bbb">·</span> ' + s.Note : '') + '</div>'
+                                    + '<div style="font-weight:700;font-size:0.85rem;color:#e8ecf4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + s.Name + '</div>'
+                                    + '<div style="font-size:0.74rem;color:#aab6cf;margin-top:1px;">' + s.Product + (s.Note ? ' <span style="color:#6b768f">·</span> ' + s.Note : '') + '</div>'
                                     + '</div>'
                                     + '<div style="text-align:right;flex-shrink:0;">'
-                                    + '<div class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" style="font-size:0.78rem;font-weight:600;color:#444;">' + s.Start + ' – ' + s.End + '</div>'
-                                    + '<div style="font-size:0.68rem;color:#aaa;">' + dur.toFixed(1) + 'h</div>'
+                                    + '<div class="tz-time" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" style="font-size:0.78rem;font-weight:600;color:#aab6cf;">' + s.Start + ' – ' + s.End + '</div>'
+                                    + '<div style="font-size:0.68rem;color:#7c87a3;">' + dur.toFixed(1) + 'h</div>'
                                     + '</div>'
                                     + '</div>';
                     });
@@ -4311,7 +4311,7 @@ app.get('/dashboard', async (req, res) => {
                 agendaHTML += '</div></div>';
             }
             agendaHTML += '</div>';
-            mainContentHTML = '<div style="display:flex;flex-direction:column;flex-grow:1;overflow:hidden;background:#f7f7f7;">' + agendaHTML + '</div>';
+            mainContentHTML = '<div style="display:flex;flex-direction:column;flex-grow:1;overflow:hidden;background:#0f1320;">' + agendaHTML + '</div>';
         }
 
         // Serializace dat pro klientský JS
