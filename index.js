@@ -4777,7 +4777,7 @@ app.get('/dashboard', async (req, res) => {
           --au1:#6d5bd6; --au2:#1f7fa8;
         }
         .theme-light body, .theme-light .main-content{ background:#eef1f6 !important; }
-        .theme-light .topbar-main{ background:#e7eaf1 !important; border-bottom-color:var(--gborder) !important; }
+        .theme-light .topbar-main[style]{ background:#e7eaf1 !important; border-bottom-color:var(--gborder) !important; }
         .theme-light .view-toggle-bar{ background:#eef1f6 !important; border-color:var(--gborder) !important; }
         .theme-light .sidebar{ background:#e7eaf1 !important; border-right-color:var(--gborder) !important; }
         .theme-light .mini-calendar{ background:#dfe3ec !important; border-radius:8px; padding:8px 8px 12px !important; }
@@ -5427,7 +5427,7 @@ app.get('/dashboard', async (req, res) => {
         function tzEurope(){ var el=document.getElementById('tzLabel'); return !el || (el.textContent||'').trim().toUpperCase()==='EUROPE'; }
         function eligible(p){ return p && p.classList && p.classList.contains('shift-pill') && (p.dataset.sht||'')!=='' && (p.dataset.pillPart||'0')==='0' && p.dataset.tooltipProduct!=='Vacation' && p.dataset.tooltipProduct!=='RIP' && p.closest('.user-row') && p.closest('.row-grid-bg'); }
         function setUndoBtns(){ var u=document.getElementById('undoBtn'),r=document.getElementById('redoBtn'); if(u){ u.style.display=moveMode?'inline-block':'none'; u.style.opacity=undoStack.length?'1':'0.4'; } if(r){ r.style.display=moveMode?'inline-block':'none'; r.style.opacity=redoStack.length?'1':'0.4'; } }
-        window.toggleMoveMode=function(){ moveMode=!moveMode; document.body.classList.toggle('move-mode',moveMode); var b=document.getElementById('moveModeBtn'); if(b) b.style.color=moveMode?'#22d3ee':'#5b7fa6'; setUndoBtns(); if(moveMode) toast('Move mode ON — drag your shifts to reschedule within the day. Ctrl+Z = undo. Click again on ✥ to exit.'); };
+        window.toggleMoveMode=function(){ moveMode=!moveMode; try{localStorage.setItem('ygg_move',moveMode?'1':'0');}catch(e){} document.body.classList.toggle('move-mode',moveMode); var b=document.getElementById('moveModeBtn'); if(b) b.style.color=moveMode?'#22d3ee':'#5b7fa6'; setUndoBtns(); toast(moveMode?'Move mode ON — drag your shifts to reschedule. Ctrl+Z = undo.':'Move mode OFF'); };
         document.addEventListener('mousedown',function(e){
             if(!moveMode||e.button!==0||!tzEurope()) return;
             var p=e.target.closest&&e.target.closest('.shift-pill'); if(!p||!eligible(p)) return;
@@ -5474,6 +5474,10 @@ app.get('/dashboard', async (req, res) => {
         window.dragRedo=function(){ var m=redoStack.pop(); if(!m){ toast('Nothing to redo'); return; } undoStack.push(m); m.p.style.left=m.after.left+'px'; applyMove(m.p,m.before,m.after,false); };
         document.addEventListener('keydown',function(e){ if(!moveMode) return; var k=(e.key||'').toLowerCase(); if((e.ctrlKey||e.metaKey)&&k==='z'){ e.preventDefault(); dragUndo(); } else if((e.ctrlKey||e.metaKey)&&k==='y'){ e.preventDefault(); dragRedo(); } });
         document.addEventListener('click',function(e){ if(justDragged){ var p=e.target.closest&&e.target.closest('.shift-pill'); if(p){ e.stopPropagation(); e.preventDefault(); } } },true);
+        // Move mode defaults ON + is remembered, so dragging works out of the box (✥ toggles it off)
+        moveMode=(function(){try{return localStorage.getItem('ygg_move')!=='0';}catch(e){return true;}})();
+        document.body.classList.toggle('move-mode',moveMode);
+        (function(){ var b=document.getElementById('moveModeBtn'); if(b) b.style.color=moveMode?'#22d3ee':'#5b7fa6'; setUndoBtns(); })();
     })();
     // Zebra striping over VISIBLE rows only (so it stays alternating after sidebar filtering)
     function restripeRows() {
