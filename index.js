@@ -3873,8 +3873,18 @@ app.get('/dashboard', async (req, res) => {
             }
 
             // Helper funkce pro pill
+            // Soft·Glass: pastelizace barvy (smíchání s bílou) pro světlé pilulky s tmavým textem
+            function pastel(hex) {
+                if (!hex || hex.charAt(0) !== '#' || (hex.length !== 7 && hex.length !== 4)) return hex;
+                var r, g, b;
+                if (hex.length === 4) { r = parseInt(hex.charAt(1) + hex.charAt(1), 16); g = parseInt(hex.charAt(2) + hex.charAt(2), 16); b = parseInt(hex.charAt(3) + hex.charAt(3), 16); }
+                else { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16); }
+                if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
+                var m = 0.60;
+                return 'rgb(' + Math.round(r + (255 - r) * m) + ',' + Math.round(g + (255 - g) * m) + ',' + Math.round(b + (255 - b) * m) + ')';
+            }
             function buildPersonPill(s, name, dStr, dayIdx, left, width, personColor, prodColor, pillPart) {
-                const pillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
+                const pillBg = 'repeating-linear-gradient(135deg,' + pastel(personColor) + ' 0px,' + pastel(personColor) + ' 40px,' + pastel(prodColor) + ' 40px,' + pastel(prodColor) + ' 80px)';
                 const isOff = (s.Product === 'Vacation' || s.Product === 'RIP');
                 const crew = isOff ? [] : getCrewmates(s);
                 // Shared note: find best note from all shifts in this group
@@ -3990,8 +4000,8 @@ app.get('/dashboard', async (req, res) => {
                         const allNamesForTitle = groupShifts.map(x => x.Name).filter((v,i,a)=>a.indexOf(v)===i);
                         // Use gradient with product color only (multiple people = product-focused pill)
                         const pillBg = (!isOff && crew.length > 0)
-                            ? 'linear-gradient(135deg,' + prodColor + ' 0%,' + prodColor + 'cc 100%)'
-                            : 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
+                            ? 'linear-gradient(135deg,' + pastel(prodColor) + ' 0%,' + pastel(prodColor) + ' 100%)'
+                            : 'repeating-linear-gradient(135deg,' + pastel(personColor) + ' 0px,' + pastel(personColor) + ' 40px,' + pastel(prodColor) + ' 40px,' + pastel(prodColor) + ' 80px)';
                         const pillH = isOff ? 26 : (34 + (allOnShift.length > 1 ? allOnShift.length * 14 : 0));
                         let namesHTML = '';
                         if (!isOff && allOnShift.length > 1) {
@@ -4134,9 +4144,9 @@ app.get('/dashboard', async (req, res) => {
                         const h2 = (ep2 / 100) * (24 * 40);
                         const personColor = personColors[s.Name] || '#555';
                         const prodColor   = getProductColor(s.Trading, s.Product);
-                        const overnightBg2 = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
+                        const overnightBg2 = 'repeating-linear-gradient(135deg,' + pastel(personColor) + ' 0px,' + pastel(personColor) + ' 40px,' + pastel(prodColor) + ' 40px,' + pastel(prodColor) + ' 80px)';
                         dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-shift-date="' + s.Date + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
-                                   + ' style="position:absolute;top:0px;height:' + h2 + 'px;left:4px;right:4px;background:' + overnightBg2 + ';color:#fff;border-radius:0 0 4px 4px;padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';opacity:0.85;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5);"'
+                                   + ' style="position:absolute;top:0px;height:' + h2 + 'px;left:4px;right:4px;background:' + overnightBg2 + ';color:#11151f;border-radius:0 0 4px 4px;padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';opacity:0.85;white-space:nowrap;"'
                                    + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + prevDStr2 + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\',event)">'
                                    + '<span style="font-weight:700;">' + s.Name + '</span>'
                                    + '<span style="margin:0 5px;opacity:0.5;">|</span>'
@@ -4156,9 +4166,9 @@ app.get('/dashboard', async (req, res) => {
                     const height = isOvernight ? (1 - startPct / 100) * (24 * 40) : ((effEndPct - startPct) / 100) * (24 * 40);
                     const personColor = personColors[s.Name] || '#555';
                     const prodColor   = getProductColor(s.Trading, s.Product);
-                    const weekPillBg = 'repeating-linear-gradient(135deg,' + personColor + ' 0px,' + personColor + ' 40px,' + prodColor + ' 40px,' + prodColor + ' 80px)';
+                    const weekPillBg = 'repeating-linear-gradient(135deg,' + pastel(personColor) + ' 0px,' + pastel(personColor) + ' 40px,' + pastel(prodColor) + ' 40px,' + pastel(prodColor) + ' 80px)';
                     dayColumn += '<div class="shift-pill user-row product-row" data-name="' + s.Name + '" data-product-row="' + s.Product + '" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + d + '" data-shift-date="' + s.Date + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(s.Note||'') + '"'
-                               + ' style="position:absolute;top:' + sTop + 'px;height:' + height + 'px;left:4px;right:4px;background:' + weekPillBg + ';color:#fff;border-radius:' + (isOvernight ? '4px 4px 0 0' : '4px') + ';padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5);"'
+                               + ' style="position:absolute;top:' + sTop + 'px;height:' + height + 'px;left:4px;right:4px;background:' + weekPillBg + ';color:#11151f;border-radius:' + (isOvernight ? '4px 4px 0 0' : '4px') + ';padding:0 8px;font-size:0.65rem;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;cursor:pointer;z-index:5;border-right:3px solid ' + prodColor + ';white-space:nowrap;"'
                                + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\',event)">'
                                + '<span style="font-weight:700;">' + s.Name + '</span>'
                                + '<span style="margin:0 5px;opacity:0.5;">|</span>'
@@ -4501,7 +4511,7 @@ app.get('/dashboard', async (req, res) => {
             width:6720px;
         }
 
-        .shift-pill{position:absolute;border-radius:6px;color:#fff;display:flex;align-items:center;padding:0 8px;font-size:0.65rem;font-weight:600;z-index:10;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);transition:transform 0.1s,box-shadow 0.1s;white-space:nowrap;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,0.5);}
+        .shift-pill{position:absolute;border-radius:6px;color:#11151f;display:flex;align-items:center;padding:0 8px;font-size:0.65rem;font-weight:600;z-index:10;cursor:pointer;box-shadow:0 2px 8px rgba(15,19,32,0.35);transition:transform 0.1s,box-shadow 0.1s;white-space:nowrap;overflow:hidden;}
         .shift-pill:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,0.4);z-index:100;}
         .shift-pill.overlap{outline:2px solid #ff4444;animation:overlapBlink 1s infinite;}
         @keyframes overlapBlink{0%{outline-color:#ff4444;box-shadow:0 0 8px #ff4444;}50%{outline-color:transparent;box-shadow:none;}100%{outline-color:#ff4444;box-shadow:0 0 8px #ff4444;}}
