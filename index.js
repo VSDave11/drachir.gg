@@ -4663,7 +4663,8 @@ app.get('/dashboard', async (req, res) => {
         .theme-light body, .theme-light .main-content{ background:#eef1f6 !important; }
         .theme-light .topbar-main{ background:#ffffff !important; border-bottom-color:var(--gborder) !important; }
         .theme-light .view-toggle-bar{ background:#eef1f6 !important; border-color:var(--gborder) !important; }
-        .theme-light .sidebar{ background:#ffffff !important; border-right-color:var(--gborder) !important; }
+        .theme-light .sidebar{ background:#e7eaf1 !important; border-right-color:var(--gborder) !important; }
+        .theme-light .mini-calendar{ background:#dfe3ec !important; border-radius:8px; padding:8px 8px 12px !important; }
         .theme-light #warriorSearch{ background:#f4f6fa !important; color:#1b2230 !important; border-color:var(--gborder) !important; }
         .theme-light .section-title{ color:#6e7a96 !important; }
         .theme-light .item{ color:#3c4860 !important; }
@@ -4701,6 +4702,12 @@ app.get('/dashboard', async (req, res) => {
         .theme-light .timeline-viewport::-webkit-scrollbar-thumb{ background:rgba(109,91,214,0.4); }
         /* shift modal */
         .theme-light .modal-outer{ background:#ffffff !important; color:#1b2230 !important; border-color:var(--gborder) !important; }
+        /* WEEK / LIST / AGENDA views — light surfaces (these are built with hardcoded dark inline bg) */
+        .theme-light [style*="background:#0f1320"]{ background:#ffffff !important; }
+        .theme-light [style*="background:#131826"]{ background:#f1f3f7 !important; color:#46526a; }
+        .theme-light [style*="background:#161b2c"]{ background:#e9edf4 !important; color:#46526a; }
+        .theme-light .week-grid-row, .theme-light .week-header-row, .theme-light .list-viewport, .theme-light .list-wrapper{ color:#46526a; }
+        .theme-light .week-header-row [style*="color:#a78bfa"], .theme-light [style*="color:#a78bfa"]{ color:#5a4fcf !important; }
     </style>
     <!-- Early: restore saved view + hide unselected rows before first paint -->
     <script>
