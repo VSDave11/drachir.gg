@@ -244,6 +244,31 @@ const serviceAccountAuth = new JWT({
 
 const doc = new GoogleSpreadsheet('17iOEaSnL0ZxKYXCFiIuJkWoSbnB3INx1Ust0fBnLVg4', serviceAccountAuth);
 
+// ===== Web Push (env-gated VAPID; silently no-ops without keys, like Slack/Bamboo) =====
+let webpush = null;
+try { webpush = require('web-push'); } catch (e) {}
+const VAPID_PUBLIC = process.env.VAPID_PUBLIC || '';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE || '';
+const PUSH_ENABLED = !!(webpush && VAPID_PUBLIC && VAPID_PRIVATE);
+if (PUSH_ENABLED) { try { webpush.setVapidDetails('mailto:david.kuchar@oddin.gg', VAPID_PUBLIC, VAPID_PRIVATE); } catch (e) { console.error('VAPID init failed:', e.message); } }
+async function getPushSheet() {
+    await doc.loadInfo();
+    let sheet = doc.sheetsByTitle['PushSubs'];
+    if (!sheet) sheet = await doc.addSheet({ title: 'PushSubs', headerValues: ['Jmeno', 'Email', 'Endpoint', 'Sub', 'CreatedAt'] });
+    return sheet;
+}
+async function sendPushToUser(jmeno, title, body, url) {
+    if (!PUSH_ENABLED || !jmeno) return;
+    try {
+        const sheet = await getPushSheet();
+        const rows = await sheet.getRows();
+        for (const r of rows.filter(r => (r.get('Jmeno') || '') === jmeno)) {
+            try { await webpush.sendNotification(JSON.parse(r.get('Sub')), JSON.stringify({ title: title, body: body, url: url || '/dashboard' })); }
+            catch (e) { if (e.statusCode === 410 || e.statusCode === 404) { try { await r.delete(); } catch (_) {} } }
+        }
+    } catch (e) { console.error('push send failed:', e.message); }
+}
+
 // --- CACHE (platna 2 minuty) ---
 let _shiftsCache = null;
 let _shiftsCacheTime = 0;
@@ -392,6 +417,8 @@ function withLimaSuffix(name, details, start, end) {
 }
 
 async function notifyShiftChange(actionBy, targetName, verb, details, start, end) {
+    // Web push to the affected person (independent of Slack)
+    try { if (targetName && targetName !== actionBy) sendPushToUser(targetName, actionBy + ' ' + verb + ' your shift', details + (start ? ' (' + start + '-' + end + ')' : ''), '/dashboard'); } catch (e) {}
     if (!SLACK_BOT_TOKEN) return;
     if (!_slackDataLoaded) await loadSlackData();
     const promises = [];
@@ -2827,6 +2854,38 @@ app.post('/api/swaps/:id/cancel', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== Web Push endpoints =====
+app.get('/api/push/key', (req, res) => { res.json({ enabled: PUSH_ENABLED, key: VAPID_PUBLIC }); });
+app.post('/api/push/subscribe', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    if (!PUSH_ENABLED) return res.status(503).json({ error: 'Push not configured' });
+    const sub = req.body && req.body.sub;
+    if (!sub || !sub.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
+    try {
+        const sheet = await getPushSheet();
+        const rows = await sheet.getRows();
+        const existing = rows.find(r => r.get('Endpoint') === sub.endpoint);
+        if (existing) { existing.set('Jmeno', req.user.jmeno); existing.set('Sub', JSON.stringify(sub)); await existing.save(); }
+        else { await sheet.addRow({ Jmeno: req.user.jmeno, Email: req.user.email, Endpoint: sub.endpoint, Sub: JSON.stringify(sub), CreatedAt: new Date().toISOString() }, { raw: true }); }
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/push/unsubscribe', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const sheet = await getPushSheet();
+        const rows = await sheet.getRows();
+        for (const r of rows.filter(r => r.get('Endpoint') === (req.body && req.body.endpoint))) { try { await r.delete(); } catch (_) {} }
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/push/test', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    if (!PUSH_ENABLED) return res.status(503).json({ error: 'Push not configured' });
+    try { await sendPushToUser(req.user.jmeno, 'Drachir.gg', 'Test notification — push works! 🔔', '/dashboard'); res.json({ success: true }); }
+    catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POINT 2: EXCHANGE SHIFT - swap names in two cells
 app.post('/exchange-shift', async (req, res) => {
     if (!req.user) return res.status(401).send('Unauthorized');
@@ -4856,6 +4915,7 @@ app.get('/dashboard', async (req, res) => {
                 <button class="btn-swaps" onclick="openSwapBoard()" title="Shift swaps" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128260;</button>
                 <a href="/calendar" class="btn-ics" title="My calendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
+                <button class="btn-push" id="pushBtn" onclick="togglePush()" title="Browser notifications (this device)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;">&#128241;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
                 <button id="themeToggle" class="btn-theme" onclick="toggleTheme()" title="Light / Dark theme" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;line-height:1;">&#9728;</button><script>if(document.documentElement.classList.contains('theme-light')){var _thBtn=document.getElementById('themeToggle');if(_thBtn)_thBtn.textContent='☾';}</script>
                 <!-- Uzivatel desktop -->
@@ -5243,6 +5303,32 @@ app.get('/dashboard', async (req, res) => {
         try{ localStorage.setItem('ygg_theme', isLight?'light':'dark'); }catch(e){}
         var b=document.getElementById('themeToggle'); if(b) b.textContent = isLight?'☾':'☀';
     }
+    // ===== Web Push (browser notifications) =====
+    function urlB64ToUint8(b){ var p='='.repeat((4-b.length%4)%4); var s=(b+p).replace(/-/g,'+').replace(/_/g,'/'); var raw=atob(s); var arr=new Uint8Array(raw.length); for(var i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i); return arr; }
+    function setPushIcon(on){ var b=document.getElementById('pushBtn'); if(b){ b.style.color=on?'#22d3ee':'#5b7fa6'; b.title=on?'Browser notifications: ON (click to turn off)':'Browser notifications (this device)'; } }
+    window.togglePush = function(){
+        if(!('serviceWorker' in navigator)||!('PushManager' in window)){ toast('Push not supported in this browser'); return; }
+        fetch('/api/push/key').then(function(r){return r.json();}).then(function(info){
+            if(!info.enabled){ toast('Push not set up on the server yet (VAPID keys missing)'); return; }
+            navigator.serviceWorker.ready.then(function(reg){
+                reg.pushManager.getSubscription().then(function(existing){
+                    if(existing){
+                        existing.unsubscribe();
+                        fetch('/api/push/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:existing.endpoint})});
+                        setPushIcon(false); toast('Notifications off'); return;
+                    }
+                    Notification.requestPermission().then(function(perm){
+                        if(perm!=='granted'){ toast('Notifications blocked in browser settings'); return; }
+                        reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(info.key)}).then(function(sub){
+                            return fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sub:sub})});
+                        }).then(function(){ setPushIcon(true); toast('Notifications on 🔔'); fetch('/api/push/test',{method:'POST'}); })
+                        .catch(function(e){ toast('Push error: '+e.message); });
+                    });
+                });
+            });
+        }).catch(function(e){ toast('Push error: '+e.message); });
+    };
+    (function(){ if('serviceWorker' in navigator && 'PushManager' in window){ navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(s){ setPushIcon(!!s); }).catch(function(){}); } })();
     // Zebra striping over VISIBLE rows only (so it stays alternating after sidebar filtering)
     function restripeRows() {
         let vis = 0;
