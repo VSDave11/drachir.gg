@@ -1,3 +1,5 @@
+const Sentry = require('@sentry/node');
+if (process.env.SENTRY_DSN) { try { Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV || 'production', tracesSampleRate: 0 }); console.log('Sentry enabled'); } catch (e) { console.error('Sentry init failed:', e.message); } }
 const express = require('express');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
@@ -7454,6 +7456,9 @@ app.post('/api/commit-to-schedule', async (req, res) => {
         res.status(500).json({ error: e.message, stack: e.stack });
     }
 });
+
+// Sentry error handler — after all routes; no-op without SENTRY_DSN env
+if (process.env.SENTRY_DSN) { try { Sentry.setupExpressErrorHandler(app); } catch (e) { console.error('Sentry express handler failed:', e.message); } }
 
 // Pouze pokud je tento soubor spousten primo (node index.js), nikoli require()
 if (require.main === module) {
