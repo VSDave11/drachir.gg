@@ -9,7 +9,9 @@ assert.ok(validateNewRequest({ name: 'Bob', date: '2026-06-20', product: 'CS 2 D
 assert.ok(validateNewRequest({ name: 'Alice', date: '2026-06-20', product: 'Vacation', start: '00:00' }, 'Alice'));   // vacation
 assert.ok(validateNewRequest(null, 'Alice'));
 assert.ok(validateNewRequest({ date: '2026-06-20', product: 'X', start: '08:00' }, ''));   // chybí user
-ok('validateNewRequest: vlastni OK, cizi/vacation/prazdny user odmitnut');
+assert.strictEqual(validateNewRequest({ name: 'Bob', date: '2026-06-20', product: 'CS 2 Duels', start: '08:00' }, 'Alice', true), null);   // manager smi nabidnout cizi smenu
+assert.ok(validateNewRequest({ name: 'Bob', date: '2026-06-20', product: 'Vacation', start: '00:00' }, 'Alice', true));   // ani manager nevymeni vacation
+ok('validateNewRequest: vlastni OK, cizi/vacation/prazdny user odmitnut, manager smi cizi (ne vacation)');
 
 // canClaim
 assert.ok(canClaim({ Status: 'OPEN', RequesterName: 'Alice' }, 'Bob'));
