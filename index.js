@@ -3955,7 +3955,7 @@ app.get('/dashboard', async (req, res) => {
 
                     rHTML += '<div class="timeline-row hidden-row user-row" data-name="' + name + '">'
                            + '<div class="row-grid-bg">'
-                           + '<div style="position:sticky;left:10px;top:3px;font-size:0.66rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;text-shadow:0 1px 2px rgba(10,13,20,0.55);">'
+                           + '<div class="row-label" style="position:sticky;left:10px;top:3px;font-size:0.66rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;text-shadow:0 1px 2px rgba(10,13,20,0.55);">'
                            + group.label + ' &gt; <span style="color:' + personColor + ';">' + name + '</span>'
                            + '</div>' + sHTML + '</div></div>';
                 });
@@ -4071,7 +4071,7 @@ app.get('/dashboard', async (req, res) => {
                     const pLabelColor = productColors[pName] || trading.color;
                     pRowsHTML += '<div class="timeline-row hidden-row product-row" data-product-row="' + pName + '">'
                                + '<div class="row-grid-bg">'
-                               + '<div style="position:sticky;left:10px;top:3px;font-size:0.66rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;text-shadow:0 1px 2px rgba(10,13,20,0.55);">'
+                               + '<div class="row-label" style="position:sticky;left:10px;top:3px;font-size:0.66rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;text-shadow:0 1px 2px rgba(10,13,20,0.55);">'
                                + 'Product &gt; <span style="color:' + pLabelColor + ';">' + pName + '</span>'
                                + '</div>' + psHTML + '</div></div>';
                 });
@@ -4612,7 +4612,7 @@ app.get('/dashboard', async (req, res) => {
         /* topbar glass */
         .topbar-main{ background:rgba(15,19,32,0.72) !important; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--gborder) !important; }
         .view-toggle-bar{ background:var(--glass) !important; border:1px solid var(--gborder) !important; }
-        .topbar-right .btn-current-week,.topbar-right .btn-stats,.topbar-right .btn-swaps,.topbar-right .btn-ics,.topbar-right .btn-slack,.topbar-right #refreshBtn{ background:var(--glass) !important; border-color:var(--gborder) !important; color:var(--tmid) !important; }
+        .topbar-right .btn-current-week,.topbar-right .btn-stats,.topbar-right .btn-swaps,.topbar-right .btn-ics,.topbar-right .btn-slack,.topbar-right .btn-theme,.topbar-right #refreshBtn{ background:var(--glass) !important; border-color:var(--gborder) !important; color:var(--tmid) !important; }
         .month-label{ color:var(--au2) !important; }
         .user-box{ background:var(--glass) !important; border-color:var(--gborder) !important; }
         /* sidebar glass */
@@ -4652,10 +4652,60 @@ app.get('/dashboard', async (req, res) => {
         .timeline-viewport::-webkit-scrollbar-track{ background:rgba(165,180,252,0.05); }
         .timeline-viewport::-webkit-scrollbar-thumb{ background:rgba(167,139,250,0.45); border-radius:10px; }
         .timeline-viewport::-webkit-scrollbar-thumb:hover{ background:var(--au2); }
+
+        /* ===================== LIGHT THEME (toggle: html.theme-light) ===================== */
+        .theme-light{
+          --bg0:#eef1f6; --bg1:#ffffff; --glass:#ffffff; --glass2:#f5f7fa;
+          --gborder:rgba(20,30,55,0.12); --hair:rgba(20,30,55,0.07);
+          --thi:#1b2230; --tmid:#46526a; --tlo:#7c879c;
+          --au1:#6d5bd6; --au2:#1f7fa8;
+        }
+        .theme-light body, .theme-light .main-content{ background:#eef1f6 !important; }
+        .theme-light .topbar-main{ background:#ffffff !important; border-bottom-color:var(--gborder) !important; }
+        .theme-light .view-toggle-bar{ background:#eef1f6 !important; border-color:var(--gborder) !important; }
+        .theme-light .sidebar{ background:#ffffff !important; border-right-color:var(--gborder) !important; }
+        .theme-light #warriorSearch{ background:#f4f6fa !important; color:#1b2230 !important; border-color:var(--gborder) !important; }
+        .theme-light .section-title{ color:#6e7a96 !important; }
+        .theme-light .item{ color:#3c4860 !important; }
+        .theme-light .sub-item{ color:#586480 !important; }
+        .theme-light .item:hover, .theme-light .sub-item:hover{ background:rgba(20,40,90,0.05) !important; }
+        .theme-light .month-label{ color:#3a6fae !important; }
+        .theme-light .mini-cal-nav button{ color:#9aa3b5 !important; }
+        .theme-light .mini-cal-grid, .theme-light .m-date{ color:#3c4860 !important; }
+        .theme-light .m-date.today{ background:rgba(109,91,214,0.14) !important; color:#5a4fcf !important; }
+        .theme-light .user-box{ background:#f4f6fa !important; }
+        .theme-light .user-box [style*="color:#c8d0e0"]{ color:#1b2230 !important; }
+        /* sidebar action buttons — darken light-on-dark accent text for white bg */
+        .theme-light .sidebar-inner button[style*="#a78bfa"]{ color:#5a4fcf !important; }
+        .theme-light .sidebar-inner a[style*="#90a4ae"]{ color:#566678 !important; }
+        .theme-light .sidebar-inner button[style*="#b39ddb"]{ color:#7a5fc0 !important; }
+        .theme-light .sidebar-inner button[style*="#66bb6a"]{ color:#3a9e4a !important; }
+        /* timeline */
+        .theme-light .timeline-viewport, .theme-light .timeline-header, .theme-light .timeline-row, .theme-light .hours-row{ background:#ffffff !important; }
+        .theme-light .timeline-row{ border-bottom-color:rgba(20,30,55,0.08) !important; }
+        .theme-light .day-label-top{ background:#f4f6fa !important; color:#1b2230 !important; border-bottom-color:rgba(109,91,214,0.4) !important; }
+        .theme-light .today-block .day-label-top{ background:rgba(109,91,214,0.12) !important; }
+        .theme-light .weekend-block .day-label-top{ background:rgba(70,120,210,0.08) !important; }
+        .theme-light .weekend-block .hours-row{ background:rgba(70,120,210,0.05) !important; }
+        .theme-light .hr-cell{ color:#8a93a8 !important; }
+        .theme-light .row-label{ color:#5a6480 !important; text-shadow:none !important; }
+        .theme-light .row-grid-bg{
+            background-color:#ffffff !important;
+            background-image:
+                repeating-linear-gradient(to right, rgba(30,45,90,0.07) 0px, rgba(30,45,90,0.07) 1px, transparent 1px, transparent 40px),
+                repeating-linear-gradient(to right, transparent 0px, transparent 960px, rgba(30,45,90,0.02) 960px, rgba(30,45,90,0.02) 1920px),
+                linear-gradient(to right, transparent 4800px, rgba(70,120,210,0.06) 4800px, rgba(70,120,210,0.06) 6720px) !important;
+        }
+        .theme-light .timeline-row.zeb .row-grid-bg{ background-color:#f5f7fb !important; }
+        .theme-light .timeline-viewport::-webkit-scrollbar-track{ background:rgba(20,40,90,0.04); }
+        .theme-light .timeline-viewport::-webkit-scrollbar-thumb{ background:rgba(109,91,214,0.4); }
+        /* shift modal */
+        .theme-light .modal-outer{ background:#ffffff !important; color:#1b2230 !important; border-color:var(--gborder) !important; }
     </style>
     <!-- Early: restore saved view + hide unselected rows before first paint -->
     <script>
     (function(){
+        try{ if(localStorage.getItem('ygg_theme')==='light') document.documentElement.classList.add('theme-light'); }catch(e){}
         // Restore saved view if no ?view= in URL
         const p=new URLSearchParams(window.location.search);
         if(!p.has('view')){
@@ -4774,6 +4824,7 @@ app.get('/dashboard', async (req, res) => {
                 <a href="/calendar" class="btn-ics" title="My calendar (ICS feed)" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;text-decoration:none;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128197;</a>
                 <button class="btn-slack" onclick="openSlackSettings()" title="Slack Notifications" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#128276;</button>
                 <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh data" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;transition:all 0.3s;line-height:1;" onmouseover="this.style.borderColor='rgba(91,127,166,0.5)';this.style.color='#7ba3cc'" onmouseout="this.style.borderColor='#1e2d3d';this.style.color='#5b7fa6'">&#10227;</button>
+                <button id="themeToggle" class="btn-theme" onclick="toggleTheme()" title="Light / Dark theme" style="padding:6px 10px;border:1px solid #1e2d3d;border-radius:6px;background:#0e1621;color:#5b7fa6;cursor:pointer;font-size:0.85rem;line-height:1;">&#9728;</button><script>if(document.documentElement.classList.contains('theme-light')){var _thBtn=document.getElementById('themeToggle');if(_thBtn)_thBtn.textContent='☾';}</script>
                 <!-- Uzivatel desktop -->
                 <div class="user-box" style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#13151e;border-radius:10px;border:1px solid #1e2030;">
                     <div style="width:36px;height:36px;border-radius:50%;background:#0a0b0f;border:2px solid rgba(167,139,250,0.25);display:flex;align-items:center;justify-content:center;font-family:'Oswald';font-weight:700;color:#a78bfa;font-size:1rem;flex-shrink:0;">
@@ -5142,6 +5193,11 @@ app.get('/dashboard', async (req, res) => {
         restripeRows();
     }
 
+    function toggleTheme(){
+        var isLight = document.documentElement.classList.toggle('theme-light');
+        try{ localStorage.setItem('ygg_theme', isLight?'light':'dark'); }catch(e){}
+        var b=document.getElementById('themeToggle'); if(b) b.textContent = isLight?'☾':'☀';
+    }
     // Zebra striping over VISIBLE rows only (so it stays alternating after sidebar filtering)
     function restripeRows() {
         let vis = 0;
