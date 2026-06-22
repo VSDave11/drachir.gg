@@ -1549,7 +1549,7 @@ function pastel(hex) {
     if (hex.length === 4) { r = parseInt(hex.charAt(1) + hex.charAt(1), 16); g = parseInt(hex.charAt(2) + hex.charAt(2), 16); b = parseInt(hex.charAt(3) + hex.charAt(3), 16); }
     else { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16); }
     if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
-    var m = 0.60;
+    var m = 0.10;
     return 'rgb(' + Math.round(r + (255 - r) * m) + ',' + Math.round(g + (255 - g) * m) + ',' + Math.round(b + (255 - b) * m) + ')';
 }
 function timeToPercent(timeStr) {
@@ -3878,7 +3878,7 @@ app.get('/dashboard', async (req, res) => {
                     crewHTML += '</div>';
                 }
                 return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(s.Product) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(sharedNote) + '" data-sid="' + (s._id||'') + '" data-sht="' + (s._sheet||'') + '" data-snm="' + safe(name) + '"'
-                     + ' style="left:' + left + '%;width:' + width + '%;top:50%;transform:translateY(-50%);height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
+                     + ' style="left:' + left + '%;width:' + width + '%;top:calc(50% + 8px);transform:translateY(-50%);height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
                      + ' onclick="openViewModal(\'' + safe(name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(s.Product) + '\',\'' + safe(sharedNote) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\',event)">'
                      + '<div style="display:flex;align-items:center;white-space:nowrap;">'
                      + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
@@ -3955,7 +3955,7 @@ app.get('/dashboard', async (req, res) => {
 
                     rHTML += '<div class="timeline-row hidden-row user-row" data-name="' + name + '">'
                            + '<div class="row-grid-bg">'
-                           + '<div style="position:sticky;left:10px;top:4px;font-size:0.75rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;">'
+                           + '<div style="position:sticky;left:10px;top:3px;font-size:0.66rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;text-shadow:0 1px 2px rgba(10,13,20,0.55);">'
                            + group.label + ' &gt; <span style="color:' + personColor + ';">' + name + '</span>'
                            + '</div>' + sHTML + '</div></div>';
                 });
@@ -3990,7 +3990,7 @@ app.get('/dashboard', async (req, res) => {
                             namesHTML += '</div>';
                         }
                         return '<div class="shift-pill" data-orig-start="' + s.Start + '" data-orig-end="' + s.End + '" data-orig-day="' + dayIdx + '" data-pill-part="' + (pillPart||0) + '" data-shift-date="' + s.Date + '" data-person="' + safe(s.Name) + '" data-person-color="' + personColor + '" data-prod-color="' + prodColor + '" data-tooltip-product="' + safe(pName) + '" data-tooltip-trading="' + safe(s.Trading) + '" data-tooltip-note="' + safe(groupNote) + '" data-sid="' + (s._id||'') + '" data-sht="' + (s._sheet||'') + '" data-snm="' + safe(s.Name) + '"'
-                             + ' style="left:' + left + '%;width:' + width + '%;top:50%;transform:translateY(-50%);height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
+                             + ' style="left:' + left + '%;width:' + width + '%;top:calc(50% + 8px);transform:translateY(-50%);height:' + pillH + 'px;background:' + pillBg + ';border-right:3px solid ' + prodColor + ';display:flex;flex-direction:column;justify-content:center;padding:0 8px;"'
                              + ' onclick="openViewModal(\'' + safe(s.Name) + '\',\'' + dStr + '\',\'' + s.Start + '\',\'' + s.End + '\',\'' + safe(pName) + '\',\'' + safe(s.Note) + '\',\'' + s.Trading + '\',\'' + personColor + '\',\'' + prodColor + '\',\'' + (s._sheet||'') + '\',' + (s._row||0) + ',' + (s._col||0) + ',\'' + (s._id||'') + '\',event)">'
                              + '<div style="display:flex;align-items:center;white-space:nowrap;">'
                              + '<span class="pill-time" style="font-size:0.78rem;font-weight:700;">' + s.Start + ' - ' + s.End + '</span>'
@@ -4071,7 +4071,7 @@ app.get('/dashboard', async (req, res) => {
                     const pLabelColor = productColors[pName] || trading.color;
                     pRowsHTML += '<div class="timeline-row hidden-row product-row" data-product-row="' + pName + '">'
                                + '<div class="row-grid-bg">'
-                               + '<div style="position:sticky;left:10px;top:4px;font-size:0.75rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;">'
+                               + '<div style="position:sticky;left:10px;top:3px;font-size:0.66rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;text-shadow:0 1px 2px rgba(10,13,20,0.55);">'
                                + 'Product &gt; <span style="color:' + pLabelColor + ';">' + pName + '</span>'
                                + '</div>' + psHTML + '</div></div>';
                 });
@@ -4481,10 +4481,10 @@ app.get('/dashboard', async (req, res) => {
 
         /* POINT 7: Grid lines every 20px and 40px */
         .row-grid-bg{
-            display:flex;position:relative;height:62px;
+            display:flex;position:relative;height:66px;
             background-image:
-                linear-gradient(to right, transparent 4800px, rgba(160,200,255,0.28) 4800px, rgba(160,200,255,0.28) 6720px),
-                repeating-linear-gradient(to right, #ccc 0px,#ccc 1px, transparent 1px,transparent 20px, #e4e4e4 20px,#e4e4e4 21px, transparent 21px,transparent 40px);
+                repeating-linear-gradient(to right, rgba(150,175,210,0.06) 0px, rgba(150,175,210,0.06) 1px, transparent 1px, transparent 40px),
+                repeating-linear-gradient(to right, transparent 0px, transparent 960px, rgba(150,175,210,0.022) 960px, rgba(150,175,210,0.022) 1920px);
             width:6720px;
         }
 
@@ -4602,7 +4602,7 @@ app.get('/dashboard', async (req, res) => {
         /* ===== Aurora · Soft · Glass (DARK) — theme override (restyle etapa 1: shell + timeline grid) ===== */
         :root{
           --au1:#a78bfa; --au2:#22d3ee; --au-grad:linear-gradient(135deg,#a78bfa 0%,#22d3ee 100%);
-          --bg0:#0f1320; --bg1:#161b2c; --glass:rgba(34,41,63,0.55); --glass2:rgba(40,48,74,0.72);
+          --bg0:#11151d; --bg1:#161b25; --glass:rgba(34,41,63,0.55); --glass2:rgba(40,48,74,0.72);
           --gborder:rgba(165,180,252,0.16); --hair:rgba(165,180,252,0.10);
           --thi:#eef2fb; --tmid:#aab6cf; --tlo:#7c87a3;
         }
@@ -4635,9 +4635,11 @@ app.get('/dashboard', async (req, res) => {
         .timeline-viewport{ background:var(--bg0) !important; scrollbar-color:rgba(167,139,250,0.45) transparent; }
         .timeline-header{ background:var(--bg1) !important; border-bottom-color:var(--gborder) !important; }
         .timeline-row{ background:transparent !important; border-bottom-color:var(--hair) !important; }
+        .timeline-row.zeb .row-grid-bg{ background-color:rgba(150,175,210,0.03); }
         .day-block{ border-right-color:var(--gborder) !important; }
         .hours-row{ background:rgba(255,255,255,0.025) !important; border-bottom-color:var(--hair) !important; }
-        .hr-cell{ color:var(--tlo) !important; border-right-color:var(--hair) !important; }
+        .hr-cell{ color:var(--tlo) !important; border-right-color:transparent !important; }
+        .hr-half-mark{ display:none !important; }
         .day-label-top{ color:var(--thi) !important; }
         .today-label{ color:var(--au1) !important; }
         /* day headers: always dark bg + purple underline (readable on dark) */
@@ -5136,8 +5138,18 @@ app.get('/dashboard', async (req, res) => {
         } else {
             document.querySelectorAll('.user-row,.product-row').forEach(r => r.classList.add('hidden-row'));
         }
+        restripeRows();
     }
 
+    // Zebra striping over VISIBLE rows only (so it stays alternating after sidebar filtering)
+    function restripeRows() {
+        let vis = 0;
+        document.querySelectorAll('.timeline-row').forEach(r => {
+            if (r.classList.contains('hidden-row')) { r.classList.remove('zeb'); return; }
+            r.classList.toggle('zeb', vis % 2 === 1);
+            vis++;
+        });
+    }
     function applyAllFilters() {
         const aN = Array.from(document.querySelectorAll('.user-item.active')).map(e => e.dataset.name.trim());
         const aP = Array.from(document.querySelectorAll('.product-selector.active')).map(e => e.dataset.productName.trim());
@@ -5145,6 +5157,7 @@ app.get('/dashboard', async (req, res) => {
         // Pokud neni nic vybrano, schovej vse
         if (aN.length === 0 && aP.length === 0) {
             document.querySelectorAll('.user-row, .product-row').forEach(r => r.classList.add('hidden-row'));
+            restripeRows();
             return;
         }
 
@@ -5164,6 +5177,7 @@ app.get('/dashboard', async (req, res) => {
             r.classList.toggle('hidden-row', !show);
             if (wasH && show) { r.classList.add('row-appearing'); setTimeout(() => r.classList.remove('row-appearing'), 300); }
         });
+        restripeRows();
     }
 
     function saveSelection() {
