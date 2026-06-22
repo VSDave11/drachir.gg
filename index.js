@@ -112,6 +112,70 @@ function getUser(req) {
     }
     return null;
 }
+// ===== Vibe platform SSO: derive the user from the ALB-injected x-amzn-oidc-data header =====
+// Additive: only fires when the OIDC header (production behind the vibe ALB) or DEV_USER_EMAIL (local)
+// is present. Without either (e.g. on Render) it is a no-op and the legacy session/login flow stays.
+const AWS_REGION = process.env.AWS_REGION || 'eu-west-1';
+const _albKeyCache = new Map();
+async function getAlbPublicKey(kid) {
+    if (_albKeyCache.has(kid)) return _albKeyCache.get(kid);
+    const pem = await fetch('https://public-keys.auth.elb.' + AWS_REGION + '.amazonaws.com/' + encodeURIComponent(kid)).then(r => r.text());
+    _albKeyCache.set(kid, pem);
+    return pem;
+}
+async function ssoVerifyEmail(req) {
+    const token = req.headers['x-amzn-oidc-data'];
+    if (!token) return (process.env.DEV_USER_EMAIL || '').toLowerCase().trim() || null;   // local-dev fallback only
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    try {
+        const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString());
+        if (!header.kid) return null;
+        const pem = await getAlbPublicKey(header.kid);
+        const ok = crypto.verify('sha256', Buffer.from(parts[0] + '.' + parts[1]), { key: pem, dsaEncoding: 'ieee-p1363' }, Buffer.from(parts[2], 'base64url'));
+        if (!ok) return null;
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+        if (payload.exp && Date.now() / 1000 > payload.exp) return null;
+        return (payload.email || '').toLowerCase().trim() || null;
+    } catch (e) { console.error('SSO verify failed:', e.message); return null; }
+}
+// uzivatele lookup by email (cached 5 min) -> { jmeno, email, role, location }
+let _uzCache = null, _uzCacheTime = 0;
+async function findUzivatelByEmail(email) {
+    if (!email) return null;
+    if (!_uzCache || Date.now() - _uzCacheTime > 5 * 60 * 1000) {
+        try {
+            await doc.loadInfo();
+            const sheet = doc.sheetsByTitle['uzivatele'];
+            if (!sheet) return null;
+            const rows = await sheet.getRows();
+            const hv = sheet.headerValues || [];
+            const col = (n) => hv.find(h => (h || '').toString().trim().toLowerCase() === n) || n;
+            const cJ = col('jmeno'), cE = col('email'), cR = col('role'), cL = col('location');
+            _uzCache = rows.map(r => ({
+                jmeno: (r.get(cJ) || '').toString().trim(),
+                email: (r.get(cE) || '').toString().trim().toLowerCase(),
+                role: (r.get(cR) || 'User').toString().trim(),
+                location: (r.get(cL) || '').toString().trim()
+            }));
+            _uzCacheTime = Date.now();
+        } catch (e) { console.error('uzivatele load failed:', e.message); return null; }
+    }
+    return _uzCache.find(u => u.email === email) || null;
+}
+// SSO middleware: populate the session user from the verified OIDC identity (skips /healthz)
+app.use(async (req, res, next) => {
+    try {
+        if (req.path === '/healthz' || (req.session && req.session.user)) return next();
+        const email = await ssoVerifyEmail(req);
+        if (email && req.session) {
+            const u = await findUzivatelByEmail(email);
+            req.session.user = u || { jmeno: email.split('@')[0], email: email, role: 'User', location: '' };
+        }
+    } catch (e) { console.error('SSO middleware:', e.message); }
+    next();
+});
+
 // Middleware: nastav req.user z tokenu pro kazdy request
 app.use((req, res, next) => {
     req.user = getUser(req);
@@ -132,6 +196,8 @@ app.use((req, res, next) => {
     }
     next();
 });
+// SSO/authed users skip the login page and go straight to the dashboard
+app.get('/', (req, res, next) => { if (req.user) return res.redirect('/dashboard'); next(); });
 app.use(express.static('public'));
 
 // ====== Platform: health check + ICS kalendarovy feed ======
