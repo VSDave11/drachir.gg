@@ -4778,6 +4778,10 @@ app.get('/dashboard', async (req, res) => {
         ` : ''}
 
         <div class="item" id="showAllBtn" onclick="showAllRows(this)" style="border-left-color:rgba(255,255,255,0.2);color:#6b7585;font-size:0.72rem;letter-spacing:1px;">[ SHOW ALL ]</div>
+        <div style="display:flex;gap:6px;margin:2px 0 6px;">
+            <button class="mine-btn" onclick="showMine(false)" title="Show only my shifts" style="flex:1;background:rgba(167,139,250,0.10);color:#a78bfa;border:1px solid rgba(167,139,250,0.30);border-radius:6px;padding:6px 4px;font-size:0.66rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;transition:0.15s;">&#9733; MY SHIFTS</button>
+            <button class="mine-btn" onclick="showMine(true)" title="My shifts + the products I work (see who is on after me)" style="flex:1;background:rgba(34,211,238,0.10);color:#22d3ee;border:1px solid rgba(34,211,238,0.30);border-radius:6px;padding:6px 4px;font-size:0.66rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;transition:0.15s;">&#9733; MY + PRODUCTS</button>
+        </div>
 
         <div class="sidebar-list">
         ${peopleHierarchy.map((g, gi) =>
@@ -5205,8 +5209,20 @@ app.get('/dashboard', async (req, res) => {
     window._productList = ${JSON.stringify(productMapping.map(p => p.name))};
     window._me = ${JSON.stringify(req.user.jmeno)};
     window._isMgr = ${req.user.role === 'Admin' ? 'true' : 'false'};
+    window._myProducts = ${JSON.stringify([...new Set(allShifts.filter(s => s.Name === req.user.jmeno).map(s => s.Product).filter(Boolean))])};
 
     // SHOW ALL
+    // My-shifts presets: show only me (+ optionally the products I work, so I see who is on after me)
+    function showMine(withProducts){
+        var sb=document.getElementById('showAllBtn'); if(sb) sb.classList.remove('active');
+        document.querySelectorAll('.user-item.active,.product-selector.active,.trading-cat-item.active').forEach(function(i){ i.classList.remove('active'); });
+        document.querySelectorAll('.user-item').forEach(function(i){ if((i.dataset.name||'').trim()===window._me) i.classList.add('active'); });
+        if(withProducts){
+            var mp=window._myProducts||[];
+            document.querySelectorAll('.product-selector').forEach(function(s){ if(mp.indexOf((s.dataset.productName||'').trim())>=0) s.classList.add('active'); });
+        }
+        applyAllFilters(); saveSelection();
+    }
     function showAllRows(el) {
         const on = el.classList.toggle('active');
         if (on) {
