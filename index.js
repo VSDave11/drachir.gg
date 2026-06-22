@@ -3968,7 +3968,7 @@ app.get('/dashboard', async (req, res) => {
 
                     rHTML += '<div class="timeline-row hidden-row user-row" data-name="' + name + '">'
                            + '<div class="row-grid-bg">'
-                           + '<div style="position:sticky;left:10px;top:4px;font-size:0.75rem;color:#555;font-weight:600;z-index:20;pointer-events:none;">'
+                           + '<div style="position:sticky;left:10px;top:4px;font-size:0.75rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;">'
                            + group.label + ' &gt; <span style="color:' + personColor + ';">' + name + '</span>'
                            + '</div>' + sHTML + '</div></div>';
                 });
@@ -4084,7 +4084,7 @@ app.get('/dashboard', async (req, res) => {
                     const pLabelColor = productColors[pName] || trading.color;
                     pRowsHTML += '<div class="timeline-row hidden-row product-row" data-product-row="' + pName + '">'
                                + '<div class="row-grid-bg">'
-                               + '<div style="position:sticky;left:10px;top:4px;font-size:0.75rem;color:#555;font-weight:600;z-index:20;pointer-events:none;">'
+                               + '<div style="position:sticky;left:10px;top:4px;font-size:0.75rem;color:#aab6cf;font-weight:600;z-index:20;pointer-events:none;">'
                                + 'Product &gt; <span style="color:' + pLabelColor + ';">' + pName + '</span>'
                                + '</div>' + psHTML + '</div></div>';
                 });
@@ -4611,6 +4611,53 @@ app.get('/dashboard', async (req, res) => {
         .tz-toggle-btn:hover .tz-badge{background:#162030;color:#7ba3cc;}
         .tz-toggle-btn.lima-active{background:#162030;color:#e0ecf6;border-color:rgba(91,127,166,0.6);box-shadow:0 4px 16px rgba(91,127,166,0.15);}
         .tz-toggle-btn.lima-active .tz-badge{background:#0e1a28;color:#7ba3cc;border-color:rgba(91,127,166,0.5);}
+
+        /* ===== Aurora · Soft · Glass (DARK) — theme override (restyle etapa 1: shell + timeline grid) ===== */
+        :root{
+          --au1:#a78bfa; --au2:#22d3ee; --au-grad:linear-gradient(135deg,#a78bfa 0%,#22d3ee 100%);
+          --bg0:#0f1320; --bg1:#161b2c; --glass:rgba(34,41,63,0.55); --glass2:rgba(40,48,74,0.72);
+          --gborder:rgba(165,180,252,0.16); --hair:rgba(165,180,252,0.10);
+          --thi:#eef2fb; --tmid:#aab6cf; --tlo:#7c87a3;
+        }
+        body{ background:var(--bg0) !important; }
+        .main-content{ background:var(--bg0) !important; }
+        /* topbar glass */
+        .topbar-main{ background:rgba(15,19,32,0.72) !important; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--gborder) !important; }
+        .view-toggle-bar{ background:var(--glass) !important; border:1px solid var(--gborder) !important; }
+        .topbar-right .btn-current-week,.topbar-right .btn-stats,.topbar-right .btn-swaps,.topbar-right .btn-import,.topbar-right .btn-ics,.topbar-right .btn-slack,.topbar-right #refreshBtn{ background:var(--glass) !important; border-color:var(--gborder) !important; color:var(--tmid) !important; }
+        .cov-chip{ background:var(--glass) !important; }
+        .month-label{ color:var(--au2) !important; }
+        .user-box{ background:var(--glass) !important; border-color:var(--gborder) !important; }
+        /* sidebar glass */
+        .sidebar{ background:rgba(15,19,32,0.62) !important; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-right:1px solid var(--gborder) !important; }
+        .logo-area{ border-bottom-color:var(--gborder) !important; }
+        .logo-area img{ filter:drop-shadow(0 0 8px rgba(167,139,250,0.4)) !important; }
+        .logo-fallback{ background:var(--au-grad) !important; -webkit-background-clip:text !important; background-clip:text !important; color:transparent !important; }
+        .sidebar-list::-webkit-scrollbar-thumb{ background:rgba(167,139,250,0.5) !important; }
+        .sidebar-list::-webkit-scrollbar-thumb:hover{ background:var(--au2) !important; }
+        .sidebar-list{ scrollbar-color:rgba(167,139,250,0.45) transparent !important; }
+        /* primary CTA + active items + mini-cal = aurora */
+        .add-btn{ background:var(--au-grad) !important; color:#0f1320 !important; box-shadow:0 2px 14px rgba(167,139,250,0.30) !important; }
+        .item.active{ border-left-color:var(--au1) !important; color:var(--thi) !important; }
+        .sub-item.active{ color:var(--thi) !important; }
+        .mini-calendar{ border-bottom-color:var(--gborder) !important; }
+        .mini-cal-nav span{ background:linear-gradient(90deg,#a78bfa,#22d3ee) !important; -webkit-background-clip:text !important; background-clip:text !important; color:transparent !important; }
+        .m-date.today{ background:rgba(167,139,250,0.16) !important; color:#c4b5fd !important; }
+        .m-date:hover{ background:rgba(167,139,250,0.10) !important; color:var(--au1) !important; }
+        .progress-container{ background:rgba(165,180,252,0.10) !important; }
+        /* timeline grid -> dark */
+        .timeline-viewport{ background:var(--bg0) !important; scrollbar-color:rgba(167,139,250,0.45) transparent; }
+        .timeline-header{ background:var(--bg1) !important; border-bottom-color:var(--gborder) !important; }
+        .timeline-row{ background:transparent !important; border-bottom-color:var(--hair) !important; }
+        .day-block{ border-right-color:var(--gborder) !important; }
+        .hours-row{ background:rgba(255,255,255,0.025) !important; border-bottom-color:var(--hair) !important; }
+        .hr-cell{ color:var(--tlo) !important; border-right-color:var(--hair) !important; }
+        .day-label-top{ color:var(--thi) !important; }
+        .today-label{ color:var(--au1) !important; }
+        .timeline-viewport::-webkit-scrollbar{ width:11px; height:11px; }
+        .timeline-viewport::-webkit-scrollbar-track{ background:rgba(165,180,252,0.05); }
+        .timeline-viewport::-webkit-scrollbar-thumb{ background:rgba(167,139,250,0.45); border-radius:10px; }
+        .timeline-viewport::-webkit-scrollbar-thumb:hover{ background:var(--au2); }
     </style>
     <!-- Early: restore saved view + hide unselected rows before first paint -->
     <script>
