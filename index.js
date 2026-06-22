@@ -4683,7 +4683,7 @@ app.get('/dashboard', async (req, res) => {
         .theme-light .sidebar-inner button[style*="#66bb6a"]{ color:#3a9e4a !important; }
         /* timeline */
         .theme-light .timeline-viewport, .theme-light .timeline-header, .theme-light .timeline-row, .theme-light .hours-row{ background:#ffffff !important; }
-        .theme-light .timeline-row{ border-bottom-color:rgba(20,30,55,0.08) !important; }
+        .theme-light .timeline-row{ border-bottom-color:rgba(30,45,90,0.16) !important; }
         .theme-light .day-label-top{ background:#f4f6fa !important; color:#1b2230 !important; border-bottom-color:rgba(109,91,214,0.4) !important; }
         .theme-light .today-block .day-label-top{ background:rgba(109,91,214,0.12) !important; }
         .theme-light .weekend-block .day-label-top{ background:rgba(70,120,210,0.08) !important; }
@@ -4693,7 +4693,7 @@ app.get('/dashboard', async (req, res) => {
         .theme-light .row-grid-bg{
             background-color:#ffffff !important;
             background-image:
-                repeating-linear-gradient(to right, rgba(30,45,90,0.07) 0px, rgba(30,45,90,0.07) 1px, transparent 1px, transparent 40px),
+                repeating-linear-gradient(to right, rgba(30,45,90,0.12) 0px, rgba(30,45,90,0.12) 1px, transparent 1px, transparent 40px),
                 repeating-linear-gradient(to right, transparent 0px, transparent 960px, rgba(30,45,90,0.02) 960px, rgba(30,45,90,0.02) 1920px),
                 linear-gradient(to right, transparent 4800px, rgba(70,120,210,0.06) 4800px, rgba(70,120,210,0.06) 6720px) !important;
         }
@@ -4706,6 +4706,11 @@ app.get('/dashboard', async (req, res) => {
         .theme-light [style*="background:#0f1320"]{ background:#ffffff !important; }
         .theme-light [style*="background:#131826"]{ background:#f1f3f7 !important; color:#46526a; }
         .theme-light [style*="background:#161b2c"]{ background:#e9edf4 !important; color:#46526a; }
+        /* week/list faint blue grid lines -> visible grey on white */
+        .theme-light [style*="rgba(165,180,252,0.14)"]{ border-color:rgba(40,55,95,0.22) !important; }
+        .theme-light [style*="rgba(165,180,252,0.09)"]{ border-color:rgba(40,55,95,0.16) !important; }
+        .theme-light [style*="rgba(165,180,252,0.08)"]{ border-color:rgba(40,55,95,0.15) !important; }
+        .theme-light [style*="rgba(165,180,252,0.06)"]{ border-color:rgba(40,55,95,0.10) !important; }
         .theme-light .week-grid-row, .theme-light .week-header-row, .theme-light .list-viewport, .theme-light .list-wrapper{ color:#46526a; }
         .theme-light .week-header-row [style*="color:#a78bfa"], .theme-light [style*="color:#a78bfa"]{ color:#5a4fcf !important; }
         /* ---- inline dark surfaces everywhere (chrome + JS-built overlays: swap board, people admin, modals, selects) ---- */
